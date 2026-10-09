@@ -1,0 +1,20 @@
+{
+  "name": "his-project",
+  "version": "1.0.0",
+  "description": "Hospital Information System monorepo with modular NestJS API and Vue frontend",
+  "main": "index.js",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "api:dev": "npm --prefix apps/api run start:dev",
+    "api:build": "npm --prefix apps/api run build",
+    "api:test": "npm --prefix apps/api test",
+    "web:dev": "npm --prefix apps/web run dev"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}
