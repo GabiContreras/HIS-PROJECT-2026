@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn } from 'typeorm';
 import { IndicacionMedica } from './indicacion-medica.entity.js';
 import { Usuario } from './usuario.entity.js';
 
@@ -8,14 +8,12 @@ export class AdministracionMedicacion {
   id: string;
 
   @ManyToOne(() => IndicacionMedica, { onDelete: 'CASCADE' })
-@JoinColumn({ name: 'indicacion_id' })
 indicacion: IndicacionMedica;
 
   @ManyToOne(() => Usuario, { onDelete: 'RESTRICT' })
-@JoinColumn({ name: 'enfermero_id' })
   enfermero: Usuario;
 
-  @CreateDateColumn({ type: 'timestamptz', name: 'fecha_hora_administracion' })
+  @CreateDateColumn({ type: 'timestamptz' })
   fechaHoraAdministracion: Date;
 
   @Column({ nullable: true })
