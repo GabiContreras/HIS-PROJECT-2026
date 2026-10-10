@@ -55,6 +55,8 @@ Convención: nombres de eventos en pasado, nombres estables y payloads versionab
 
 - PostgreSQL alojado en Supabase; no se adopta SQLite de la referencia.
 - `synchronize: false`; el esquema se modifica con migraciones versionadas.
+- El código TypeScript usa `camelCase`; los nombres de tablas y columnas en PostgreSQL usan `snake_case`, mediante `SnakeNamingStrategy`, configurada tanto en `app.module.ts` como en `data-source.ts`.
+- Los nombres explícitos de entidades y columnas deben respetar `snake_case`. Los cambios en una base existente se hacen con migraciones revisadas; activar la estrategia no renombra columnas por sí solo.
 - `DATABASE_URL` es secreto y solo se usa en backend.
 - `DATABASE_SSL=false` permite desactivar SSL solo en entornos locales que lo requieran; por defecto se utiliza SSL.
 

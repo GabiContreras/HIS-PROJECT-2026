@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, VersionColumn,JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, VersionColumn } from 'typeorm';
 import { Paciente } from './paciente.entity.js';
 
 export enum EstadoCama {
@@ -23,7 +23,6 @@ export class Cama {
   estado: EstadoCama;
 
   @ManyToOne(() => Paciente, { nullable: true, onDelete: 'SET NULL' })
-@JoinColumn({ name: 'paciente_actual_id' })
 pacienteActual: Paciente;
 
   @VersionColumn()

@@ -8,10 +8,12 @@ import { Insumo } from './entities/insumo.entity.js';
 import { SignoVital } from './entities/signo-vital.entity.js';
 import { IndicacionMedica } from './entities/indicacion-medica.entity.js';
 import { AdministracionMedicacion } from './entities/administracion-medicacion.entity.js';
+import { SnakeNamingStrategy } from './config/snake-naming.strategy.js';
 
 export default new DataSource({
   type: 'postgres',
   url: process.env.DATABASE_URL,
+  namingStrategy: new SnakeNamingStrategy(),
   entities: [
     Usuario,
     Paciente,
