@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { DataSource } from 'typeorm';
 import { Usuario } from './entities/usuario.entity.js';
+import { RefreshSession } from './entities/refresh-session.entity.js';
 import { Paciente } from './entities/paciente.entity.js';
 import { Turno } from './entities/turno.entity.js';
 import { Cama } from './entities/cama.entity.js';
@@ -14,6 +15,7 @@ export default new DataSource({
   url: process.env.DATABASE_URL,
   entities: [
     Usuario,
+    RefreshSession,
     Paciente,
     Turno,
     Cama,

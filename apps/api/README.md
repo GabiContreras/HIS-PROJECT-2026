@@ -57,6 +57,77 @@ $ npm run test:e2e
 $ npm run test:cov
 ```
 
+## IAM, accounts, and appointment scheduling
+
+### Local environment setup
+
+1. From the repository root, copy the template to the API directory:
+
+   ```bash
+   cp .env.example apps/api/.env
+   ```
+
+   The real file is ignored by Git. Keep credentials there, never in the
+   frontend or a committed file.
+2. Generate a signing secret locally:
+
+   ```bash
+   openssl rand -hex 48
+   ```
+
+   Paste the output as `JWT_SECRET`. This creates 48 random bytes (96 hex
+   characters); the backend rejects secrets shorter than 32 bytes. Use a
+   different secret per environment, keep it stable across API restarts, and
+   rotate it deliberately because doing so invalidates every access JWT.
+3. Fill `DATABASE_URL` with the PostgreSQL connection string. Keep
+   `DATABASE_SSL=true` for Supabase; set it to `false` only for local PostgreSQL
+   without TLS. Set `FRONTEND_ORIGINS` to the exact frontend origin(s), separated
+   by commas if there is more than one.
+4. Set `NODE_ENV=development` for local work. Email-code flows are intentionally
+   disabled during development: account registration needs no email, and
+   `POST /auth/reset-password` accepts `email` plus `password`. These shortcuts
+   are rejected when `NODE_ENV=production`.
+5. Configure token lifetimes:
+
+   | Variable | Default | Limit | Meaning |
+   | --- | ---: | ---: | --- |
+   | `JWT_EXPIRES_IN` | `15m` | max `15m` | Access JWT lifetime; accepts an integer plus optional `s`, `m`, `h`, or `d` suffix. |
+   | `REFRESH_TOKEN_TTL_SECONDS` | `604800` | max `2592000` | Rotating refresh-session lifetime in seconds; default is 7 days, max 30 days. |
+
+   `JWT_EXPIRES_IN` can be set to `15m`, `900`, or another duration no longer
+   than 15 minutes. The legacy `ACCESS_TOKEN_TTL_SECONDS` numeric setting is
+   still accepted if `JWT_EXPIRES_IN` is absent.
+6. Set `SUPERADMIN_NOMBRE`, `SUPERADMIN_APELLIDO`, `SUPERADMIN_EMAIL`, and
+   `SUPERADMIN_PASSWORD` only for the initial root administrator. The password
+   must meet the account password policy (8+ characters, uppercase, digit, no
+   adjacent ascending/descending digits).
+7. From `apps/api`, apply migrations and create the root administrator once:
+
+   ```bash
+   npm run migration:run
+   npm run iam:bootstrap-superadmin
+   npm run start:dev
+   ```
+
+   Do not rerun the bootstrap command with another email: the backend permits
+   only one root superadmin.
+
+Existing legacy passwords are upgraded to scrypt after a successful
+non-production login.
+
+IAM endpoints include registration, login, refresh, logout, `/auth/me`, and
+password recovery/change. The short-lived access JWT is returned in the response
+body; send it on protected requests as `Authorization: Bearer <accessToken>`.
+The rotating refresh token is only set in an HttpOnly cookie. The frontend
+origin must be listed in `FRONTEND_ORIGINS`.
+
+The admissions API provides available-slot listing, 30-minute schedule slots,
+15-minute urgent slots, reservation, and explicit state transitions. Urgent
+insertion is limited to the midpoint after an available 30-minute slot: the
+existing slot is shortened to 15 minutes and the urgent slot occupies the
+remaining 15 minutes. Reservation/schedule operations lock the physician row
+inside a transaction to serialize competing changes.
+
 ## Deployment
 
 When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
