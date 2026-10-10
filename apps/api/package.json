@@ -21,7 +21,8 @@
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage",
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
-    "test:e2e": "vitest run --config ./vitest.config.e2e.ts"
+    "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
+    "iam:bootstrap-superadmin": "ts-node-esm src/scripts/bootstrap-superadmin.ts"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",
