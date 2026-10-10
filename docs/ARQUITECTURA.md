@@ -33,7 +33,7 @@ Dependencias permitidas: `api -> application -> domain`; `infrastructure` implem
 
 Esta entrega crea el esqueleto modular y registra las entidades existentes dentro de módulos por dominio, pero conserva las entidades TypeORM en `src/entities/` para evitar una migración física riesgosa. La migración de cada entidad a `infrastructure/persistence/` se debe hacer módulo por módulo, actualizando las migraciones y verificando la compilación.
 
-El módulo `iam` reutiliza temporalmente `UsuariosModule` existente. La autenticación/JWT/RBAC todavía debe implementarse; no se considera terminada por la mera existencia de `IamModule`.
+`IamModule` expone autenticación, administración de cuentas y autorización con guards. Las entidades TypeORM permanecen temporalmente en `src/entities/` para evitar una migración física riesgosa.
 
 ## Eventos
 
@@ -65,6 +65,35 @@ Convención: nombres de eventos en pasado, nombres estables y payloads versionab
 - Errores consistentes; usar `409 Conflict` ante reservas incompatibles.
 - Documentar endpoints en Swagger cuando se agreguen los casos de uso.
 - Guards y autorización deben proteger rutas antes de exponer datos sensibles.
+
+## IAM y Admisión implementados
+
+- IAM autentica con JWT de acceso (15 minutos por defecto) y refresh tokens
+  aleatorios rotatorios almacenados como hash; el refresh viaja en cookie
+  HttpOnly, SameSite=Strict localmente y SameSite=None/Secure en producción.
+- Los roles son `MEDICO`, `ENFERMERO` y `ADMINISTRATIVO`. Un indicador separado
+  identifica al superadmin raíz, que se provisiona con el comando
+  `iam:bootstrap-superadmin`; solo esa cuenta crea otros administrativos.
+- Durante desarrollo, el alta de médicos y enfermeros no envía códigos por
+  correo. Enfermería queda activa y el médico requiere habilitación
+  administrativa. La verificación por correo se pospone hasta configurar el
+  servicio de correo; estos atajos quedan bloqueados en `NODE_ENV=production`.
+- El restablecimiento por email sin código está disponible solo fuera de
+  producción. Las contraseñas históricas se conservan y, en desarrollo, se
+  convierten a scrypt luego de un login válido.
+- Las cuentas deshabilitadas no pueden iniciar sesión y sus sesiones se revocan.
+- La contraseña requiere 8 caracteres, una mayúscula, un dígito y no permite
+  dígitos consecutivos ascendentes ni descendentes.
+- La agenda utiliza turnos regulares de 30 minutos y turnos urgentes de 15. La
+  urgencia solo puede insertarse 15 minutos después del inicio de un turno libre
+  de 30 minutos; ese turno se reduce a 15 minutos en la misma transacción.
+- Reserva, creación de agenda y cambios de estado bloquean la fila del médico y
+  la fila del turno en una transacción. Las transiciones válidas son
+  `DISPONIBLE -> RESERVADO -> CONFIRMADO -> ATENDIDO`, con cancelación desde
+  `RESERVADO` o `CONFIRMADO`; cancelar conserva el registro y libera otro turno
+  disponible para ese horario.
+- Las rutas clínicas/operativas de EHR, Nursing, Resources y Billing no forman
+  parte de esta implementación.
 
 ## Estrategia de migración
 
