@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { Usuario } from './entities/usuario.entity.js';
+import { RefreshSession } from './entities/refresh-session.entity.js';
 import { Paciente } from './entities/paciente.entity.js';
 import { Turno } from './entities/turno.entity.js';
 import { Cama } from './entities/cama.entity.js';
@@ -26,9 +27,22 @@ import { SharedModule } from './shared/shared.module.js';
     TypeOrmModule.forRoot({
       type: 'postgres',
       url: process.env.DATABASE_URL,
-      entities: [Usuario, Paciente, Turno, Cama, Insumo, SignoVital, IndicacionMedica, AdministracionMedicacion],
+      entities: [
+        Usuario,
+        RefreshSession,
+        Paciente,
+        Turno,
+        Cama,
+        Insumo,
+        SignoVital,
+        IndicacionMedica,
+        AdministracionMedicacion,
+      ],
       synchronize: false,
-      ssl: process.env.DATABASE_SSL === 'false' ? false : { rejectUnauthorized: false },
+      ssl:
+        process.env.DATABASE_SSL === 'false'
+          ? false
+          : { rejectUnauthorized: false },
     }),
     SharedModule,
     HealthModule,

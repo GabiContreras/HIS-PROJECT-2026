@@ -12,6 +12,48 @@ Cada endpoint debe documentar método/ruta, DTO de entrada, respuesta, permisos,
 
 Las rutas son propuestas de contrato, no todas están implementadas en esta entrega.
 
+## Contratos entregados para IAM y Admisión
+
+Las respuestas de autenticación nunca incluyen el refresh token en JSON. El
+servidor lo entrega únicamente como cookie `HttpOnly`; el access token y los
+datos básicos de la cuenta se devuelven en el body.
+
+| Método y ruta | Acceso | Uso |
+| --- | --- | --- |
+| `POST /auth/register` | Público | Alta de médico/enfermero sin verificación por correo durante desarrollo; el médico queda pendiente de habilitación. |
+| `POST /auth/login` | Origen frontend permitido | Inicio de sesión y emisión de access/refresh. |
+| `POST /auth/refresh` | Cookie + origen permitido | Rota el refresh token y revoca el anterior. |
+| `POST /auth/logout` | Cookie + origen permitido | Revoca la sesión actual. |
+| `GET /auth/me` | Autenticado | Devuelve datos básicos, rol y estado de la cuenta. |
+| `POST /auth/forgot-password` | Público | Informa que la recuperación por correo está temporalmente deshabilitada. |
+| `POST /auth/reset-password` | Público solo en desarrollo | Actualiza contraseña con email y contraseña nueva; sin código de correo. Deshabilitado en producción. |
+| `POST /auth/change-password` | Autenticado | Cambia contraseña y revoca las demás sesiones. |
+| `POST /usuarios` | Administrativo | Alta de personal médico/enfermería sin códigos de correo durante desarrollo. |
+| `POST /usuarios/administrativos` | Solo superadmin | Alta directa de otro administrativo. |
+| `GET /usuarios`, `GET /usuarios/:id` | Administrativo | Consulta de cuentas, sin hashes ni credenciales. |
+| `PATCH /usuarios/:id` | Administrativo | Modifica nombre/apellido. |
+| `PATCH /usuarios/:id/habilitar` | Administrativo | Habilita cuentas verificadas pendientes o deshabilitadas. |
+| `PATCH /usuarios/:id/deshabilitar` | Administrativo | Deshabilita cuenta y revoca sus sesiones. |
+| `GET /turnos/disponibles` | Autenticado | Consulta turnos libres próximos. |
+| `GET /turnos/agenda` | Médico (propia) o administrativo | Consulta agenda y datos básicos del paciente asignado. |
+| `POST /turnos` | Médico (propia) o administrativo | Crea disponibilidad estándar de 30 minutos. |
+| `POST /turnos/urgencia` | Médico (propia) o administrativo | Inserta urgencia de 15 minutos ajustando el turno libre adyacente. |
+| `PATCH /turnos/:id/reservar` | Médico (propia) o administrativo | Reserva un turno para un paciente. |
+| `PATCH /turnos/:id/transiciones` | Médico (propia) o administrativo | Confirma, cancela o marca atendido según la máquina de estados. |
+
+Las contraseñas requieren 8 caracteres, una mayúscula y un dígito; se rechazan
+pares de dígitos consecutivos ascendentes o descendentes. Los endpoints devuelven
+errores HTTP explícitos, incluyendo `400` para validación, `401` para sesión
+inválida, `403` para permisos/origen, `404` para recursos ausentes y `409` para
+conflictos de estado/agenda. Los intentos bloqueados devuelven el mismo `401`
+que las credenciales inválidas. Las contraseñas históricas se conservan; un
+login válido en desarrollo las actualiza a scrypt.
+
+Una urgencia solo puede comenzar 15 minutos después del inicio de una
+disponibilidad estándar de 30 minutos. En una misma transacción, la disponibilidad
+anterior se reduce a 15 minutos y la urgencia ocupa los otros 15. Las operaciones
+de agenda y reserva bloquean filas en PostgreSQL dentro de transacciones.
+
 ## Propiedad de datos
 
 - IAM: usuarios y roles.
