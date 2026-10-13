@@ -23,6 +23,7 @@ async function bootstrapSuperadmin(): Promise<void> {
     );
   }
 
+  dataSource.setOptions({ migrations: [] });
   await dataSource.initialize();
   try {
     const users = dataSource.getRepository(Usuario);

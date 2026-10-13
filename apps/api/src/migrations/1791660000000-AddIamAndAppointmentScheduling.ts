@@ -72,7 +72,7 @@ export class AddIamAndAppointmentScheduling1791660000000 implements MigrationInt
     `);
     await queryRunner.query(`
       CREATE INDEX "IDX_turnos_medico_fecha"
-      ON "turnos" ("medicoId", "fechaHora")
+      ON "turnos" ("medico_id", "fecha_hora")
     `);
   }
 

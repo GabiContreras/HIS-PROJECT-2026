@@ -28,6 +28,6 @@ import { TokenService } from './application/token.service.js';
     SuperadminGuard,
     Reflector,
   ],
-  exports: [AuthService, AuthGuard, RolesGuard, SuperadminGuard],
+  exports: [AuthService, TokenService, AuthGuard, RolesGuard, SuperadminGuard],
 })
 export class IamModule {}

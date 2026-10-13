@@ -68,6 +68,7 @@ CREATE TABLE camas (
     version             INTEGER         NOT NULL DEFAULT 1,
     created_at          TIMESTAMPTZ     NOT NULL DEFAULT now(),
     CONSTRAINT uq_camas_numero UNIQUE (numero),
+    CONSTRAINT uq_camas_paciente_actual UNIQUE (paciente_actual_id),
     CONSTRAINT fk_camas_paciente_actual FOREIGN KEY (paciente_actual_id)
         REFERENCES pacientes (id) ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT ck_camas_ocupacion_coherente CHECK (
@@ -150,6 +151,7 @@ CREATE INDEX idx_turnos_paciente_id ON turnos (paciente_id);
 CREATE INDEX idx_turnos_medico_id ON turnos (medico_id);
 CREATE INDEX idx_turnos_fecha_hora ON turnos (fecha_hora);
 CREATE INDEX idx_turnos_estado ON turnos (estado) WHERE estado = 'DISPONIBLE';
+CREATE UNIQUE INDEX uq_turnos_medico_fecha_activo ON turnos (medico_id, fecha_hora) WHERE estado <> 'CANCELADO';
 
 CREATE INDEX idx_camas_paciente_actual_id ON camas (paciente_actual_id);
 CREATE INDEX idx_camas_estado ON camas (estado);

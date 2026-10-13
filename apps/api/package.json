@@ -22,13 +22,14 @@
     "test:cov": "vitest run --coverage",
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
-    "iam:bootstrap-superadmin": "ts-node-esm src/scripts/bootstrap-superadmin.ts"
+    "iam:bootstrap-superadmin": "npm run build && node dist/scripts/bootstrap-superadmin.js"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",
     "@nestjs/config": "^12.0.1",
     "@nestjs/core": "^12.0.1",
     "@nestjs/platform-express": "^12.0.1",
+    "@nestjs/swagger": "^12.0.2",
     "@nestjs/typeorm": "^12.0.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",

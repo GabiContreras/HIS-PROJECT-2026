@@ -7,6 +7,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { RolUsuario } from '../../../entities/usuario.entity.js';
 import { AccountAdminService } from './account-admin.service.js';
 import { AuthService } from '../application/auth.service.js';
@@ -19,6 +20,8 @@ import { CreateAdminDto } from './dto/create-admin.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
 
 @Controller('usuarios')
+@ApiTags('Usuarios')
+@ApiBearerAuth()
 export class UsuariosController {
   constructor(
     private readonly accounts: AccountAdminService,

@@ -23,8 +23,12 @@ import { SharedModule } from './shared/shared.module.js';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
-    TypeOrmModule.forRoot({
+    ConfigModule.forRoot({
+  isGlobal: true,
+  
+  
+}),
+  TypeOrmModule.forRoot({
       type: 'postgres',
       url: process.env.DATABASE_URL,
       entities: [
@@ -56,4 +60,6 @@ import { SharedModule } from './shared/shared.module.js';
   controllers: [AppController],
   providers: [AppService],
 })
+
+
 export class AppModule {}

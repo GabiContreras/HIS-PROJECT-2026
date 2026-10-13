@@ -59,6 +59,31 @@ describe('AuthController integration', () => {
     expect(response.headers['set-cookie'][0]).toContain('opaque-refresh-value');
   });
 
+  it('allows login requests from the API origin used by Swagger UI', async () => {
+    authService.login.mockResolvedValue({
+      accessToken: 'access.jwt.value',
+      refreshToken: 'opaque-refresh-value',
+      account: { id: 'user-1', rol: 'MEDICO', estado: 'ACTIVO' },
+    });
+
+    await request(app.getHttpServer())
+      .post('/auth/login')
+      .set('Host', 'localhost:3000')
+      .set('Origin', 'http://localhost:3000')
+      .send({ email: 'doctor@example.com', password: 'CorrectHorse4' })
+      .expect(200);
+  });
+
+  it('rejects login requests from an untrusted origin', async () => {
+    await request(app.getHttpServer())
+      .post('/auth/login')
+      .set('Origin', 'https://attacker.example')
+      .send({ email: 'doctor@example.com', password: 'CorrectHorse4' })
+      .expect(403);
+
+    expect(authService.login).not.toHaveBeenCalled();
+  });
+
   it('rotates refresh cookies only for trusted browser origins', async () => {
     authService.refresh.mockResolvedValue({
       accessToken: 'next.access.jwt',
