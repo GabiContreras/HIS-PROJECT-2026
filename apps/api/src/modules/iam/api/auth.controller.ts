@@ -10,6 +10,7 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { AuthService } from '../application/auth.service.js';
 import type { SessionIdentity } from '../application/auth.service.js';
@@ -25,6 +26,7 @@ import { CurrentIdentity } from './auth.decorator.js';
 const REFRESH_COOKIE = 'his_refresh';
 
 @Controller('auth')
+@ApiTags('Autenticación')
 export class AuthController {
   constructor(
     private readonly auth: AuthService,
@@ -80,6 +82,7 @@ export class AuthController {
 
   @Get('me')
   @UseGuards(AuthGuard)
+  @ApiBearerAuth()
   me(@CurrentIdentity() identity: SessionIdentity) {
     return this.auth.publicAccount(identity.accountId);
   }
@@ -99,6 +102,7 @@ export class AuthController {
   @Post('change-password')
   @HttpCode(200)
   @UseGuards(AuthGuard)
+  @ApiBearerAuth()
   changePassword(
     @CurrentIdentity() identity: SessionIdentity,
     @Body() dto: ChangePasswordDto,
@@ -143,12 +147,17 @@ export class AuthController {
 
   private assertTrustedOrigin(request: Request): void {
     const origin = request.headers.origin;
+    const host = request.get('host');
+    const apiOrigin = host ? `${request.protocol}://${host}` : undefined;
     const allowedOrigins = (
       process.env.FRONTEND_ORIGINS ?? 'http://localhost:5173'
     )
       .split(',')
       .map((value) => value.trim());
-    if (!origin || !allowedOrigins.includes(origin)) {
+    if (
+      !origin ||
+      (!allowedOrigins.includes(origin) && origin !== apiOrigin)
+    ) {
       throw new ForbiddenException(
         'Solicitud de autenticación desde un origen no permitido.',
       );

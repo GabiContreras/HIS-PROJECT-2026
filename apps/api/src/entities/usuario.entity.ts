@@ -33,7 +33,7 @@ export class Usuario {
   @Column({ unique: true })
   email: string;
 
-  @Column()
+  @Column({ name: 'password_hash' })
   passwordHash: string;
 
   @Column({ type: 'enum', enum: RolUsuario })
@@ -54,7 +54,7 @@ export class Usuario {
   @Column({ type: 'timestamptz', nullable: true })
   bloqueadoHasta: Date | null;
 
-  @CreateDateColumn({ type: 'timestamptz' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 
   @UpdateDateColumn({ type: 'timestamptz' })

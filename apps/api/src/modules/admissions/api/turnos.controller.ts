@@ -8,6 +8,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { RolUsuario } from '../../../entities/usuario.entity.js';
 import { AuthGuard } from '../../iam/api/auth.guard.js';
 import { CurrentIdentity } from '../../iam/api/auth.decorator.js';
@@ -22,6 +23,8 @@ import { TurnosService } from '../application/turnos.service.js';
 
 @Controller('turnos')
 @UseGuards(AuthGuard, RolesGuard)
+@ApiTags('Turnos')
+@ApiBearerAuth()
 export class TurnosController {
   constructor(private readonly turnos: TurnosService) {}
 

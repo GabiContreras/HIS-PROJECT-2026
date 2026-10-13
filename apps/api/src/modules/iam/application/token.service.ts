@@ -79,6 +79,7 @@ export class TokenService {
 
   verifyAccessToken(token: string): AccessTokenClaims {
     const parts = token.split('.');
+    
     if (parts.length !== 3) throw new UnauthorizedException('Token inválido.');
 
     const signingInput = `${parts[0]}.${parts[1]}`;

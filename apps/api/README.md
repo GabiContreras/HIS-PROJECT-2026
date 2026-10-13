@@ -44,6 +44,13 @@ $ npm run start:dev
 $ npm run start:prod
 ```
 
+## API documentation
+
+In non-production environments, run the API and open `http://localhost:3000/docs`
+to explore the Swagger UI. Protected endpoints use Bearer authentication; log in
+to obtain an access token, then select **Authorize** and enter the token.
+Swagger UI is not exposed when `NODE_ENV=production`.
+
 ## Run tests
 
 ```bash
