@@ -40,7 +40,7 @@ export class InventoryService implements InventoryPort {
         cantidad: input.cantidad,
       })
       .setParameters({ cantidad: input.cantidad })
-      .returning(['id', 'cantidad_disponible'])
+      .returning('*')
       .execute();
 
     if (result.affected !== 1 || !result.raw?.[0]) {
@@ -51,7 +51,7 @@ export class InventoryService implements InventoryPort {
 
     const actualizado = result.raw[0] as {
       id: string;
-      cantidad_disponible: number;
+      cantidad_disponible: number | string;
     };
 
     return {
