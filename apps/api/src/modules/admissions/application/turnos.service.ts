@@ -252,10 +252,16 @@ export class TurnosService {
       await this.lockDoctor(manager, initial.medico.id);
 
       const turnosRepo = manager.getRepository(Turno);
+
+      await turnosRepo.findOne({
+        where: { id },
+        select: { id: true },
+        lock: { mode: 'pessimistic_write' },
+      });
+
       const turno = await turnosRepo.findOne({
         where: { id },
         relations: { medico: true },
-        lock: { mode: 'pessimistic_write' },
       });
       if (!turno) throw new NotFoundException('No se encontró el turno.');
       if (

@@ -114,6 +114,7 @@ describe('TurnosService', () => {
       findOne: vi
         .fn()
         .mockResolvedValueOnce(turno)
+        .mockResolvedValueOnce(turno)
         .mockResolvedValueOnce(turno),
       createQueryBuilder: vi.fn().mockReturnValue(query),
       save: vi.fn(async (value) => value),
@@ -152,8 +153,11 @@ describe('TurnosService', () => {
     expect(usuarioRepository.findOne).toHaveBeenCalledWith(
       expect.objectContaining({ lock: { mode: 'pessimistic_write' } }),
     );
-    expect(turnoRepository.findOne).toHaveBeenLastCalledWith(
-      expect.objectContaining({ lock: { mode: 'pessimistic_write' } }),
+    expect(turnoRepository.findOne).toHaveBeenCalledWith(
+      expect.objectContaining({
+        select: { id: true },
+        lock: { mode: 'pessimistic_write' },
+      }),
     );
     expect(pacienteRepository.findOne).toHaveBeenCalledWith(
       expect.objectContaining({ lock: { mode: 'pessimistic_write' } }),
@@ -180,6 +184,7 @@ describe('TurnosService', () => {
 
     const turnoRepository = {
       findOne: vi.fn()
+        .mockResolvedValueOnce(turno)
         .mockResolvedValueOnce(turno)
         .mockResolvedValueOnce(turno),
       save: vi.fn(async (value) => value),
@@ -242,6 +247,7 @@ describe('TurnosService', () => {
 
     const turnoRepository = {
       findOne: vi.fn()
+        .mockResolvedValueOnce(turno)
         .mockResolvedValueOnce(turno)
         .mockResolvedValueOnce(turno),
       save: vi.fn(),
