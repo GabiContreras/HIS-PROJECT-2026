@@ -50,6 +50,7 @@ describe('TurnosService', () => {
       {} as never,
       {} as never,
       dataSource as never,
+      {} as never,
     );
 
     const created = await service.createUrgentSlot(
@@ -133,6 +134,7 @@ describe('TurnosService', () => {
       usuarioRepository as never,
       pacienteRepository as never,
       dataSource as never,
+      {} as never,
     );
 
     const reserved = await service.reserve(
@@ -157,5 +159,67 @@ describe('TurnosService', () => {
       expect.objectContaining({ lock: { mode: 'pessimistic_write' } }),
     );
     expect(reserved.estado).toBe(EstadoTurno.RESERVADO);
+  });
+
+  it('publishes appointment attendance only after the transaction completes', async () => {
+    const medico = {
+      id: 'doctor-1',
+      rol: RolUsuario.MEDICO,
+      estado: EstadoCuenta.ACTIVO,
+    } as Usuario;
+    const turno = {
+      id: 'appointment-1',
+      estado: EstadoTurno.CONFIRMADO,
+      urgente: true,
+      fechaHora: new Date('2030-01-01T09:00:00.000Z'),
+      duracionMinutos: 15,
+      medico,
+    } as Turno;
+    const turnoRepository = {
+      findOne: vi
+        .fn()
+        .mockResolvedValueOnce(turno)
+        .mockResolvedValueOnce(turno),
+      save: vi.fn(async (value) => value),
+    };
+    const usuarioRepository = { findOne: vi.fn().mockResolvedValue(medico) };
+    const manager = {
+      getRepository: vi.fn((entity) =>
+        entity === Usuario ? usuarioRepository : turnoRepository,
+      ),
+    };
+    const dataSource = {
+      transaction: vi.fn(async (operation) => operation(manager)),
+    };
+    const events = { publish: vi.fn() };
+    const service = new TurnosService(
+      turnoRepository as never,
+      usuarioRepository as never,
+      {} as never,
+      dataSource as never,
+      events as never,
+    );
+
+    const result = await service.transition(
+      turno.id,
+      EstadoTurno.ATENDIDO,
+      {
+        accountId: medico.id,
+        sessionId: 'session-1',
+        rol: RolUsuario.MEDICO,
+        esSuperadmin: false,
+      },
+    );
+
+    expect(result.estado).toBe(EstadoTurno.ATENDIDO);
+    expect(events.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'admissions.appointment-attended',
+        payload: { appointmentId: turno.id, urgente: true },
+      }),
+    );
+    expect(dataSource.transaction.mock.invocationCallOrder[0]).toBeLessThan(
+      events.publish.mock.invocationCallOrder[0],
+    );
   });
 });
