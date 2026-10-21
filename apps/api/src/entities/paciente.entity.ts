@@ -5,18 +5,18 @@ export class Paciente {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
+  @Column({ type: 'varchar', length: 100 })
   nombre: string;
 
-  @Column()
+  @Column({ type: 'varchar', length: 100 })
   apellido: string;
 
-  @Column({ unique: true })
+  @Column({ type: 'varchar', length: 20, unique: true })
   documento: string;
 
   @Column({ type: 'date', name: 'fecha_nacimiento' })
-fechaNacimiento: string;
+  fechaNacimiento: string;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', length: 30, nullable: true })
   telefono: string;
 }

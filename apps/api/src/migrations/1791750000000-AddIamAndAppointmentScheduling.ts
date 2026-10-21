@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddIamAndAppointmentScheduling1791660000000 implements MigrationInterface {
-  name = 'AddIamAndAppointmentScheduling1791660000000';
+export class AddIamAndAppointmentScheduling1791750000000 implements MigrationInterface {
+  name = 'AddIamAndAppointmentScheduling1791750000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
@@ -41,7 +41,7 @@ export class AddIamAndAppointmentScheduling1791660000000 implements MigrationInt
     `);
     await queryRunner.query(`
       CREATE TABLE "refresh_sessions" (
-        "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
+        "id" uuid NOT NULL DEFAULT gen_random_uuid(),
         "usuarioId" uuid NOT NULL,
         "familiaId" uuid NOT NULL,
         "tokenHash" character varying NOT NULL,
@@ -63,6 +63,24 @@ export class AddIamAndAppointmentScheduling1791660000000 implements MigrationInt
       ADD COLUMN "duracionMinutos" integer NOT NULL DEFAULT 30,
       ADD COLUMN "urgente" boolean NOT NULL DEFAULT false
     `);
+        await queryRunner.query(`
+      CREATE EXTENSION IF NOT EXISTS btree_gist
+    `);
+
+    await queryRunner.query(`
+      ALTER TABLE "turnos"
+      ADD CONSTRAINT "ex_turnos_medico_sin_superposicion"
+      EXCLUDE USING GIST (
+        "medico_id" WITH =,
+       (tsrange(
+        "fecha_hora" AT TIME ZONE 'UTC',
+        ("fecha_hora" AT TIME ZONE 'UTC')
+         + "duracionMinutos" * INTERVAL '1 minute',
+        '[)'
+       )) WITH &&
+      )
+      WHERE ("estado" IN ('RESERVADO', 'CONFIRMADO'))
+    `);
     await queryRunner.query(`
       ALTER TABLE "turnos"
         ADD CONSTRAINT "CK_turnos_duracion"
@@ -76,14 +94,23 @@ export class AddIamAndAppointmentScheduling1791660000000 implements MigrationInt
     `);
   }
 
+
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP INDEX "IDX_turnos_medico_fecha"`);
+
+    await queryRunner.query(`
+      ALTER TABLE "turnos"
+      DROP CONSTRAINT "ex_turnos_medico_sin_superposicion"
+    `);
+
     await queryRunner.query(`
       ALTER TABLE "turnos"
       DROP CONSTRAINT "CK_turnos_urgente_duracion",
       DROP CONSTRAINT "CK_turnos_duracion",
-      DROP COLUMN "urgente", DROP COLUMN "duracionMinutos"
+      DROP COLUMN "urgente",
+      DROP COLUMN "duracionMinutos"
     `);
+
     await queryRunner.query(
       `DROP INDEX "IDX_refresh_sessions_usuario_familia"`,
     );
