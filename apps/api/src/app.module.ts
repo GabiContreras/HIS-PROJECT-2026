@@ -1,5 +1,6 @@
-import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { Module, ValidationPipe } from '@nestjs/common';
+import { ConfigModule} from '@nestjs/config';
+import { APP_FILTER, APP_PIPE } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
@@ -21,13 +22,12 @@ import { ResourcesModule } from './modules/resources/resources.module.js';
 import { BillingModule } from './modules/billing/billing.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { SharedModule } from './shared/shared.module.js';
+import { AllExceptionsFilter } from './shared/http/all-exceptions.filter.js';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
   isGlobal: true,
-  
-  
 }),
   TypeOrmModule.forRoot({
       type: 'postgres',
@@ -44,6 +44,7 @@ import { SharedModule } from './shared/shared.module.js';
         AdministracionMedicacion,
         Cargo,
       ],
+      autoLoadEntities: true,
       synchronize: false,
       ssl:
         process.env.DATABASE_SSL === 'false'
@@ -60,7 +61,11 @@ import { SharedModule } from './shared/shared.module.js';
     BillingModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    { provide: APP_PIPE, useValue: new ValidationPipe({ whitelist: true, transform: true }) },
+    { provide: APP_FILTER, useClass: AllExceptionsFilter },
+  ],
 })
 
 
