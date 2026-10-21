@@ -12,6 +12,7 @@ import { Insumo } from './entities/insumo.entity.js';
 import { SignoVital } from './entities/signo-vital.entity.js';
 import { IndicacionMedica } from './entities/indicacion-medica.entity.js';
 import { AdministracionMedicacion } from './entities/administracion-medicacion.entity.js';
+import { Cargo } from './entities/cargo.entity.js';
 import { IamModule } from './modules/iam/iam.module.js';
 import { AdmissionsModule } from './modules/admissions/admissions.module.js';
 import { EhrModule } from './modules/ehr/ehr.module.js';
@@ -41,6 +42,7 @@ import { SharedModule } from './shared/shared.module.js';
         SignoVital,
         IndicacionMedica,
         AdministracionMedicacion,
+        Cargo,
       ],
       synchronize: false,
       ssl:

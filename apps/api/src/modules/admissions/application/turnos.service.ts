@@ -17,6 +17,7 @@ import { EstadoTurno, Turno } from '../../../entities/turno.entity.js';
 import { SessionIdentity } from '../../iam/application/auth.service.js';
 import { CrearTurnoDto } from '../api/dto/crear-turno.dto.js';
 import { ReservarTurnoDto } from '../api/dto/reservar-turno.dto.js';
+import { EventBus } from '../../../shared/events/event-bus.service.js';
 
 const STANDARD_DURATION_MINUTES = 30;
 const URGENT_DURATION_MINUTES = 15;
@@ -46,6 +47,7 @@ export class TurnosService {
     @InjectRepository(Paciente)
     private readonly pacientes: Repository<Paciente>,
     private readonly dataSource: DataSource,
+    private readonly events: EventBus,
   ) {}
 
   async listAvailable(
@@ -310,7 +312,7 @@ export class TurnosService {
     nextState: EstadoTurno,
     identity: SessionIdentity,
   ): Promise<TurnoSummary> {
-    return this.dataSource.transaction(async (manager) => {
+    const result = await this.dataSource.transaction(async (manager) => {
       const initial = await manager.getRepository(Turno).findOne({
         where: { id },
         relations: { medico: true },
@@ -351,8 +353,22 @@ export class TurnosService {
           }),
         );
       }
-      return this.toSummary(saved);
+      return {
+        summary: this.toSummary(saved),
+        appointmentAttended:
+          nextState === EstadoTurno.ATENDIDO
+            ? { appointmentId: saved.id, urgente: saved.urgente }
+            : undefined,
+      };
     });
+    if (result.appointmentAttended) {
+      this.events.publish({
+        type: 'admissions.appointment-attended',
+        occurredAt: new Date().toISOString(),
+        payload: result.appointmentAttended,
+      });
+    }
+    return result.summary;
   }
 
   private async lockDoctor(
