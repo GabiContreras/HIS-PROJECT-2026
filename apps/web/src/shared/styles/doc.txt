@@ -1,0 +1,2 @@
+Los estilos viven en un solo lugar. Si se cambia el azul, se cambia una línea y no cada pantalla. 
+Los colores de estado son genéricos (éxito, aviso, peligro).
