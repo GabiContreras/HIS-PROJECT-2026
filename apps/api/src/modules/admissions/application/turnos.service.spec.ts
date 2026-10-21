@@ -1,3 +1,4 @@
+import { describe, it, expect, vi } from 'vitest';
 import {
   EstadoCuenta,
   RolUsuario,
@@ -6,6 +7,7 @@ import {
 import { Paciente } from '../../../entities/paciente.entity.js';
 import { EstadoTurno, Turno } from '../../../entities/turno.entity.js';
 import { TurnosService } from './turnos.service.js';
+import { ConflictException } from '@nestjs/common';
 
 describe('TurnosService', () => {
   it('shortens the adjacent available slot atomically before creating a 15-minute urgent slot', async () => {
@@ -158,4 +160,129 @@ describe('TurnosService', () => {
     );
     expect(reserved.estado).toBe(EstadoTurno.RESERVADO);
   });
-});
+  it('permite confirmar un turno reservado', async () => {
+    const medico = {
+      id: 'doctor-1',
+      nombre: 'Ada',
+      apellido: 'Lovelace',
+      rol: RolUsuario.MEDICO,
+      estado: EstadoCuenta.ACTIVO,
+    } as Usuario;
+
+    const turno = {
+      id: 'slot-1',
+      fechaHora: new Date('2030-01-01T09:00:00.000Z'),
+      duracionMinutos: 30,
+      estado: EstadoTurno.RESERVADO,
+      urgente: false,
+      medico,
+    } as Turno;
+
+    const turnoRepository = {
+      findOne: vi.fn()
+        .mockResolvedValueOnce(turno)
+        .mockResolvedValueOnce(turno),
+      save: vi.fn(async (value) => value),
+      create: vi.fn((value) => value),
+    };
+
+    const usuarioRepository = {
+      findOne: vi.fn().mockResolvedValue(medico),
+    };
+
+    const manager = {
+      getRepository: vi.fn((entity) =>
+        entity === Usuario ? usuarioRepository : turnoRepository,
+      ),
+    };
+
+    const dataSource = {
+      transaction: vi.fn((operation) => operation(manager)),
+    };
+
+    const service = new TurnosService(
+      turnoRepository as never,
+      usuarioRepository as never,
+      {} as never,
+      dataSource as never,
+    );
+
+    const resultado = await service.transition(
+      turno.id,
+      EstadoTurno.CONFIRMADO,
+      {
+        accountId: medico.id,
+        sessionId: 'session-1',
+        rol: RolUsuario.MEDICO,
+        esSuperadmin: false,
+      },
+    );
+
+    expect(resultado.estado).toBe(EstadoTurno.CONFIRMADO);
+    expect(turnoRepository.save).toHaveBeenCalledOnce();
+  });
+
+  it('rechaza confirmar directamente un turno disponible', async () => {
+    const medico = {
+      id: 'doctor-1',
+      nombre: 'Ada',
+      apellido: 'Lovelace',
+      rol: RolUsuario.MEDICO,
+      estado: EstadoCuenta.ACTIVO,
+    } as Usuario;
+
+    const turno = {
+      id: 'slot-1',
+      fechaHora: new Date('2030-01-01T09:00:00.000Z'),
+      duracionMinutos: 30,
+      estado: EstadoTurno.DISPONIBLE,
+      urgente: false,
+      medico,
+    } as Turno;
+
+    const turnoRepository = {
+      findOne: vi.fn()
+        .mockResolvedValueOnce(turno)
+        .mockResolvedValueOnce(turno),
+      save: vi.fn(),
+      create: vi.fn(),
+    };
+
+    const usuarioRepository = {
+      findOne: vi.fn().mockResolvedValue(medico),
+    };
+
+    const manager = {
+      getRepository: vi.fn((entity) =>
+        entity === Usuario ? usuarioRepository : turnoRepository,
+      ),
+    };
+
+    const dataSource = {
+      transaction: vi.fn((operation) => operation(manager)),
+    };
+
+    const service = new TurnosService(
+      turnoRepository as never,
+      usuarioRepository as never,
+      {} as never,
+      dataSource as never,
+    );
+
+    await expect(
+      service.transition(
+        turno.id,
+        EstadoTurno.CONFIRMADO,
+        {
+          accountId: medico.id,
+          sessionId: 'session-1',
+          rol: RolUsuario.MEDICO,
+          esSuperadmin: false,
+        },
+      ),
+    ).rejects.toBeInstanceOf(ConflictException);
+
+    expect(turnoRepository.save).not.toHaveBeenCalled();
+  });
+
+  });

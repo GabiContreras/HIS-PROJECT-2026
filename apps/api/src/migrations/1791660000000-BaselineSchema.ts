@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class BaselineSchema1791750000000 implements MigrationInterface {
-  name = 'BaselineSchema1791750000000';
+export class BaselineSchema1791660000000 implements MigrationInterface {
+  name = 'BaselineSchema1791660000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
@@ -82,7 +82,7 @@ COMMENT ON COLUMN camas.version IS 'Optimistic locking (VersionColumn en TypeORM
 -- --- turnos -----------------------------------------------------------------
 CREATE TABLE turnos (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    paciente_id     UUID            NOT NULL,
+    paciente_id     UUID,
     medico_id       UUID            NOT NULL,
     fecha_hora      TIMESTAMPTZ     NOT NULL,
     estado          estado_turno    NOT NULL DEFAULT 'DISPONIBLE',
@@ -151,8 +151,6 @@ CREATE INDEX idx_turnos_paciente_id ON turnos (paciente_id);
 CREATE INDEX idx_turnos_medico_id ON turnos (medico_id);
 CREATE INDEX idx_turnos_fecha_hora ON turnos (fecha_hora);
 CREATE INDEX idx_turnos_estado ON turnos (estado) WHERE estado = 'DISPONIBLE';
-CREATE UNIQUE INDEX uq_turnos_medico_fecha_activo ON turnos (medico_id, fecha_hora) WHERE estado <> 'CANCELADO';
-
 CREATE INDEX idx_camas_paciente_actual_id ON camas (paciente_actual_id);
 CREATE INDEX idx_camas_estado ON camas (estado);
 

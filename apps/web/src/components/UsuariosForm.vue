@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { crearUsuario, listarUsuarios, type Usuario } from '../services/usuarios.ts';
-
+import { crearUsuario, listarUsuarios, type Usuario } from '../services/usuarios';
 const usuarios = ref<Usuario[]>([]);
 const cargando = ref(false);
 const error = ref('');
