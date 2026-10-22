@@ -111,3 +111,38 @@ Convención: nombres de eventos en pasado, nombres estables y payloads versionab
 - Incluye migraciones si cambia el esquema.
 - Respeta los límites de módulo y contratos acordados.
 - Las reglas críticas se validan en backend/base de datos, no solo en frontend.
+
+
+## Patrón reutilizable de historia vertical
+
+### Objetivo
+
+Implementar una funcionalidad completa de extremo a extremo antes de replicar el enfoque en otros módulos del HIS.
+
+### Pasos de implementación
+
+1. **Contrato:** definir criterios de aceptación, DTO, endpoint, permisos y errores esperados.
+2. **Validación:** validar los datos de entrada en la API; no depender únicamente de la interfaz.
+3. **Caso de uso:** implementar las reglas de negocio en la capa de aplicación.
+4. **Persistencia:** utilizar repositorios y transacciones cuando la operación requiera atomicidad.
+5. **Interfaz:** conectar la acción de Vue con la API y mostrar estados de éxito y error cuando corresponda.
+6. **Pruebas:** cubrir reglas de negocio, errores, integración con PostgreSQL y concurrencia cuando corresponda.
+7. **Entrega:** ejecutar las pruebas y la compilación, revisar Git y documentar las decisiones relevantes.
+
+### Aplicación al alta de pacientes
+
+El endpoint `POST /pacientes` recibe los datos definidos por `CrearPacienteDto`. La API valida nombre, apellido, documento, fecha de nacimiento y teléfono opcional. Un documento duplicado debe producir un conflicto HTTP `409`; los datos inválidos deben producir un error HTTP `400`.
+
+### Aplicación a la reserva de turnos
+
+El endpoint `PATCH /turnos/:id/reservar` requiere autenticación y autorización según el controlador. La solicitud incluye `pacienteId`, que debe ser un UUID válido.
+
+La reserva debe protegerse en el backend mediante una transacción y mecanismos de concurrencia en PostgreSQL. No alcanza con comprobar disponibilidad desde Vue. Ante dos solicitudes incompatibles, solo una debe confirmar la reserva y la otra debe recibir un conflicto adecuado.
+
+### Criterios de finalización
+
+- Se cumplen los criterios de aceptación de la historia.
+- Las capas necesarias están integradas.
+- La persistencia conserva la integridad de los datos.
+- Las pruebas pertinentes pasan, incluidas las de concurrencia cuando correspondan.
+- La compilación pasa y los cambios están documentados.
