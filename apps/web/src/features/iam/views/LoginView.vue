@@ -15,7 +15,6 @@ const loading = ref(false);
 
 function destination(): string {
   const redirect = route.query.redirect;
-  // Solo rutas internas: evita redirigir a un sitio externo
   if (typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//')) {
     return redirect;
   }
