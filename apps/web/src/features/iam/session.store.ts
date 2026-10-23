@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
-import { authApi } from './api';
+import { authApi } from './api.ts';
 import { setAccessToken } from '../../shared/http.ts';
 import type { Account, Role, Session } from './types.ts';
 
