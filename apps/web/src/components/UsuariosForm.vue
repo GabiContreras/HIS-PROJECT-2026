@@ -1,64 +1,79 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { crearUsuario, listarUsuarios, type Usuario } from '../services/usuarios.ts';
+import { reactive, watch } from 'vue';
+import type { CrearUsuarioInput } from '../services/usuarios';
 
-const usuarios = ref<Usuario[]>([]);
-const cargando = ref(false);
-const error = ref('');
+const props = defineProps<{
+  submitting: boolean;
+  visible: boolean;
+}>();
 
-const form = ref({
+const emit = defineEmits<{
+  submit: [datos: CrearUsuarioInput];
+  cancel: [];
+}>();
+
+const form = reactive<CrearUsuarioInput>({
   nombre: '',
   apellido: '',
   email: '',
   password: '',
-  rol: 'ADMINISTRATIVO',
+  rol: 'MEDICO',
 });
 
-async function cargarUsuarios() {
-  usuarios.value = await listarUsuarios();
+function reset(): void {
+  Object.assign(form, {
+    nombre: '',
+    apellido: '',
+    email: '',
+    password: '',
+    rol: 'MEDICO',
+  });
 }
 
-async function onSubmit() {
-  error.value = '';
-  cargando.value = true;
-  try {
-    await crearUsuario(form.value);
-    form.value = { nombre: '', apellido: '', email: '', password: '', rol: 'ADMINISTRATIVO' };
-    await cargarUsuarios();
-  } catch (e) {
-    error.value = 'No se pudo crear el usuario';
-  } finally {
-    cargando.value = false;
+function onSubmit(): void {
+  emit('submit', { ...form });
+}
+
+function cancel(): void {
+  reset();
+  emit('cancel');
+}
+
+watch(
+  () => props.visible,
+  (visible, wasVisible) => {
+    if (visible && !wasVisible) reset();
   }
-}
-
-onMounted(cargarUsuarios);
+);
 </script>
 
 <template>
-  <div>
-    <h2>Nuevo usuario</h2>
+  <section v-show="visible" class="modal" aria-labelledby="create-user-title">
+    <h2 id="create-user-title">Nuevo usuario</h2>
     <form @submit.prevent="onSubmit">
       <input v-model="form.nombre" placeholder="Nombre" required />
       <input v-model="form.apellido" placeholder="Apellido" required />
       <input v-model="form.email" type="email" placeholder="Email" required />
-      <input v-model="form.password" type="password" placeholder="Contraseña" required minlength="6" />
+      <input v-model="form.password" type="password" placeholder="Contraseña" required minlength="8" />
       <select v-model="form.rol">
         <option value="MEDICO">Médico</option>
         <option value="ENFERMERO">Enfermero</option>
-        <option value="ADMINISTRATIVO">Administrativo</option>
       </select>
-      <button type="submit" :disabled="cargando">
-        {{ cargando ? 'Guardando...' : 'Crear' }}
-      </button>
+      <p class="hint">La contraseña requiere 8 caracteres, una mayúscula y un número.</p>
+      <div class="actions">
+        <button type="button" :disabled="submitting" @click="cancel">Cancelar</button>
+        <button type="submit" :disabled="submitting">
+          {{ submitting ? 'Guardando...' : 'Crear' }}
+        </button>
+      </div>
     </form>
-    <p v-if="error" style="color: red">{{ error }}</p>
-
-    <h2>Usuarios registrados</h2>
-    <ul>
-      <li v-for="u in usuarios" :key="u.id">
-        {{ u.nombre }} {{ u.apellido }} — {{ u.email }} ({{ u.rol }})
-      </li>
-    </ul>
-  </div>
+  </section>
 </template>
+
+<style scoped>
+.modal { max-width: 560px; padding: var(--space-4); border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); }
+form { display: grid; gap: var(--space-2); }
+input, select, button { font: inherit; padding: 8px; }
+.actions { display: flex; justify-content: flex-end; gap: var(--space-2); }
+.hint { margin: 0; font-size: 0.875rem; }
+</style>

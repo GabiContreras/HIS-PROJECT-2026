@@ -1,34 +1,29 @@
-const API_URL = 'http://localhost:3000';
+import { http } from '../shared/http';
+import type { Account, Role } from '../features/iam/types';
 
-export interface Usuario {
-  id: string;
-  nombre: string;
-  apellido: string;
-  email: string;
-  rol: string;
-  createdAt: string;
-}
+export type Usuario = Account;
+export type StaffRole = Exclude<Role, 'ADMINISTRATIVO'>;
 
 export interface CrearUsuarioInput {
   nombre: string;
   apellido: string;
   email: string;
   password: string;
-  rol: string;
+  rol: StaffRole;
 }
 
-export async function crearUsuario(datos: CrearUsuarioInput): Promise<Usuario> {
-  const res = await fetch(`${API_URL}/usuarios`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(datos),
-  });
-  if (!res.ok) throw new Error('Error al crear usuario');
-  return res.json();
+interface CrearUsuarioResponse {
+  message: string;
 }
 
-export async function listarUsuarios(): Promise<Usuario[]> {
-  const res = await fetch(`${API_URL}/usuarios`);
-  if (!res.ok) throw new Error('Error al listar usuarios');
-  return res.json();
+export function crearUsuario(datos: CrearUsuarioInput): Promise<CrearUsuarioResponse> {
+  return http.post<CrearUsuarioResponse>('/usuarios', datos);
+}
+
+export function listarUsuarios(): Promise<Usuario[]> {
+  return http.get<Usuario[]>('/usuarios');
+}
+
+export function obtenerUsuario(id: string): Promise<Usuario> {
+  return http.get<Usuario>(`/usuarios/${id}`);
 }

@@ -22,7 +22,7 @@ npm --prefix apps/web install
 3. Ejecutar API: `npm --prefix apps/api run start:dev`.
 4. Ejecutar frontend: `npm --prefix apps/web run dev`.
 
-Revisar `docs/ARQUITECTURA.md` y los README de cada aplicación para confirmar comandos y requisitos de entorno.
+Revisar `docs/ARQUITECTURA.md`, [la documentación de la implementación frontend](./docs/FRONTEND-IMPLEMENTACION.md) y los README de cada aplicación para confirmar comandos, rutas y requisitos de entorno.
 
 ## Arquitectura
 

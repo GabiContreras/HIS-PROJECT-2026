@@ -13,6 +13,7 @@ interface MenuItem {
 const allItems: MenuItem[] = [
   { to: '/', label: 'Panel' },
   { to: '/usuarios', label: 'Usuarios', roles: ['ADMINISTRATIVO'] },
+  { to: '/turnos', label: 'Turnos', roles: ['MEDICO', 'ADMINISTRATIVO'] },
 ];
 
 const session = useSessionStore();
