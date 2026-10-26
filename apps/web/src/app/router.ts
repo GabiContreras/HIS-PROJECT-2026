@@ -30,6 +30,18 @@ export const router = createRouter({
           meta: { roles: ['ADMINISTRATIVO'] },
           component: () => import('../features/iam/views/UsersView.vue'),
         },
+        {
+          path: 'usuarios/:id',
+          name: 'user-detail',
+          meta: { roles: ['ADMINISTRATIVO'] },
+          component: () => import('../features/iam/views/UserDetailView.vue'),
+        },
+        {
+          path: 'turnos',
+          name: 'appointments',
+          meta: { roles: ['MEDICO', 'ADMINISTRATIVO'] },
+          component: () => import('../features/admissions/AppointmentView.vue'),
+        },
       ],
     },
     { path: '/:pathMatch(.*)*', redirect: '/' },
