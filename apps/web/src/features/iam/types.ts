@@ -1,4 +1,9 @@
 export type Role = 'MEDICO' | 'ENFERMERO' | 'ADMINISTRATIVO';
+export type AccountStatus =
+  | 'PENDIENTE_VERIFICACION'
+  | 'PENDIENTE_HABILITACION'
+  | 'ACTIVO'
+  | 'DESHABILITADO';
 
 export const ROLE_LABELS: Record<Role, string> = {
   MEDICO: 'Médico',
@@ -13,6 +18,8 @@ export interface Account {
   apellido: string;
   email: string;
   rol: Role;
+  estado: AccountStatus;
+  esSuperadmin: boolean;
 }
 
 export interface Session {
