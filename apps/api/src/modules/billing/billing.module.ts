@@ -6,9 +6,10 @@ import { AppointmentAttendedSubscriber } from './application/appointment-attende
 import { BillingService } from './application/billing.service.js';
 import { ConsultaRegularStrategy } from './domain/consulta-regular.strategy.js';
 import { ConsultaUrgenciaStrategy } from './domain/consulta-urgencia.strategy.js';
+import { IamModule } from '../iam/iam.module.js';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Cargo])],
+  imports: [TypeOrmModule.forFeature([Cargo]), IamModule],
   controllers: [CargosController],
   providers: [
     BillingService,
