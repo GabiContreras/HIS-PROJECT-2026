@@ -40,6 +40,9 @@ datos básicos de la cuenta se devuelven en el body.
 | `POST /turnos/urgencia` | Médico (propia) o administrativo | Inserta urgencia de 15 minutos ajustando el turno libre adyacente. |
 | `PATCH /turnos/:id/reservar` | Médico (propia) o administrativo | Reserva un turno para un paciente. |
 | `PATCH /turnos/:id/transiciones` | Médico (propia) o administrativo | Confirma, cancela o marca atendido según la máquina de estados. |
+| `GET /pacientes?q=` | Médico, enfermero o administrativo | Busca pacientes por nombre, apellido o documento (máx. 50). |
+| `GET /pacientes/:id` | Médico, enfermero o administrativo | Devuelve un paciente; `404` si no existe. |
+| `POST /pacientes` | Administrativo | Alta de paciente; `400` por validación, `409` si el documento ya existe. |
 
 Las contraseñas requieren 8 caracteres, una mayúscula y un dígito; se rechazan
 pares de dígitos consecutivos ascendentes o descendentes. Los endpoints devuelven
