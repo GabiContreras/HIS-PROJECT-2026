@@ -1,5 +1,5 @@
 
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import {  ExecutionContext,INestApplication, ValidationPipe } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -8,9 +8,11 @@ import { AuthGuard } from '../../iam/api/auth.guard.js';
 import { RolesGuard } from '../../iam/api/roles.guard.js';
 import { InventoryController } from './inventory.controller.js';
 import { InventoryService } from '../infrastructure/inventory.service.js';
+import { RolUsuario } from '../../../entities/usuario.entity.js';
 
 describe('InventoryController integration', () => {
   let app: INestApplication;
+  let rolUsuario = RolUsuario.MEDICO;
 
   const insumoId = '550e8400-e29b-41d4-a716-446655440000';
   const insumoInexistente = '550e8400-e29b-41d4-a716-446655440001';
@@ -63,6 +65,7 @@ describe('InventoryController integration', () => {
   };
 
   beforeEach(async () => {
+    rolUsuario = RolUsuario.MEDICO;
     stock.clear();
     stock.set(insumoId, 10);
     vi.clearAllMocks();
@@ -75,10 +78,18 @@ describe('InventoryController integration', () => {
       ],
     })
       .overrideGuard(AuthGuard)
-      .useValue({ canActivate: () => true })
-      .overrideGuard(RolesGuard)
-      .useValue({ canActivate: () => true })
-      .compile();
+      .useValue({
+      canActivate: (context: ExecutionContext) => {
+      context.switchToHttp().getRequest().user = {
+      accountId: 'test-account',
+      sessionId: 'test-session',
+      rol: rolUsuario,
+      esSuperadmin: false,
+    };
+    return true;
+  },
+})
+.compile();
 
     app = module.createNestApplication();
     app.useGlobalPipes(
@@ -106,6 +117,14 @@ describe('InventoryController integration', () => {
       cantidadRestante: 7,
     });
   });
+  it('devuelve 403 cuando el usuario no es MEDICO', async () => {
+  rolUsuario = RolUsuario.ENFERMERO;
+
+  await request(app.getHttpServer())
+    .post('/resources/inventory/descontar')
+    .send({ insumoId, cantidad: 1 })
+    .expect(403);
+});
 
   it('devuelve 404 cuando el insumo no existe', async () => {
     await request(app.getHttpServer())
