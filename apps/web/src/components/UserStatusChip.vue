@@ -1,23 +1,27 @@
 <script setup lang="ts">
+import { computed } from 'vue';
+import StatusChip from './ui/StatusChip.vue';
 import type { AccountStatus } from '../features/iam/types';
 
-defineProps<{ status: AccountStatus }>();
+const props = defineProps<{ status: AccountStatus }>();
 
-const labels: Record<AccountStatus, string> = {
+const LABELS: Record<AccountStatus, string> = {
   PENDIENTE_VERIFICACION: 'Pendiente de verificación',
   PENDIENTE_HABILITACION: 'Pendiente de habilitación',
   ACTIVO: 'Activo',
   DESHABILITADO: 'Deshabilitado',
 };
+const TONES: Record<AccountStatus, 'success' | 'danger' | 'warning'> = {
+  PENDIENTE_VERIFICACION: 'warning',
+  PENDIENTE_HABILITACION: 'warning',
+  ACTIVO: 'success',
+  DESHABILITADO: 'danger',
+};
+
+const label = computed(() => LABELS[props.status]);
+const tone = computed(() => TONES[props.status]);
 </script>
 
 <template>
-  <span class="chip" :class="`status-${status.toLowerCase()}`">{{ labels[status] }}</span>
+  <StatusChip :label="label" :tone="tone" />
 </template>
-
-<style scoped>
-.chip { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.8rem; }
-.status-activo { background: #dff4e5; color: #176b36; }
-.status-deshabilitado { background: #fde3e3; color: #9c2020; }
-.status-pendiente_verificacion, .status-pendiente_habilitacion { background: #fff0c7; color: #7d5700; }
-</style>

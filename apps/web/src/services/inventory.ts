@@ -1,15 +1,18 @@
 export interface InventoryItem {
+  id: string;
   nombre: string;
+  unidadMedida: string;
   cantidadDisponible: number;
 }
 
-const INSUMOS_MOCK: InventoryItem[] = [
-  { nombre: 'Paracetamol 500mg', cantidadDisponible: 150 },
-  { nombre: 'Jeringas 10ml', cantidadDisponible: 40 },
-  { nombre: 'Gasas estériles', cantidadDisponible: 85 }
+const MOCK: InventoryItem[] = [
+  { id: '1', nombre: 'Guantes descartables', unidadMedida: 'cajas', cantidadDisponible: 42 },
+  { id: '2', nombre: 'Jeringas 5 ml', unidadMedida: 'unidades', cantidadDisponible: 180 },
+  { id: '3', nombre: 'Barbijos quirúrgicos', unidadMedida: 'cajas', cantidadDisponible: 8 },
+  { id: '4', nombre: 'Suero fisiológico 500 ml', unidadMedida: 'unidades', cantidadDisponible: 25 },
+  { id: '5', nombre: 'Gasas estériles', unidadMedida: 'paquetes', cantidadDisponible: 6 },
 ];
 
 export async function listInventory(): Promise<InventoryItem[]> {
-  // TODO: http.get('/insumos') cuando exista el endpoint
-  return INSUMOS_MOCK;
+  return MOCK; // TODO: http.get<InventoryItem[]>('/insumos') cuando exista el endpoint
 }

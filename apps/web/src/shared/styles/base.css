@@ -1,3 +1,46 @@
 *, *::before, *::after { box-sizing: border-box; }
-body { margin: 0; background: var(--color-bg); color: var(--color-text); font-family: var(--font); }
-table { display: block; overflow-x: auto; }
+body { margin: 0; background: var(--color-bg); color: var(--color-text); font-family: var(--font); line-height: 1.5; }
+h1, h2, h3, h4 { line-height: 1.25; }
+h1 { font-size: 1.6rem; color: var(--color-primary); }
+.content { overflow-x: auto; }
+
+/* Links: color de acción, sin subrayado hasta el hover */
+:where(a) { color: var(--color-info); text-decoration: none; font-weight: 500; }
+:where(a:hover) { text-decoration: underline; }
+
+/* Botones */
+:where(button) {
+  font: inherit; font-weight: 500; padding: 8px 14px; cursor: pointer;
+  background: var(--color-surface); color: var(--color-text);
+  border: 1px solid var(--color-border); border-radius: 8px;
+}
+:where(button:hover:not(:disabled)) { background: #eef3fb; border-color: #c9d6ea; }
+:where(button:disabled) { opacity: 0.55; cursor: not-allowed; }
+:where(button:focus-visible, a:focus-visible) { outline: 3px solid rgba(31, 157, 139, 0.45); outline-offset: 2px; }
+:where(button[type='submit']), .primary {
+  background: var(--color-primary); border-color: var(--color-primary); color: #fff;
+}
+:where(button[type='submit']:hover:not(:disabled)), .primary:hover:not(:disabled) {
+  background: #15305a; border-color: #15305a;
+}
+
+/* Campos */
+:where(input:not([type='checkbox']):not([type='radio']), select, textarea) {
+  font: inherit; padding: 8px 12px; background: #fff; color: var(--color-text);
+  border: 1px solid var(--color-border); border-radius: 8px;
+}
+:where(input:focus-visible, select:focus-visible, textarea:focus-visible) {
+  outline: 3px solid rgba(31, 157, 139, 0.35); border-color: var(--color-accent);
+}
+
+/* Tablas */
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--color-border); }
+th { color: var(--color-muted); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* Links de acción dentro de tablas ("Ver detalle") se ven como botón chico */
+td a {
+  display: inline-block; padding: 4px 12px; border: 1px solid var(--color-border);
+  border-radius: 8px; color: var(--color-primary); font-weight: 600; font-size: 0.9rem;
+}
+td a:hover { background: #eef3fb; text-decoration: none; }

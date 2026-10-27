@@ -1,15 +1,21 @@
-export interface TriajeItem {
+export type TriagePriority = 'ALTA' | 'MEDIA' | 'BAJA';
+
+export interface TriageEntry {
   id: string;
   paciente: string;
-  nivelPrioridad: 1 | 2 | 3 | 4 | 5;
   motivo: string;
+  prioridad: TriagePriority;
+  esperaMin: number;
 }
 
-const TRIAJE_MOCK: TriajeItem[] = [
-  { id: '1', paciente: 'María Gómez', nivelPrioridad: 2, motivo: 'Dolor torácico' }
+const MOCK: TriageEntry[] = [
+  { id: '1', paciente: 'María Gómez', motivo: 'Dolor torácico', prioridad: 'ALTA', esperaMin: 5 },
+  { id: '2', paciente: 'Tomás Herrera', motivo: 'Fiebre alta persistente', prioridad: 'MEDIA', esperaMin: 18 },
+  { id: '3', paciente: 'Lucía Fernández', motivo: 'Esguince de tobillo', prioridad: 'BAJA', esperaMin: 35 },
+  { id: '4', paciente: 'Raúl Benítez', motivo: 'Dificultad respiratoria', prioridad: 'ALTA', esperaMin: 9 },
+  { id: '5', paciente: 'Carla Molina', motivo: 'Dolor abdominal', prioridad: 'MEDIA', esperaMin: 24 },
 ];
 
-export async function listarTriajes(): Promise<TriajeItem[]> {
-  // TODO: http.get('/triaje') cuando exista el endpoint
-  return TRIAJE_MOCK;
+export async function listTriage(): Promise<TriageEntry[]> {
+  return MOCK; // TODO: http.get<TriageEntry[]>('/triaje') cuando exista el endpoint
 }

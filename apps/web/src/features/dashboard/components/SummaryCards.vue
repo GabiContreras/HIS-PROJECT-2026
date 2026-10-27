@@ -1,19 +1,35 @@
 <script setup lang="ts">
+import { computed, onMounted } from 'vue';
+import { storeToRefs } from 'pinia';
 import StatCard from '@/components/ui/StatCard.vue';
 import { useDashboardStore } from '@/stores/dashboard.store';
-import { onMounted } from 'vue';
+import { useMedications } from '@/composables/useMedications';
 
-const dashboardStore = useDashboardStore();
-onMounted(() => {
-  dashboardStore.cargarDatos();
-});
+const { occupiedBeds, totalBeds, todayAppointments, triage, canSeeAgenda } = storeToRefs(useDashboardStore());
+const meds = useMedications();
+onMounted(meds.load);
+
+const bedsLabel = computed(() => `${occupiedBeds.value} de ${totalBeds.value}`);
+const occupancy = computed(() =>
+  totalBeds.value ? Math.round((occupiedBeds.value / totalBeds.value) * 100) : 0,
+);
+const highPriority = computed(() => triage.value.filter((t) => t.prioridad === 'ALTA').length);
 </script>
 
 <template>
   <div class="summary-cards">
-    <StatCard titulo="Total de Camas" :valor="dashboardStore.totalCamas" detalle="Hospital general" />
-    <StatCard titulo="Camas Ocupadas" :valor="dashboardStore.camasOcupadas" detalle="En uso actual" />
-    <StatCard titulo="Turnos de Hoy" valor="12" detalle="Programados" />
-    <StatCard titulo="Emergencias" valor="3" detalle="En triaje" />
+    <StatCard titulo="Turnos de hoy" icon="📅" tone="info"
+      :valor="canSeeAgenda ? todayAppointments.length : '—'"
+      :detalle="canSeeAgenda ? 'Agenda del día' : 'Sin acceso a la agenda'" />
+    <StatCard titulo="En cola de triaje" icon="🧑‍⚕️" tone="warning"
+      :valor="triage.length" :detalle="`${highPriority} prioridad alta`" />
+    <StatCard titulo="Camas ocupadas" icon="🛏️" tone="accent"
+      :valor="bedsLabel" :progress="occupancy" :detalle="`${occupancy}% de ocupación`" />
+    <StatCard titulo="Medicaciones pendientes" icon="💊" tone="violet"
+      :valor="meds.pending.value.length" detalle="Para administrar" />
   </div>
 </template>
+
+<style scoped>
+.summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-3); }
+</style>
