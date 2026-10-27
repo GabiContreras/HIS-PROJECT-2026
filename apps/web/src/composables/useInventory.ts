@@ -1,24 +1,28 @@
-import { ref, computed } from 'vue';
-import { listInventory, type InventoryItem } from '@/services/inventory';
+import { computed, ref } from 'vue';
+import { listInventory, type InventoryItem } from '../services/inventory';
+
+export const LOW_STOCK_THRESHOLD = 10;
 
 export function useInventory() {
-  const insumos = ref<InventoryItem[]>([]);
-  const cargando = ref(false);
+  const items = ref<InventoryItem[]>([]);
+  const loading = ref(false);
   const error = ref<string | null>(null);
 
-  const cargar = async () => {
-    cargando.value = true;
+  const lowStock = computed(() =>
+    items.value.filter((item) => item.cantidadDisponible < LOW_STOCK_THRESHOLD),
+  );
+
+  async function load(): Promise<void> {
+    loading.value = true;
     error.value = null;
     try {
-      insumos.value = await listInventory();
-    } catch (err: any) {
-      error.value = err.message || 'Error al cargar los insumos';
+      items.value = await listInventory();
+    } catch {
+      error.value = 'No se pudo cargar el inventario.';
     } finally {
-      cargando.value = false;
+      loading.value = false;
     }
-  };
+  }
 
-  const insumosBajos = computed(() => insumos.value.filter(i => i.cantidadDisponible < 50));
-
-  return { insumos, cargando, error, cargar, insumosBajos };
+  return { items, loading, error, lowStock, load };
 }
