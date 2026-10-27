@@ -1,17 +1,18 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InventoryService } from './inventory.service.js';
 
 describe('InventoryService', () => {
   let service: InventoryService;
-  let queryBuilder: {
-    update: ReturnType<typeof vi.fn>;
-    set: ReturnType<typeof vi.fn>;
-    where: ReturnType<typeof vi.fn>;
-    andWhere: ReturnType<typeof vi.fn>;
-    setParameters: ReturnType<typeof vi.fn>;
-    returning: ReturnType<typeof vi.fn>;
-    execute: ReturnType<typeof vi.fn>;
+  let queryBuilder: Record<string, ReturnType<typeof vi.fn>>;
+  let repository: {
+    createQueryBuilder: ReturnType<typeof vi.fn>;
+    findOneBy: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
@@ -29,9 +30,12 @@ describe('InventoryService', () => {
       method.mockReturnValue(queryBuilder);
     });
 
-    service = new InventoryService({
+    repository = {
       createQueryBuilder: vi.fn(() => queryBuilder),
-    } as never);
+      findOneBy: vi.fn(),
+    };
+
+    service = new InventoryService(repository as never);
   });
 
   it('descuenta stock y devuelve el saldo restante', async () => {
@@ -40,45 +44,43 @@ describe('InventoryService', () => {
       raw: [{ id: 'insumo-1', cantidad_disponible: 7 }],
     });
 
-    const resultado = await service.descontarStock({
-      insumoId: 'insumo-1',
-      cantidad: 3,
-    });
-
-    expect(resultado).toEqual({
+    await expect(
+      service.descontarStock({ insumoId: 'insumo-1', cantidad: 3 }),
+    ).resolves.toEqual({
       insumoId: 'insumo-1',
       cantidadDescontada: 3,
       cantidadRestante: 7,
     });
   });
 
-  it('rechaza el descuento cuando no hay stock suficiente', async () => {
-    queryBuilder.execute.mockResolvedValue({
-      affected: 0,
-      raw: [],
+  it('devuelve 404 cuando el insumo no existe', async () => {
+    queryBuilder.execute.mockResolvedValue({ affected: 0, raw: [] });
+    repository.findOneBy.mockResolvedValue(null);
+
+    await expect(
+      service.descontarStock({ insumoId: 'inexistente', cantidad: 1 }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('devuelve 409 cuando no hay stock suficiente', async () => {
+    queryBuilder.execute.mockResolvedValue({ affected: 0, raw: [] });
+    repository.findOneBy.mockResolvedValue({
+      id: 'insumo-1',
+      cantidadDisponible: 0,
     });
 
     await expect(
-      service.descontarStock({
-        insumoId: 'insumo-1',
-        cantidad: 5,
-      }),
-    ).rejects.toThrow('Insumo inexistente o stock insuficiente');
+      service.descontarStock({ insumoId: 'insumo-1', cantidad: 5 }),
+    ).rejects.toBeInstanceOf(ConflictException);
   });
 
   it('rechaza cantidades no positivas o no enteras', async () => {
-    await expect(
-      service.descontarStock({
-        insumoId: 'insumo-1',
-        cantidad: 0,
-      }),
-    ).rejects.toThrow('La cantidad debe ser un entero positivo');
+  await expect(
+    service.descontarStock({ insumoId: 'insumo-1', cantidad: 0 }),
+  ).rejects.toBeInstanceOf(BadRequestException);
 
-    await expect(
-      service.descontarStock({
-        insumoId: 'insumo-1',
-        cantidad: 1.5,
-      }),
-    ).rejects.toThrow('La cantidad debe ser un entero positivo');
-  });
+  await expect(
+    service.descontarStock({ insumoId: 'insumo-1', cantidad: 1.5 }),
+  ).rejects.toBeInstanceOf(BadRequestException);
+});
 });
