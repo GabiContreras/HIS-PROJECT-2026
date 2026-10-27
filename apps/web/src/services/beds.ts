@@ -25,3 +25,9 @@ export async function listBeds(): Promise<Bed[]> {
 export async function getBed(id: string): Promise<Bed | undefined> {
   return MOCK.find((b) => b.id === id);
 }
+export const BED_STATUS_LABELS: Record<BedStatus, string> = {
+  DISPONIBLE: 'Disponible',
+  OCUPADA: 'Ocupada',
+  RESERVADA: 'Reservada',
+  MANTENIMIENTO: 'Mantenimiento',
+};
