@@ -1,2 +1,3 @@
 *, *::before, *::after { box-sizing: border-box; }
-body { margin: 0; font-family: var(--font); background: var(--color-bg); color: var(--color-text); }
+body { margin: 0; background: var(--color-bg); color: var(--color-text); font-family: var(--font); }
+table { display: block; overflow-x: auto; }

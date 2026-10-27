@@ -1,15 +1,14 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { RouterLink, RouterView, useRouter } from 'vue-router';
+import { computed, ref, watch } from 'vue';
+import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router';
 import { useSessionStore } from '../features/iam/session.store';
 import { ROLE_LABELS, type Role } from '../features/iam/types';
-import RoleChip from '@/components/ui/RoleChip.vue'; // Opcional si prefieres usar tu componente RoleChip
+import RoleChip from '../components/ui/RoleChip.vue';
 
 interface MenuItem {
   to: string;
   label: string;
   roles?: Role[];
-  enabled?: boolean; // Para manejar módulos deshabilitados si aún no tienen pantalla
 }
 
 const allItems: MenuItem[] = [
@@ -25,20 +24,22 @@ const allItems: MenuItem[] = [
 
 const session = useSessionStore();
 const router = useRouter();
+const route = useRoute();
+
+const open = ref(false);
+const query = ref('');
 
 const menu = computed(() =>
   allItems.filter((item) => !item.roles || (session.role !== null && item.roles.includes(session.role))),
 );
 
-// Estado para el buscador de la topbar
-const searchQuery = ref('');
+watch(() => route.fullPath, () => { open.value = false; });
 
-const handleSearch = (event: Event) => {
-  const target = event.target as HTMLInputElement;
-  searchQuery.value = target.value;
-};
+function search(): void {
+  void router.push({ name: 'patients', query: query.value ? { q: query.value } : {} });
+}
 
-async function logout() {
+async function logout(): Promise<void> {
   await session.logout();
   await router.push({ name: 'login' });
 }
@@ -46,45 +47,28 @@ async function logout() {
 
 <template>
   <div class="shell">
-    <aside class="sidebar">
+    <div v-show="open" class="backdrop" @click="open = false"></div>
+
+    <aside class="sidebar" :class="{ open }">
       <div class="brand">HIS</div>
       <nav>
-        <template v-for="item in menu" :key="item.to">
-          <!-- Si está deshabilitado, lo mostramos opaco o con enlace plano -->
-          <RouterLink 
-            v-if="item.enabled !== false"
-            :to="item.to" 
-            class="nav-link"
-          >
-            {{ item.label }}
-          </RouterLink>
-          <span v-else class="nav-link disabled">
-            {{ item.label }} (Próximamente)
-          </span>
-        </template>
+        <RouterLink v-for="item in menu" :key="item.to" :to="item.to" class="nav-link">
+          {{ item.label }}
+        </RouterLink>
       </nav>
+      <button class="logout" type="button" @click="logout">Cerrar sesión</button>
     </aside>
 
     <div class="main">
       <header class="topbar">
-        <!-- Buscador integrado en la topbar -->
-        <div class="search-box">
-          <input 
-            type="text" 
-            v-model="searchQuery" 
-            @input="handleSearch" 
-            placeholder="Buscar en el sistema..." 
-            class="search-input"
-          />
-        </div>
-
-        <div class="topbar-user-area">
-          <span class="user-name">{{ session.fullName }}</span>
-          <span v-if="session.role" class="chip">{{ ROLE_LABELS[session.role] }}</span>
-          <button class="logout" type="button" @click="logout">Cerrar sesión</button>
-        </div>
+        <button class="burger" type="button" aria-label="Abrir menú" @click="open = !open">☰</button>
+        <form class="search" @submit.prevent="search">
+          <input v-model="query" type="search" placeholder="Buscar paciente..." />
+        </form>
+        <button class="bell" type="button" aria-label="Notificaciones">🔔</button>
+        <span class="user-name">{{ session.fullName }}</span>
+        <RoleChip v-if="session.role" :role="ROLE_LABELS[session.role] as 'Médico' | 'Enfermero' | 'Administrativo'" />
       </header>
-
       <main class="content">
         <RouterView />
       </main>
@@ -94,22 +78,37 @@ async function logout() {
 
 <style scoped>
 .shell { display: flex; min-height: 100vh; }
-.sidebar { width: 220px; background: var(--color-primary); color: #fff; padding: var(--space-3); display: flex; flex-direction: column; }
+.sidebar { width: 220px; flex-shrink: 0; background: var(--color-primary); color: #fff; padding: var(--space-3);
+  display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; }
 .brand { font-weight: 700; font-size: 1.4rem; margin-bottom: var(--space-4); }
+nav { flex: 1; overflow-y: auto; }
 .nav-link { display: block; color: #dbe6f5; text-decoration: none; padding: var(--space-2) var(--space-3);
   border-radius: 8px; margin-bottom: var(--space-1); }
+.nav-link:hover { background: rgba(255, 255, 255, 0.08); }
 .nav-link.router-link-exact-active { background: rgba(255, 255, 255, 0.15); color: #fff; }
-.nav-link.disabled { opacity: 0.5; cursor: not-allowed; }
-
-.main { flex: 1; display: flex; flex-direction: column; }
-.topbar { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3);
-  background: var(--color-surface); border-bottom: 1px solid var(--color-border); padding: var(--space-3) var(--space-4); }
-
-.topbar-user-area { display: flex; align-items: center; gap: var(--space-3); }
-.search-input { padding: 6px 12px; border-radius: 8px; border: 1px solid var(--color-border); font: inherit; width: 240px; }
-.user-name { font-weight: 600; }
+.logout { border: 1px solid rgba(255, 255, 255, 0.4); background: transparent; color: #fff; border-radius: 8px;
+  padding: 8px 12px; font: inherit; cursor: pointer; }
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.topbar { display: flex; align-items: center; gap: var(--space-3); background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border); padding: var(--space-3) var(--space-4); }
+.search { flex: 1; max-width: 420px; }
+.search input { width: 100%; font: inherit; padding: 8px 12px; border: 1px solid var(--color-border); border-radius: 8px; }
+.bell, .burger { border: 1px solid var(--color-border); background: transparent; border-radius: 8px;
+  padding: 6px 10px; font: inherit; cursor: pointer; }
+.burger { display: none; }
+.user-name { font-weight: 600; margin-left: auto; white-space: nowrap; }
 .chip { background: #e6eefb; color: var(--color-primary); padding: 2px 10px; border-radius: 999px; font-size: 0.8rem; }
-.logout { border: 1px solid var(--color-border); background: transparent; border-radius: 8px; padding: 6px 12px;
-  font: inherit; cursor: pointer; }
-.content { padding: var(--space-4); }
+.content { padding: var(--space-4); min-width: 0; }
+.backdrop { display: none; }
+
+@media (max-width: 900px) {
+  .burger { display: inline-block; }
+  .sidebar { position: fixed; z-index: 30; inset: 0 auto 0 0; transform: translateX(-100%); transition: transform 0.2s; }
+  .sidebar.open { transform: translateX(0); }
+  .backdrop { display: block; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.45); z-index: 20; }
+  .topbar { padding: var(--space-2) var(--space-3); gap: var(--space-2); }
+  .user-name { display: none; }
+  .search { max-width: none; }
+  .content { padding: var(--space-3); }
+}
 </style>
