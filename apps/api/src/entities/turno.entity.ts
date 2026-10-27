@@ -22,15 +22,15 @@ export class Turno {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => Paciente, { onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'pacienteId' })
+    @ManyToOne(() => Paciente, { onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'paciente_id' })
   paciente: Paciente;
 
   @ManyToOne(() => Usuario, { onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'medicoId' })
+  @JoinColumn({ name: 'medico_id' })
   medico: Usuario;
 
-  @Column({ type: 'timestamptz' })
+  @Column({ name: 'fecha_hora', type: 'timestamptz' })
   fechaHora: Date;
 
   @Column({ type: 'integer', default: 30 })
