@@ -1,8 +1,8 @@
 import { ref, computed } from 'vue';
-import { listarInsumos, type Insumo } from '@/services/insumos';
+import { listInventory, type InventoryItem } from '@/services/inventory';
 
-export function useInsumos() {
-  const insumos = ref<Insumo[]>([]);
+export function useInventory() {
+  const insumos = ref<InventoryItem[]>([]);
   const cargando = ref(false);
   const error = ref<string | null>(null);
 
@@ -10,7 +10,7 @@ export function useInsumos() {
     cargando.value = true;
     error.value = null;
     try {
-      insumos.value = await listarInsumos();
+      insumos.value = await listInventory();
     } catch (err: any) {
       error.value = err.message || 'Error al cargar los insumos';
     } finally {
@@ -20,11 +20,5 @@ export function useInsumos() {
 
   const insumosBajos = computed(() => insumos.value.filter(i => i.cantidadDisponible < 50));
 
-  return {
-    insumos,
-    cargando,
-    error,
-    cargar,
-    insumosBajos
-  };
+  return { insumos, cargando, error, cargar, insumosBajos };
 }

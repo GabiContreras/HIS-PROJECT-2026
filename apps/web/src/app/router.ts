@@ -7,6 +7,7 @@ declare module 'vue-router' {
   interface RouteMeta {
     public?: boolean;
     roles?: Role[];
+    title?: string;
   }
 }
 
@@ -16,31 +17,88 @@ export const router = createRouter({
     {
       path: '/login',
       name: 'login',
-      meta: { public: true },
+      meta: { public: true, title: 'Iniciar sesión' },
       component: () => import('../features/iam/views/LoginView.vue'),
     },
     {
       path: '/',
       component: AppShell,
       children: [
-        { path: '', name: 'dashboard', component: () => import('../features/dashboard/DashboardView.vue') },
+        {
+          path: '',
+          name: 'dashboard',
+          meta: { title: 'Panel' },
+          component: () => import('../features/dashboard/DashboardView.vue'),
+        },
         {
           path: 'usuarios',
           name: 'users',
-          meta: { roles: ['ADMINISTRATIVO'] },
+          meta: { roles: ['ADMINISTRATIVO'], title: 'Usuarios' },
           component: () => import('../features/iam/views/UsersView.vue'),
         },
         {
           path: 'usuarios/:id',
           name: 'user-detail',
-          meta: { roles: ['ADMINISTRATIVO'] },
+          meta: { roles: ['ADMINISTRATIVO'], title: 'Detalle de usuario' },
           component: () => import('../features/iam/views/UserDetailView.vue'),
         },
         {
           path: 'turnos',
           name: 'appointments',
-          meta: { roles: ['MEDICO', 'ADMINISTRATIVO'] },
+          meta: { roles: ['MEDICO', 'ADMINISTRATIVO'], title: 'Turnos' },
           component: () => import('../features/admissions/AppointmentView.vue'),
+        },
+        {
+          path: 'camas',
+          name: 'beds',
+          meta: { title: 'Camas' },
+          component: () => import('../features/beds/BedsView.vue'),
+        },
+
+        {
+          path: 'camas/:id',
+          name: 'bed-detail',
+          meta: { title: 'Detalle de cama' },
+          props: true,
+          component: () => import('../features/beds/BedDetailView.vue'),
+        },
+        {
+          path: 'pacientes',
+          name: 'patients',
+          meta: { title: 'Pacientes' },
+          component: () => import('../features/patients/PatientsView.vue'),
+        },
+        {
+          path: 'insumos',
+          name: 'inventory',
+          meta: { roles: ['ENFERMERO', 'ADMINISTRATIVO'], title: 'Insumos' },
+          component: () => import('../features/inventory/InventoryView.vue'),
+        },
+        {
+          path: 'enfermeria',
+          meta: { roles: ['ENFERMERO', 'MEDICO'], title: 'Enfermería' },
+          component: () => import('../features/nursing/NursingView.vue'),
+          redirect: { name: 'vital-signs' },
+          children: [
+            {
+              path: 'signos-vitales',
+              name: 'vital-signs',
+              meta: { title: 'Signos vitales' },
+              component: () => import('../features/nursing/VitalSignsView.vue'),
+            },
+            {
+              path: 'medicaciones',
+              name: 'medications',
+              meta: { title: 'Medicaciones' },
+              component: () => import('../features/nursing/MedicationsView.vue'),
+            },
+          ],
+        },
+        {
+          path: 'facturacion',
+          name: 'billing',
+          meta: { roles: ['ADMINISTRATIVO'], title: 'Facturación' },
+          component: () => import('../features/billing/BillingView.vue'),
         },
       ],
     },
@@ -64,3 +122,10 @@ router.beforeEach(async (to) => {
   }
   return true;
 });
+
+router.afterEach((to) => {
+  document.title = to.meta.title ? `${to.meta.title} · HIS` : 'HIS';
+});
+//Ejemplo ruta navegacion
+//router.push({ name: 'bed-detail', params: { id } })
+//<RouterLink :to="{ name: 'vital-signs' }">
