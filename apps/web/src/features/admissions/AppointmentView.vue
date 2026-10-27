@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
-import { listarUsuarios, type Usuario } from '../../services/usuarios';
+import { listarUsuarios, type Usuario } from '../../services/users';
 import type { EstadoTurno } from '../../services/turnos';
 import { ApiError } from '../../shared/http';
 import { useSessionStore } from '../iam/session.store';

@@ -6,7 +6,7 @@ import {
   obtenerUsuario,
   type CrearUsuarioInput,
   type Usuario,
-} from '../../services/usuarios';
+} from '../../services/users';
 
 function messageFrom(error: unknown): string {
   return error instanceof ApiError ? error.message : 'No se pudo completar la operación.';

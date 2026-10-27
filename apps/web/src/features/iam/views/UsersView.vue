@@ -3,7 +3,7 @@ import { onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import UsuariosForm from '../../../components/UsuariosForm.vue';
 import UsersTable from '../../../components/UsersTable.vue';
-import { type CrearUsuarioInput } from '../../../services/usuarios';
+import { type CrearUsuarioInput } from '../../../services/users.ts';
 import { useUsers } from '../useUsers';
 
 const formVisible = ref(false);

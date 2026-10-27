@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Usuario } from '../services/usuarios';
+import type { Usuario } from '../services/users.ts';
 import UserStatusChip from './UserStatusChip.vue';
 
 defineProps<{ usuarios: Usuario[] }>();

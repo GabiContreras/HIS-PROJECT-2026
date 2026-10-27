@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { reactive, watch } from 'vue';
-import type { CrearUsuarioInput } from '../services/usuarios';
+import type { CrearUsuarioInput } from '../services/users';
 
 const props = defineProps<{
   submitting: boolean;
