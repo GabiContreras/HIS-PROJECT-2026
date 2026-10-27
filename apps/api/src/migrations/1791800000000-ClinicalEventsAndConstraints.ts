@@ -5,7 +5,7 @@ export class ClinicalEvents1791800000000 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
-      CREATE TABLE eventos_clinicos (
+      CREATE TABLE IF NOT EXISTS eventos_clinicos (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         paciente_id UUID NOT NULL REFERENCES pacientes(id) ON DELETE RESTRICT,
         tipo VARCHAR(40) NOT NULL,
@@ -14,10 +14,10 @@ export class ClinicalEvents1791800000000 implements MigrationInterface {
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
       );
 
-      CREATE INDEX idx_eventos_paciente_fecha
+      CREATE INDEX IF NOT EXISTS idx_eventos_paciente_fecha
       ON eventos_clinicos (paciente_id, created_at DESC);
 
-      CREATE FUNCTION bloquear_modificacion_eventos()
+      CREATE OR REPLACE FUNCTION bloquear_modificacion_eventos()
       RETURNS trigger
       LANGUAGE plpgsql
       AS $$
@@ -25,6 +25,8 @@ export class ClinicalEvents1791800000000 implements MigrationInterface {
         RAISE EXCEPTION 'eventos_clinicos es de solo agregado';
       END;
       $$;
+
+      DROP TRIGGER IF EXISTS trg_eventos_solo_agregado ON eventos_clinicos;
 
       CREATE TRIGGER trg_eventos_solo_agregado
       BEFORE UPDATE OR DELETE
