@@ -3,6 +3,7 @@ import { ApiError } from '../../shared/http';
 import {
   crearTurno,
   listarAgenda,
+  reservarTurno,
   transicionarTurno,
   type CrearTurnoInput,
   type EstadoTurno,
@@ -48,5 +49,10 @@ export function useAppointments() {
     return result !== null && cargar();
   }
 
-  return { turnos, cargando, error, cargar, crear, transicionar };
+  async function reservar(id: string, pacienteId: string): Promise<boolean> {
+    const result = await execute(() => reservarTurno(id, pacienteId));
+    return result !== null && cargar();
+  }
+
+  return { turnos, cargando, error, cargar, crear, transicionar, reservar };
 }

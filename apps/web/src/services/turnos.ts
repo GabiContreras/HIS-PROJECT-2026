@@ -44,3 +44,7 @@ export function crearTurno(datos: CrearTurnoInput): Promise<Turno> {
 export function transicionarTurno(id: string, estado: EstadoTurno): Promise<Turno> {
   return http.patch<Turno>(`/turnos/${id}/transiciones`, { estado });
 }
+
+export function reservarTurno(id: string, pacienteId: string): Promise<Turno> {
+  return http.patch<Turno>(`/turnos/${id}/reservar`, { pacienteId });
+}
