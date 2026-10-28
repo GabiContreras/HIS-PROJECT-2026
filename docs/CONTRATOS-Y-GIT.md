@@ -43,6 +43,9 @@ datos básicos de la cuenta se devuelven en el body.
 | `GET /pacientes?q=` | Médico, enfermero o administrativo | Busca pacientes por nombre, apellido o documento (máx. 50). |
 | `GET /pacientes/:id` | Médico, enfermero o administrativo | Devuelve un paciente; `404` si no existe. |
 | `POST /pacientes` | Administrativo | Alta de paciente; `400` por validación, `409` si el documento ya existe. |
+| `GET /signos-vitales/tipos` | Enfermero o médico | Tipos de signo vital con unidad, rango normal y límites de plausibilidad. |
+| `GET /signos-vitales?pacienteId=` | Enfermero o médico | Últimos 100 registros, del más nuevo al más viejo; filtro opcional por paciente. Cada registro trae `unidad` y `fueraDeRango`. |
+| `POST /signos-vitales` | Enfermero o médico | Registra `{ pacienteId, tipo, valor }` con autor y fecha del servidor; `400` por validación o valor implausible, `404` si el paciente no existe. Si queda fuera de rango (por ejemplo temperatura mayor a 39 °C) publica el evento `vital-sign.alert-raised`. |
 
 Las contraseñas requieren 8 caracteres, una mayúscula y un dígito; se rechazan
 pares de dígitos consecutivos ascendentes o descendentes. Los endpoints devuelven
