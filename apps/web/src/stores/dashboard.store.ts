@@ -25,6 +25,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
   const extrasError = ref<string | null>(null);
 
   const canSeeAgenda = computed(() => session.role === 'MEDICO' || session.role === 'ADMINISTRATIVO');
+  // La API de signos vitales solo admite enfermero o médico (el administrativo recibiría 403).
+  const canSeeVitals = computed(() => session.role === 'ENFERMERO' || session.role === 'MEDICO');
 
   const totalBeds = computed(() => bedsState.beds.value.length);
   const occupiedBeds = computed(() => bedsState.beds.value.filter((b) => b.estado === 'OCUPADA').length);
@@ -59,7 +61,10 @@ export const useDashboardStore = defineStore('dashboard', () => {
     extrasLoading.value = true;
     extrasError.value = null;
     try {
-      [triage.value, vitalSigns.value] = await Promise.all([listTriage(), listVitalSigns()]);
+      [triage.value, vitalSigns.value] = await Promise.all([
+        listTriage(),
+        canSeeVitals.value ? listVitalSigns() : Promise.resolve([]),
+      ]);
     } catch {
       extrasError.value = 'No se pudo cargar el triaje ni los signos vitales.';
     } finally {
@@ -91,5 +96,6 @@ export const useDashboardStore = defineStore('dashboard', () => {
     error,
     load,
     canSeeAgenda,
+    canSeeVitals,
   };
 });
