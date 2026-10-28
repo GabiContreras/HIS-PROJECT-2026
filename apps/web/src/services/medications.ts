@@ -1,27 +1,52 @@
-export type MedicationStatus = 'PENDIENTE' | 'ADMINISTRADA';
+import { http } from '../shared/http';
 
-export interface Medication {
+export type DoseStatus = 'PENDIENTE' | 'ADMINISTRADA';
+
+export interface Dose {
+  programadaPara: string; // ISO
+  estado: DoseStatus;
+  /** True si la hora actual cae dentro de la ventana de ±30 min de la dosis. */
+  enVentana: boolean;
+  administradaPor?: string;
+  administradaEn?: string;
+}
+
+export interface Indication {
   id: string;
+  pacienteId: string;
   paciente: string;
-  medicamento: string;
+  insumoId: string;
+  insumo: string;
   dosis: string;
-  horario: string; // HH:mm
-  estado: MedicationStatus;
+  frecuencia: string;
+  frecuenciaHoras: number | null;
+  fechaInicio: string;
+  fechaFin: string | null;
+  dosisDelDia: Dose[];
 }
 
-// Estado en memoria mientras no exista el endpoint
-const records: Medication[] = [
-  { id: '1', paciente: 'Marta Pérez', medicamento: 'Enalapril', dosis: '10 mg', horario: '08:00', estado: 'PENDIENTE' },
-  { id: '2', paciente: 'Luis Rossi', medicamento: 'Paracetamol', dosis: '1 g', horario: '09:00', estado: 'PENDIENTE' },
-  { id: '3', paciente: 'Ana Díaz', medicamento: 'Amoxicilina', dosis: '500 mg', horario: '10:30', estado: 'ADMINISTRADA' },
-  { id: '4', paciente: 'Raúl Benítez', medicamento: 'Omeprazol', dosis: '20 mg', horario: '12:00', estado: 'PENDIENTE' },
-];
-
-export async function listMedications(): Promise<Medication[]> {
-  return records.map((m) => ({ ...m })); // TODO: http.get('/medicaciones')
+export interface Administration {
+  id: string;
+  indicacionId: string;
+  pacienteId: string;
+  insumoId: string;
+  dosisProgramadaPara: string;
+  administradaPor: string;
+  administradaPorId: string;
+  administradaEn: string;
+  observaciones: string | null;
 }
 
-export async function markAdministered(id: string): Promise<void> {
-  const record = records.find((m) => m.id === id);
-  if (record) record.estado = 'ADMINISTRADA'; // TODO: http.patch(`/medicaciones/${id}/administrar`)
+export function listIndications(pacienteId?: string): Promise<Indication[]> {
+  return http.get<Indication[]>(
+    pacienteId ? `/indicaciones?pacienteId=${encodeURIComponent(pacienteId)}` : '/indicaciones',
+  );
+}
+
+/** Registra la administración de la dosis vigente (solo ENFERMERO). 409 si ya se administró o está fuera de ventana. */
+export function administerDose(indicationId: string, observaciones?: string): Promise<Administration> {
+  return http.post<Administration>(
+    `/indicaciones/${encodeURIComponent(indicationId)}/administraciones`,
+    observaciones ? { observaciones } : {},
+  );
 }

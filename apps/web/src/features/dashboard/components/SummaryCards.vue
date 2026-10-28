@@ -5,9 +5,10 @@ import StatCard from '@/components/ui/StatCard.vue';
 import { useDashboardStore } from '@/stores/dashboard.store';
 import { useMedications } from '@/composables/useMedications';
 
-const { occupiedBeds, totalBeds, todayAppointments, triage, canSeeAgenda } = storeToRefs(useDashboardStore());
+const { occupiedBeds, totalBeds, todayAppointments, triage, canSeeAgenda, canSeeVitals } = storeToRefs(useDashboardStore());
 const meds = useMedications();
-onMounted(meds.load);
+// Las indicaciones solo las puede consultar enfermería o medicina (el administrativo recibiría 403).
+onMounted(() => { if (canSeeVitals.value) void meds.load(); });
 
 const bedsLabel = computed(() => `${occupiedBeds.value} de ${totalBeds.value}`);
 const occupancy = computed(() =>
@@ -26,7 +27,8 @@ const highPriority = computed(() => triage.value.filter((t) => t.prioridad === '
     <StatCard titulo="Camas ocupadas" icon="🛏️" tone="accent"
       :valor="bedsLabel" :progress="occupancy" :detalle="`${occupancy}% de ocupación`" />
     <StatCard titulo="Medicaciones pendientes" icon="💊" tone="violet"
-      :valor="meds.pending.value.length" detalle="Para administrar" />
+      :valor="canSeeVitals ? meds.pendingCount.value : '—'"
+      :detalle="canSeeVitals ? 'Dosis de hoy para administrar' : 'Sin acceso a la medicación'" />
   </div>
 </template>
 
