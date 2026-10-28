@@ -9,3 +9,4 @@ export * from './appointment-attended.event.js';
 export * from './bed-assigned.event.js';
 export * from './medication-administered.event.js';
 export * from './vital-sign-alert.event.js';
+export * from './patient-admitted.event.js';
