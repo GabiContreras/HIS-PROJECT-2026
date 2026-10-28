@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { searchPatients, type Patient } from '../../services/patients';
 import { listarUsuarios, type Usuario } from '../../services/users';
 import type { EstadoTurno } from '../../services/turnos';
 import { ApiError } from '../../shared/http';
@@ -7,7 +8,7 @@ import { useSessionStore } from '../iam/session.store';
 import { useAppointments } from './useAppointments';
 
 const session = useSessionStore();
-const { turnos, cargando, error, cargar, crear, transicionar } = useAppointments();
+const { turnos, cargando, error, cargar, crear, transicionar, reservar } = useAppointments();
 const medicos = reactive<Usuario[]>([]);
 const medicosError = ref<string | null>(null);
 const form = reactive({ medicoId: session.account?.id ?? '', fechaHora: '' });
@@ -40,9 +41,55 @@ async function crearFranja(): Promise<void> {
   if (await crear({ ...form })) form.fechaHora = '';
 }
 
+const reservandoId = ref<string | null>(null);
+const busqueda = ref('');
+const pacientes = ref<Patient[]>([]);
+const pacienteId = ref('');
+const pacientesError = ref<string | null>(null);
+let timer: ReturnType<typeof setTimeout> | undefined;
+let ultima = 0;
+
+async function buscarPacientes(): Promise<void> {
+  const actual = ++ultima;
+  pacientesError.value = null;
+  try {
+    const result = await searchPatients(busqueda.value);
+    if (actual === ultima) pacientes.value = result;
+  } catch (reason) {
+    if (actual === ultima) {
+      pacientesError.value =
+        reason instanceof ApiError ? reason.message : 'No se pudo cargar la lista de pacientes.';
+    }
+  }
+}
+
+function abrirReserva(id: string): void {
+  reservandoId.value = id;
+  busqueda.value = '';
+  pacienteId.value = '';
+  pacientes.value = [];
+  void buscarPacientes();
+}
+
+function cerrarReserva(): void {
+  reservandoId.value = null;
+}
+
+async function confirmarReserva(id: string): Promise<void> {
+  if (!pacienteId.value) return;
+  await reservar(id, pacienteId.value);
+  cerrarReserva();
+}
+
+watch(busqueda, () => {
+  clearTimeout(timer);
+  timer = setTimeout(buscarPacientes, 300);
+});
+
 onMounted(async () => {
   await Promise.all([cargar(), cargarMedicos()]);
 });
+onBeforeUnmount(() => clearTimeout(timer));
 </script>
 
 <template>
@@ -97,6 +144,25 @@ onMounted(async () => {
           <td>{{ turno.paciente ? `${turno.paciente.nombre} ${turno.paciente.apellido}` : 'Sin asignar' }}</td>
           <td>{{ turno.estado }}</td>
           <td>
+            <template v-if="turno.estado === 'DISPONIBLE'">
+              <button v-if="reservandoId !== turno.id" type="button" :disabled="cargando" @click="abrirReserva(turno.id)">
+                Reservar
+              </button>
+              <div v-else class="reserve">
+                <input v-model="busqueda" type="search" placeholder="Buscar paciente..." aria-label="Buscar paciente" />
+                <select v-model="pacienteId" aria-label="Paciente">
+                  <option value="" disabled>Seleccioná un paciente</option>
+                  <option v-for="paciente in pacientes" :key="paciente.id" :value="paciente.id">
+                    {{ paciente.apellido }}, {{ paciente.nombre }} ({{ paciente.documento }})
+                  </option>
+                </select>
+                <button type="button" :disabled="cargando || !pacienteId" @click="confirmarReserva(turno.id)">
+                  Confirmar reserva
+                </button>
+                <button type="button" :disabled="cargando" @click="cerrarReserva">Cancelar</button>
+                <span v-if="pacientesError" class="error" role="alert">{{ pacientesError }}</span>
+              </div>
+            </template>
             <button
               v-for="transition in transitions[turno.estado]"
               :key="transition.next"
@@ -123,5 +189,6 @@ input, select, button { font: inherit; padding: 8px; }
 table { width: 100%; border-collapse: collapse; }
 th, td { padding: var(--space-2); border-bottom: 1px solid var(--color-border); text-align: left; }
 td button + button { margin-left: var(--space-1); }
+.reserve { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); }
 .error { color: #9c2020; }
 </style>
