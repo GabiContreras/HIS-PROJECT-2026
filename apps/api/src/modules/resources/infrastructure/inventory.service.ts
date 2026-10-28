@@ -11,6 +11,7 @@ import { Insumo } from '../../../entities/insumo.entity.js';
 import {
   DescontarStockInput,
   DescontarStockResult,
+  InsumoStock,
   InventoryPort,
 } from '../domain/ports/inventory.port.js';
 
@@ -20,6 +21,16 @@ export class InventoryService implements InventoryPort {
     @InjectRepository(Insumo)
     private readonly insumoRepository: Repository<Insumo>,
   ) {}
+
+  async listar(): Promise<InsumoStock[]> {
+    const insumos = await this.insumoRepository.find({ order: { nombre: 'ASC' } });
+    return insumos.map((i) => ({
+      id: i.id,
+      nombre: i.nombre,
+      unidadMedida: i.unidadMedida,
+      cantidadDisponible: i.cantidadDisponible,
+    }));
+  }
 
   async descontarStock(
     input: DescontarStockInput,

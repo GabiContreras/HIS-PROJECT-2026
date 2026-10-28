@@ -55,6 +55,14 @@ describe('InventoryController integration', () => {
 
       return builder;
     }),
+    find: vi.fn(async () =>
+      [...stock.entries()].map(([id, cantidadDisponible]) => ({
+        id,
+        nombre: 'Ibuprofeno 400mg',
+        unidadMedida: 'comprimido',
+        cantidadDisponible,
+      })),
+    ),
     findOneBy: vi.fn(async ({ id }: { id: string }) => {
       const disponible = stock.get(id);
 
@@ -104,6 +112,26 @@ describe('InventoryController integration', () => {
   afterEach(async () => {
     await app?.close();
   });
+
+  it.each([RolUsuario.ENFERMERO, RolUsuario.MEDICO, RolUsuario.ADMINISTRATIVO])(
+    'GET /resources/inventory lista insumos con stock para %s',
+    async (rol) => {
+      rolUsuario = rol;
+
+      const response = await request(app.getHttpServer())
+        .get('/resources/inventory')
+        .expect(200);
+
+      expect(response.body).toEqual([
+        {
+          id: insumoId,
+          nombre: 'Ibuprofeno 400mg',
+          unidadMedida: 'comprimido',
+          cantidadDisponible: 10,
+        },
+      ]);
+    },
+  );
 
   it('descuenta stock y devuelve el saldo restante por HTTP', async () => {
     const response = await request(app.getHttpServer())
