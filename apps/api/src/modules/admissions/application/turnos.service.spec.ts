@@ -153,7 +153,9 @@ describe('TurnosService', () => {
       expect.objectContaining({ lock: { mode: 'pessimistic_write' } }),
     );
     expect(turnoRepository.findOne).toHaveBeenLastCalledWith(
-      expect.objectContaining({ lock: { mode: 'pessimistic_write' } }),
+      expect.objectContaining({
+        lock: { mode: 'pessimistic_write', tables: ['turnos'] },
+      }),
     );
     expect(pacienteRepository.findOne).toHaveBeenCalledWith(
       expect.objectContaining({ lock: { mode: 'pessimistic_write' } }),
