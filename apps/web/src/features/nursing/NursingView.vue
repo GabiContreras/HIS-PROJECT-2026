@@ -8,6 +8,7 @@ import { RouterLink, RouterView } from 'vue-router';
     <nav class="tabs" aria-label="Secciones de enfermería">
       <RouterLink :to="{ name: 'vital-signs' }" class="tab">Signos vitales</RouterLink>
       <RouterLink :to="{ name: 'medications' }" class="tab">Medicaciones</RouterLink>
+      <RouterLink :to="{ name: 'protocol' }" class="tab">Protocolo de ingreso</RouterLink>
     </nav>
     <RouterView />
   </section>

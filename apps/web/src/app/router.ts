@@ -92,6 +92,12 @@ export const router = createRouter({
               meta: { title: 'Medicaciones' },
               component: () => import('../features/nursing/MedicationsView.vue'),
             },
+            {
+              path: 'protocolo',
+              name: 'protocol',
+              meta: { title: 'Protocolo de ingreso' },
+              component: () => import('../features/nursing/ProtocolView.vue'),
+            },
           ],
         },
         {
