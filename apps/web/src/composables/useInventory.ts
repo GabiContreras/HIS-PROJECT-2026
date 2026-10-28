@@ -1,4 +1,5 @@
 import { computed, ref } from 'vue';
+import { ApiError } from '../shared/http';
 import { listInventory, type InventoryItem } from '../services/inventory';
 
 export const LOW_STOCK_THRESHOLD = 10;
@@ -17,8 +18,8 @@ export function useInventory() {
     error.value = null;
     try {
       items.value = await listInventory();
-    } catch {
-      error.value = 'No se pudo cargar el inventario.';
+    } catch (e) {
+      error.value = e instanceof ApiError ? e.message : 'No se pudo cargar el inventario.';
     } finally {
       loading.value = false;
     }

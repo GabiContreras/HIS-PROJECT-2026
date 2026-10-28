@@ -1,9 +1,16 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+import DataTable from '@/components/ui/DataTable.vue';
 import StatusChip from '@/components/ui/StatusChip.vue';
 import { LOW_STOCK_THRESHOLD, useInventory } from '@/composables/useInventory';
 
 const { items, lowStock, loading, error, load } = useInventory();
+const columns = [
+  { key: 'nombre', label: 'Insumo' },
+  { key: 'unidadMedida', label: 'Unidad' },
+  { key: 'cantidadDisponible', label: 'Disponible' },
+  { key: 'estado', label: 'Estado' },
+];
 const query = ref('');
 const onlyLow = ref(false);
 
@@ -35,24 +42,16 @@ onMounted(load);
     <p v-if="error" class="error" role="alert">
       {{ error }} <button type="button" :disabled="loading" @click="load">Reintentar</button>
     </p>
-    <p v-else-if="loading" role="status">Cargando insumos...</p>
+    <p v-else-if="loading && items.length === 0" role="status">Cargando insumos...</p>
+    <p v-else-if="items.length === 0">No hay insumos cargados.</p>
     <p v-else-if="visible.length === 0">No hay insumos que coincidan.</p>
-    <table v-else>
-      <thead>
-        <tr><th>Insumo</th><th>Unidad</th><th>Disponible</th><th>Estado</th></tr>
-      </thead>
-      <tbody>
-        <tr v-for="item in visible" :key="item.id">
-          <td>{{ item.nombre }}</td>
-          <td>{{ item.unidadMedida }}</td>
-          <td><strong>{{ item.cantidadDisponible }}</strong></td>
-          <td>
-            <StatusChip v-if="item.cantidadDisponible < LOW_STOCK_THRESHOLD" label="Stock bajo" tone="danger" />
-            <StatusChip v-else label="Normal" tone="success" />
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <DataTable v-else :data="visible" :columns="columns">
+      <template #cell-cantidadDisponible="{ row }"><strong>{{ row.cantidadDisponible }}</strong></template>
+      <template #cell-estado="{ row }">
+        <StatusChip v-if="row.cantidadDisponible < LOW_STOCK_THRESHOLD" label="Stock bajo" tone="danger" />
+        <StatusChip v-else label="Normal" tone="success" />
+      </template>
+    </DataTable>
   </section>
 </template>
 
@@ -62,9 +61,9 @@ onMounted(load);
 .head p { color: var(--color-muted); margin-top: var(--space-1); }
 .filters { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3); }
 .filters input[type='search'] { font: inherit; padding: 8px 12px; border: 1px solid var(--color-border); border-radius: 8px; }
-table { width: 100%; border-collapse: collapse; background: var(--color-surface); border-radius: var(--radius); }
-th, td { padding: var(--space-2) var(--space-3); text-align: left; border-bottom: 1px solid var(--color-border); }
-th { color: var(--color-muted); font-size: 0.8rem; }
-tbody tr:hover { background: #f1f5f9; }
+:deep(.data-table) { width: 100%; border-collapse: collapse; background: var(--color-surface); border-radius: var(--radius); }
+:deep(.data-table th), :deep(.data-table td) { padding: var(--space-2) var(--space-3); text-align: left; border-bottom: 1px solid var(--color-border); }
+:deep(.data-table th) { color: var(--color-muted); font-size: 0.8rem; }
+:deep(.data-table tbody tr:hover) { background: #f1f5f9; }
 .error { color: var(--color-danger); }
 </style>
