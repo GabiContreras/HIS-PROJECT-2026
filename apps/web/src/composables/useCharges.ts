@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue';
 import { listCharges, type Charge } from '../services/charges';
-import { ApiError } from '../shared/http';
+import { messageFrom } from '../shared/errors';
 
 export function useCharges() {
   const charges = ref<Charge[]>([]);
@@ -16,7 +16,7 @@ export function useCharges() {
     try {
       charges.value = await listCharges();
     } catch (reason) {
-      error.value = reason instanceof ApiError ? reason.message : 'No se pudieron cargar los cargos.';
+      error.value = messageFrom(reason, 'No se pudieron cargar los cargos.');
     } finally {
       loading.value = false;
     }

@@ -35,5 +35,5 @@ watch(userId, cargarPorId, { immediate: true });
 dl { display: grid; gap: var(--space-2); }
 dt { font-weight: 700; }
 dd { margin: 0; }
-.error { color: #9c2020; }
+.error { color: var(--color-danger); }
 </style>

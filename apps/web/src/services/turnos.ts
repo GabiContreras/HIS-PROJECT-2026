@@ -48,3 +48,8 @@ export function transicionarTurno(id: string, estado: EstadoTurno): Promise<Turn
 export function reservarTurno(id: string, pacienteId: string): Promise<Turno> {
   return http.patch<Turno>(`/turnos/${id}/reservar`, { pacienteId });
 }
+
+/** Entreturno de 15 minutos: debe empezar en :15 o :45 entre dos turnos de 30 minutos. */
+export function crearEntreturno(datos: CrearTurnoInput): Promise<Turno> {
+  return http.post<Turno>('/turnos/urgencia', datos);
+}

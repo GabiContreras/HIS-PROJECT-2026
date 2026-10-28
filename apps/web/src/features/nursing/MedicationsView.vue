@@ -1,57 +1,102 @@
 <script setup lang="ts">
-import { onMounted } from 'vue';
-import StatusChip from '@/components/ui/StatusChip.vue';
-import { useMedications } from '@/composables/useMedications';
+import { computed, onMounted, ref } from 'vue';
+import { storeToRefs } from 'pinia';
+import BaseCard from '../../components/ui/BaseCard.vue';
+import NoticeBanner from '../../components/ui/NoticeBanner.vue';
+import StatusChip from '../../components/ui/StatusChip.vue';
+import { ADMIN_WINDOW_MIN, minutesToSchedule, withinWindow, type Medication } from '../../services/medications';
+import { messageFrom } from '../../shared/errors';
+import { formatTime } from '../../shared/format';
+import { useInventoryStore } from '../../stores/inventory.store';
+import { useMedicationsStore } from '../../stores/medications.store';
+import { useSessionStore } from '../iam/session.store';
 
-const { medications, pending, loading, error, load, administer } = useMedications();
+const session = useSessionStore();
+const store = useMedicationsStore();
+const inventory = useInventoryStore();
+const { medications, pending, loading, error } = storeToRefs(store);
 
-onMounted(load);
+const canAdminister = computed(() => session.role === 'ENFERMERO');
+const aviso = ref<string | null>(null);
+const fallo = ref<string | null>(null);
+const working = ref(false);
+
+function windowText(m: Medication): string {
+  const diff = minutesToSchedule(m);
+  if (withinWindow(m)) return 'Dentro de ventana';
+  return diff > 0 ? `Faltan ${diff} min` : `Vencida hace ${-diff} min`;
+}
+
+async function administer(m: Medication): Promise<void> {
+  working.value = true;
+  aviso.value = null;
+  fallo.value = null;
+  try {
+    await store.administer(m.id);
+    const supply = m.insumoId ? inventory.items.find((i) => i.id === m.insumoId) : undefined;
+    aviso.value = supply
+      ? `Dosis registrada a nombre de ${session.fullName}. Stock de ${supply.nombre}: ${supply.cantidadDisponible} ${supply.unidadMedida}.`
+      : `Dosis registrada a nombre de ${session.fullName}.`;
+  } catch (reason) {
+    fallo.value = messageFrom(reason);
+  } finally {
+    working.value = false;
+  }
+}
+
+onMounted(() => Promise.all([store.load(), inventory.load()]));
 </script>
 
 <template>
-  <div>
-    <p class="summary">{{ pending.length }} medicaciones pendientes de {{ medications.length }}.</p>
-
-    <p v-if="error" class="error" role="alert">
-      {{ error }} <button type="button" :disabled="loading" @click="load">Reintentar</button>
+  <div class="page">
+    <p class="muted">
+      {{ pending.length }} pendientes de {{ medications.length }}. Se puede administrar con un margen de ±{{ ADMIN_WINDOW_MIN }} minutos
+      sobre el horario indicado; el insumo se descuenta del inventario.
     </p>
-    <p v-else-if="loading && medications.length === 0" role="status">Cargando medicaciones...</p>
-    <p v-else-if="medications.length === 0">No hay medicaciones indicadas.</p>
-    <table v-else>
-      <thead>
-        <tr><th>Horario</th><th>Paciente</th><th>Medicamento</th><th>Dosis</th><th>Estado</th><th></th></tr>
-      </thead>
-      <tbody>
-        <tr v-for="m in medications" :key="m.id">
-          <td>{{ m.horario }}</td>
-          <td>{{ m.paciente }}</td>
-          <td>{{ m.medicamento }}</td>
-          <td>{{ m.dosis }}</td>
-          <td>
-            <StatusChip
-              :label="m.estado === 'PENDIENTE' ? 'Pendiente' : 'Administrada'"
-              :tone="m.estado === 'PENDIENTE' ? 'warning' : 'success'"
-            />
-          </td>
-          <td>
-            <button v-if="m.estado === 'PENDIENTE'" type="button" :disabled="loading" @click="administer(m.id)">
-              Marcar administrada
-            </button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <NoticeBanner v-if="aviso" tone="success">{{ aviso }}</NoticeBanner>
+    <NoticeBanner v-if="fallo" tone="error">{{ fallo }}</NoticeBanner>
+    <NoticeBanner v-if="!canAdminister" tone="info">Solo enfermería registra la administración. Vos podés consultar el estado.</NoticeBanner>
+
+    <BaseCard>
+      <template #header><h3>Indicaciones del día</h3></template>
+      <NoticeBanner v-if="error" tone="error">
+        {{ error }} <button type="button" class="btn-sm" @click="store.load">Reintentar</button>
+      </NoticeBanner>
+      <p v-else-if="loading && medications.length === 0" role="status">Cargando medicaciones...</p>
+      <p v-else-if="medications.length === 0" class="muted">No hay medicaciones indicadas.</p>
+      <div v-else class="scroll-x">
+        <table>
+          <thead><tr><th>Horario</th><th>Paciente</th><th>Medicación</th><th>Estado</th><th></th></tr></thead>
+          <tbody>
+            <tr v-for="m in medications" :key="m.id">
+              <td><strong>{{ formatTime(m.programadaAt) }}</strong></td>
+              <td>{{ m.paciente }}</td>
+              <td>{{ m.medicamento }} {{ m.dosis }}<br /><small class="muted">{{ m.indicacion }}</small></td>
+              <td>
+                <StatusChip
+                  v-if="m.estado === 'ADMINISTRADA'"
+                  label="Administrada"
+                  tone="success"
+                />
+                <StatusChip v-else :label="windowText(m)" :tone="withinWindow(m) ? 'info' : 'neutral'" />
+                <br /><small v-if="m.administradaPor" class="muted">Por {{ m.administradaPor }}</small>
+              </td>
+              <td>
+                <button
+                  v-if="m.estado === 'PENDIENTE' && canAdminister"
+                  class="btn btn-sm"
+                  type="button"
+                  :disabled="working || !withinWindow(m)"
+                  :title="withinWindow(m) ? '' : 'Fuera del margen permitido'"
+                  @click="administer(m)"
+                >
+                  Administrar
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </BaseCard>
   </div>
 </template>
-
-<style scoped>
-.summary { color: var(--color-muted); margin-top: 0; }
-table { width: 100%; border-collapse: collapse; background: var(--color-surface); }
-th, td { padding: var(--space-2) var(--space-3); text-align: left; border-bottom: 1px solid var(--color-border); }
-th { color: var(--color-muted); font-size: 0.8rem; }
-tbody tr:hover { background: #f1f5f9; }
-td button { font: inherit; padding: 6px 10px; border: 1px solid var(--color-border); border-radius: 8px;
-  background: transparent; cursor: pointer; }
-td button:hover:not(:disabled) { background: #e6eefb; }
-.error { color: var(--color-danger); }
-</style>

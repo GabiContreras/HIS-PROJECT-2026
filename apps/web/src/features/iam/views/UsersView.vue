@@ -3,7 +3,7 @@ import { onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import UsuariosForm from '../../../components/UsuariosForm.vue';
 import UsersTable from '../../../components/UsersTable.vue';
-import { type CrearUsuarioInput } from '../../../services/users.ts';
+import { type CrearUsuarioInput } from '../../../services/users';
 import { useUsers } from '../useUsers';
 
 const formVisible = ref(false);
@@ -23,7 +23,7 @@ onMounted(cargar);
         <h1>Usuarios</h1>
         <p>Administrá las cuentas del personal hospitalario.</p>
       </div>
-      <button type="button" @click="formVisible = true">Nuevo usuario</button>
+      <button class="btn" type="button" @click="formVisible = true">Nuevo usuario</button>
     </header>
 
     <UsuariosForm
@@ -41,7 +41,7 @@ onMounted(cargar);
     <p v-else-if="usuarios.length === 0">Todavía no hay usuarios registrados.</p>
     <UsersTable v-else :usuarios="usuarios">
       <template #actions="{ usuario }">
-        <RouterLink :to="{ name: 'user-detail', params: { id: usuario.id } }">Ver detalle</RouterLink>
+        <RouterLink class="btn btn-sm btn-secondary" :to="{ name: 'user-detail', params: { id: usuario.id } }">Ver detalle</RouterLink>
       </template>
     </UsersTable>
   </section>
@@ -52,7 +52,7 @@ onMounted(cargar);
 .page-header h1, .page-header p { margin: 0; }
 .page-header p { margin-top: var(--space-1); }
 button { font: inherit; padding: 8px 12px; }
-.error { color: #9c2020; }
+.error { color: var(--color-danger); }
 .error button { margin-left: var(--space-2); }
 @media (max-width: 640px) {
   .page-header { flex-direction: column; }

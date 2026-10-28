@@ -1,132 +1,128 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
-import BaseCard from '@/components/ui/BaseCard.vue';
-import { usePatients } from '@/composables/usePatients';
-import { addVitalSign, listVitalSigns, VITAL_TYPES, type VitalSign } from '@/services/vitalSigns';
+import { storeToRefs } from 'pinia';
+import PatientPicker from '../../components/PatientPicker.vue';
+import BaseCard from '../../components/ui/BaseCard.vue';
+import NoticeBanner from '../../components/ui/NoticeBanner.vue';
+import StatusChip from '../../components/ui/StatusChip.vue';
+import type { Patient } from '../../services/patients';
+import { CRITICAL_TEMPERATURE, validateInput } from '../../services/vitalSigns';
+import { messageFrom } from '../../shared/errors';
+import { formatDateTime } from '../../shared/format';
+import { useVitalsStore } from '../../stores/vitals.store';
+import { useSessionStore } from '../iam/session.store';
 
-const { patients, load: loadPatients } = usePatients();
-const records = ref<VitalSign[]>([]);
-const loading = ref(false);
-const error = ref<string | null>(null);
-const saved = ref<string | null>(null);
+const session = useSessionStore();
+const store = useVitalsStore();
+const { records, loading, error } = storeToRefs(store);
 
-const form = reactive({ paciente: '', tipo: VITAL_TYPES[0]!.tipo, valor: '' });
+const canRecord = computed(() => session.role === 'ENFERMERO');
+const paciente = ref<Patient | null>(null);
+const form = reactive({ sistolica: '', diastolica: '', frecuenciaCardiaca: '', temperatura: '' });
+const saving = ref(false);
+const submitted = ref(false);
+const aviso = ref<{ tone: 'success' | 'error'; title: string; text: string } | null>(null);
+const fallo = ref<string | null>(null);
 
-const selectedType = computed(() => VITAL_TYPES.find((t) => t.tipo === form.tipo)!);
-const numericValue = computed(() => (form.valor === '' ? null : Number(form.valor)));
-const valueError = computed(() => {
-  const v = numericValue.value;
-  if (v === null) return null;
-  const { min, max, unidad } = selectedType.value;
-  if (Number.isNaN(v) || v < min || v > max) return `Ingresá un valor entre ${min} y ${max} ${unidad}.`;
-  return null;
-});
-const canSave = computed(() => form.paciente !== '' && numericValue.value !== null && !valueError.value);
-
-async function loadRecords(): Promise<void> {
-  loading.value = true;
-  error.value = null;
-  try {
-    records.value = await listVitalSigns();
-  } catch {
-    error.value = 'No se pudieron cargar los registros.';
-  } finally {
-    loading.value = false;
-  }
-}
+const input = computed(() => ({
+  pacienteId: paciente.value?.id ?? '',
+  paciente: paciente.value ? `${paciente.value.nombre} ${paciente.value.apellido}` : '',
+  sistolica: Number(form.sistolica),
+  diastolica: Number(form.diastolica),
+  frecuenciaCardiaca: Number(form.frecuenciaCardiaca),
+  temperatura: Number(form.temperatura),
+}));
+const problems = computed(() => validateInput(input.value));
+const hot = computed(() => Number(form.temperatura) > CRITICAL_TEMPERATURE);
 
 async function save(): Promise<void> {
-  if (!canSave.value || numericValue.value === null) return;
+  submitted.value = true;
+  fallo.value = null;
+  aviso.value = null;
+  if (!paciente.value || problems.value.length > 0) return;
+  saving.value = true;
   try {
-    await addVitalSign({
-      paciente: form.paciente,
-      tipo: form.tipo,
-      valor: numericValue.value,
-      unidad: selectedType.value.unidad,
-    });
-    saved.value = `Registro guardado para ${form.paciente}.`;
-    form.valor = '';
-    await loadRecords();
-  } catch {
-    error.value = 'No se pudo guardar el registro.';
+    const saved = await store.record(input.value);
+    aviso.value = saved.critico
+      ? { tone: 'error', title: 'Registro crítico', text: `${saved.temperatura} °C supera los ${CRITICAL_TEMPERATURE} °C. Se notificó al médico de guardia.` }
+      : { tone: 'success', title: 'Registro guardado', text: saved.nota };
+    Object.assign(form, { sistolica: '', diastolica: '', frecuenciaCardiaca: '', temperatura: '' });
+    submitted.value = false;
+  } catch (reason) {
+    fallo.value = messageFrom(reason);
+  } finally {
+    saving.value = false;
   }
 }
 
-const formatDate = (iso: string) =>
-  new Date(iso).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' });
-
-onMounted(() => Promise.all([loadPatients(), loadRecords()]));
+onMounted(store.load);
 </script>
 
 <template>
-  <div class="layout">
-    <BaseCard>
-      <template #header><h3>Registrar signo vital</h3></template>
-      <form @submit.prevent="save">
-        <label>
-          Paciente
-          <select v-model="form.paciente" required>
-            <option value="" disabled>Seleccioná un paciente</option>
-            <option v-for="p in patients" :key="p.id" :value="`${p.nombre} ${p.apellido}`">
-              {{ p.apellido }}, {{ p.nombre }}
-            </option>
-          </select>
-        </label>
-        <label>
-          Tipo
-          <select v-model="form.tipo">
-            <option v-for="t in VITAL_TYPES" :key="t.tipo" :value="t.tipo">{{ t.tipo }}</option>
-          </select>
-        </label>
-        <label>
-          Valor ({{ selectedType.unidad }})
-          <input v-model="form.valor" type="number" step="0.1" required />
-        </label>
-        <p v-if="valueError" class="error" role="alert">{{ valueError }}</p>
-        <button type="submit" :disabled="!canSave">Guardar registro</button>
-        <p v-if="saved" class="ok" role="status">{{ saved }}</p>
+  <div class="layout" :class="{ single: !canRecord }">
+    <BaseCard v-if="canRecord">
+      <template #header><h3>Registrar signos vitales</h3></template>
+      <form novalidate @submit.prevent="save">
+        <div class="form-grid">
+          <div class="full"><PatientPicker v-model="paciente" label="Paciente internado" /></div>
+          <label>Sistólica (mmHg)<input v-model="form.sistolica" type="number" inputmode="numeric" /></label>
+          <label>Diastólica (mmHg)<input v-model="form.diastolica" type="number" inputmode="numeric" /></label>
+          <label>Frecuencia cardíaca (lpm)<input v-model="form.frecuenciaCardiaca" type="number" inputmode="numeric" /></label>
+          <label>
+            Temperatura (°C)
+            <input v-model="form.temperatura" type="number" step="0.1" :class="{ hot }" />
+            <span v-if="hot" class="field-error">Supera {{ CRITICAL_TEMPERATURE }} °C: se avisará al médico de guardia.</span>
+          </label>
+          <div v-if="submitted" class="full errors" role="alert">
+            <p v-if="!paciente" class="field-error">Elegí un paciente.</p>
+            <p v-for="p in problems" :key="p" class="field-error">{{ p }}</p>
+          </div>
+          <p v-if="fallo" class="full field-error" role="alert">{{ fallo }}</p>
+        </div>
+        <div class="form-actions">
+          <button class="btn" type="submit" :disabled="saving">{{ saving ? 'Guardando...' : 'Guardar registro' }}</button>
+        </div>
       </form>
     </BaseCard>
 
-    <BaseCard>
-      <template #header><h3>Últimos registros</h3></template>
-      <p v-if="error" class="error" role="alert">
-        {{ error }} <button type="button" @click="loadRecords">Reintentar</button>
-      </p>
-      <p v-else-if="loading" role="status">Cargando registros...</p>
-      <p v-else-if="records.length === 0">Todavía no hay registros.</p>
-      <table v-else>
-        <thead><tr><th>Paciente</th><th>Tipo</th><th>Valor</th><th>Fecha</th></tr></thead>
-        <tbody>
-          <tr v-for="r in records" :key="r.id">
-            <td>{{ r.paciente }}</td>
-            <td>{{ r.tipo }}</td>
-            <td><strong>{{ r.valor }} {{ r.unidad }}</strong></td>
-            <td>{{ formatDate(r.fechaHora) }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </BaseCard>
+    <div class="stack">
+      <NoticeBanner v-if="aviso" :tone="aviso.tone" :title="aviso.title">{{ aviso.text }}</NoticeBanner>
+      <NoticeBanner v-if="!canRecord" tone="info">Solo enfermería registra signos vitales. Vos podés consultarlos.</NoticeBanner>
+
+      <BaseCard>
+        <template #header><h3>Últimos registros</h3></template>
+        <NoticeBanner v-if="error" tone="error">
+          {{ error }} <button type="button" class="btn-sm" @click="store.load">Reintentar</button>
+        </NoticeBanner>
+        <p v-else-if="loading && records.length === 0" role="status">Cargando registros...</p>
+        <p v-else-if="records.length === 0" class="muted">Todavía no hay registros.</p>
+        <div v-else class="scroll-x">
+          <table>
+            <thead><tr><th>Paciente</th><th>PA</th><th>FC</th><th>Temp.</th><th>Fecha</th><th></th></tr></thead>
+            <tbody>
+              <tr v-for="r in records" :key="r.id" :class="{ 'critical-row': r.critico }">
+                <td>{{ r.paciente }}<br /><small class="muted">{{ r.nota }}</small></td>
+                <td>{{ r.sistolica }}/{{ r.diastolica }}</td>
+                <td>{{ r.frecuenciaCardiaca }}</td>
+                <td :class="{ red: r.critico }"><strong>{{ r.temperatura }} °C</strong></td>
+                <td>{{ formatDateTime(r.fechaHora) }}<br /><small class="muted">{{ r.registradoPor }}</small></td>
+                <td><StatusChip v-if="r.critico" label="Crítico" tone="danger" /></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </BaseCard>
+    </div>
   </div>
 </template>
 
 <style scoped>
-h3 { margin: 0; }
-.layout { display: grid; grid-template-columns: 1fr 2fr; gap: var(--space-4); align-items: start; }
+.layout { display: grid; grid-template-columns: 1fr 1.6fr; gap: 20px; align-items: start; }
+.layout.single { grid-template-columns: 1fr; }
 .layout > * { min-width: 0; }
-form { display: grid; gap: var(--space-3); }
-label { display: grid; gap: var(--space-1); font-size: 0.9rem; }
-select, input { font: inherit; padding: 8px; border: 1px solid var(--color-border); border-radius: 8px; }
-button[type='submit'] { font: inherit; padding: 10px; border: 0; border-radius: 8px; cursor: pointer;
-  background: var(--color-primary); color: #fff; font-weight: 600; }
-button[type='submit']:disabled { opacity: 0.5; cursor: not-allowed; }
-table { width: 100%; border-collapse: collapse; }
-th, td { padding: var(--space-2); text-align: left; border-bottom: 1px solid var(--color-border); }
-th { color: var(--color-muted); font-size: 0.8rem; }
-.error { color: var(--color-danger); margin: 0; }
-.ok { color: var(--color-success); margin: 0; }
-
-@media (max-width: 900px) {
-  .layout { grid-template-columns: 1fr; }
-}
+.stack { display: grid; gap: 16px; }
+.errors { display: grid; gap: 4px; }
+.hot { border-color: var(--color-danger); background: var(--color-danger-soft); }
+.red { color: var(--color-danger); }
+@media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
 </style>

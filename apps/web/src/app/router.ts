@@ -49,12 +49,17 @@ export const router = createRouter({
           component: () => import('../features/admissions/AppointmentView.vue'),
         },
         {
+          path: 'pacientes',
+          name: 'patients',
+          meta: { title: 'Pacientes' },
+          component: () => import('../features/patients/PatientsView.vue'),
+        },
+        {
           path: 'camas',
           name: 'beds',
           meta: { title: 'Camas' },
           component: () => import('../features/beds/BedsView.vue'),
         },
-
         {
           path: 'camas/:id',
           name: 'bed-detail',
@@ -63,16 +68,10 @@ export const router = createRouter({
           component: () => import('../features/beds/BedDetailView.vue'),
         },
         {
-          path: 'pacientes',
-          name: 'patients',
-          meta: { title: 'Pacientes' },
-          component: () => import('../features/patients/PatientsView.vue'),
-        },
-        {
-          path: 'insumos',
-          name: 'inventory',
-          meta: { roles: ['ENFERMERO', 'ADMINISTRATIVO'], title: 'Insumos' },
-          component: () => import('../features/inventory/InventoryView.vue'),
+          path: 'triaje',
+          name: 'triage',
+          meta: { roles: ['ENFERMERO', 'MEDICO'], title: 'Triaje de guardia' },
+          component: () => import('../features/triage/TriageView.vue'),
         },
         {
           path: 'enfermeria',
@@ -92,7 +91,19 @@ export const router = createRouter({
               meta: { title: 'Medicaciones' },
               component: () => import('../features/nursing/MedicationsView.vue'),
             },
+            {
+              path: 'protocolos',
+              name: 'protocols',
+              meta: { title: 'Protocolos de ingreso' },
+              component: () => import('../features/nursing/ProtocolsView.vue'),
+            },
           ],
+        },
+        {
+          path: 'insumos',
+          name: 'inventory',
+          meta: { roles: ['ENFERMERO', 'ADMINISTRATIVO'], title: 'Insumos' },
+          component: () => import('../features/inventory/InventoryView.vue'),
         },
         {
           path: 'facturacion',
@@ -126,6 +137,3 @@ router.beforeEach(async (to) => {
 router.afterEach((to) => {
   document.title = to.meta.title ? `${to.meta.title} · HIS` : 'HIS';
 });
-//Ejemplo ruta navegacion
-//router.push({ name: 'bed-detail', params: { id } })
-//<RouterLink :to="{ name: 'vital-signs' }">

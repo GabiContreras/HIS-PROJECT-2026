@@ -36,35 +36,72 @@ async function submit() {
 </script>
 
 <template>
-  <div class="login">
-    <form class="card" @submit.prevent="submit">
-      <h1>HIS</h1>
-      <p class="muted">Ingresá con tu cuenta</p>
+  <div class="login-shell">
+    <section class="brand-panel">
+      <div class="brand">
+        <span class="brand-mark">H</span>
+        <strong>HIS</strong>
+      </div>
+      <div class="copy">
+        <span class="eyebrow">GESTIÓN HOSPITALARIA</span>
+        <h1>Cada rol, su propio espacio.</h1>
+        <p>
+          Organización, acceso y gestión centralizada.
+        </p>
+      </div>
+      <p class="foot">Sistema de Información Hospitalaria</p>
+    </section>
 
-      <label for="email">Email</label>
-      <input id="email" v-model="email" type="email" autocomplete="username" required />
+    <section class="form-panel">
+      <form class="login-card" @submit.prevent="submit">
+        <div>
+          <span class="eyebrow dark">ACCESO AL SISTEMA</span>
+          <h2>Iniciar sesión</h2>
+          <p class="muted">Ingresá con el email de tu cuenta.</p>
+        </div>
 
-      <label for="password">Contraseña</label>
-      <input id="password" v-model="password" type="password" autocomplete="current-password" required />
+        <label for="email">
+          Email
+          <input id="email" v-model="email" type="email" autocomplete="username" placeholder="nombre@hospital.com" required />
+        </label>
 
-      <p v-if="error" class="error" role="alert">{{ error }}</p>
+        <label for="password">
+          Contraseña
+          <input id="password" v-model="password" type="password" autocomplete="current-password" required />
+        </label>
 
-      <button type="submit" :disabled="loading">{{ loading ? 'Ingresando...' : 'Ingresar' }}</button>
-    </form>
+        <p v-if="error" class="field-error" role="alert">{{ error }}</p>
+
+        <button class="btn" type="submit" :disabled="loading">{{ loading ? 'Ingresando...' : 'Ingresar' }}</button>
+      </form>
+    </section>
   </div>
 </template>
 
 <style scoped>
-.login { min-height: 100vh; display: grid; place-items: center; padding: var(--space-3); }
-.card { width: 100%; max-width: 360px; background: var(--color-surface); border: 1px solid var(--color-border);
-  border-radius: var(--radius); padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
-h1 { margin: 0; color: var(--color-primary); }
-.muted { margin: 0 0 var(--space-3); color: var(--color-muted); }
-label { font-size: 0.9rem; font-weight: 600; }
-input { padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 8px; font: inherit; }
-input:focus { outline: 2px solid var(--color-accent); outline-offset: 1px; }
-.error { margin: 0; color: var(--color-danger); font-size: 0.9rem; }
-button { margin-top: var(--space-2); padding: 10px 12px; border: 0; border-radius: 8px; font: inherit;
-  font-weight: 600; background: var(--color-primary); color: #fff; cursor: pointer; }
-button:disabled { opacity: 0.6; cursor: not-allowed; }
+.login-shell { min-height: 100vh; display: grid; grid-template-columns: 44% 56%; background: #fff; }
+.brand-panel { position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between;
+  padding: 40px 56px; color: #fff;
+  background: radial-gradient(circle at 15% 85%, #26897a 0, transparent 27%), linear-gradient(145deg, #0a5147, #073d37); }
+.brand-panel::after { content: ''; position: absolute; right: -210px; bottom: -100px; width: 420px; height: 420px; border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: 0 0 0 70px rgba(255, 255, 255, 0.025), 0 0 0 140px rgba(255, 255, 255, 0.02); }
+.brand { display: flex; align-items: center; gap: 12px; font-family: var(--font-display); font-size: 1.3rem; position: relative; z-index: 1; }
+.brand-mark { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 9px; background: #fff; color: var(--color-brand); font-weight: 700; }
+.copy { max-width: 520px; position: relative; z-index: 1; }
+.eyebrow { display: block; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.14em; color: #9ed2c8; margin-bottom: 8px; }
+.eyebrow.dark { color: var(--color-brand); }
+.copy h1 { font-size: clamp(2rem, 3.6vw, 3.2rem); line-height: 1.1; margin: 16px 0 20px; color: #fff; }
+.copy p { color: #c8dcd7; font-size: 1.02rem; line-height: 1.6; }
+.foot { position: relative; z-index: 1; color: #a7c2bc; font-size: 0.75rem; }
+.form-panel { display: grid; place-items: center; padding: 48px; }
+.login-card { width: min(420px, 100%); display: grid; gap: 18px; }
+.login-card h2 { font-size: 1.9rem; margin: 4px 0; }
+
+@media (max-width: 900px) {
+  .login-shell { grid-template-columns: 1fr; }
+  .brand-panel { display: none; }
+}
+@media (max-width: 620px) {
+  .form-panel { padding: 24px 16px; }
+}
 </style>

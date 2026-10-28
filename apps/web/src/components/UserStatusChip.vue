@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import StatusChip from './ui/StatusChip.vue';
 import type { AccountStatus } from '../features/iam/types';
+import StatusChip, { type ChipTone } from './ui/StatusChip.vue';
 
 const props = defineProps<{ status: AccountStatus }>();
 
@@ -11,7 +11,7 @@ const LABELS: Record<AccountStatus, string> = {
   ACTIVO: 'Activo',
   DESHABILITADO: 'Deshabilitado',
 };
-const TONES: Record<AccountStatus, 'success' | 'danger' | 'warning'> = {
+const TONES: Record<AccountStatus, ChipTone> = {
   PENDIENTE_VERIFICACION: 'warning',
   PENDIENTE_HABILITACION: 'warning',
   ACTIVO: 'success',
@@ -19,9 +19,8 @@ const TONES: Record<AccountStatus, 'success' | 'danger' | 'warning'> = {
 };
 
 const label = computed(() => LABELS[props.status]);
-const tone = computed(() => TONES[props.status]);
 </script>
 
 <template>
-  <StatusChip :label="label" :tone="tone" />
+  <StatusChip :label="label" :tone="TONES[status]" />
 </template>
