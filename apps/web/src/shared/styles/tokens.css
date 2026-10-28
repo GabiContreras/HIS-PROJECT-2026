@@ -1,40 +1,41 @@
 :root {
-  --color-primary: #1a3c6e;
-  --color-accent: #1f9d8b;
-  --color-bg: #f5f7fb;
-  --color-surface: #ffffff;
-  --color-text: #1b2430;
-  --color-muted: #6b7686;
-  --color-border: #dde3ec;
+  /* Paleta del diseño de Figma */
+  --color-ink: #17201d;
+  --color-muted: #66726e;
+  --color-line: #dfe5e2;
+  --color-brand: #0d6657;
+  --color-brand-dark: #0a4c42;
+  --color-brand-soft: #e6f2ef;
+  --color-danger: #b42318;
+  --color-danger-soft: #fef0ed;
+  --color-warning: #9a6508;
+  --color-warning-soft: #fff7e4;
+  --color-info: #27657b;
+  --color-info-soft: #e9f4f7;
+  --color-violet: #5b3fa0;
+  --color-violet-soft: #efe9fb;
 
-  --color-success: #2f9e5b;
-  --color-info: #2563eb;
-  --color-warning: #d99a00;
-  --color-danger: #d64545;
+  /* Nombres que ya usaban los componentes existentes */
+  --color-primary: var(--color-brand);
+  --color-accent: var(--color-brand);
+  --color-bg: #f5f7f6;
+  --color-surface: #ffffff;
+  --color-text: var(--color-ink);
+  --color-border: var(--color-line);
+  --color-success: var(--color-brand);
   --color-neutral: #7b8794;
 
-  --radius: 12px;
+  /* Estados de cama */
+  --cama-disponible: #0d6657;
+  --cama-ocupada: #27657b;
+  --cama-limpieza: #d49a2e;
+  --cama-bloqueada: #7b8794;
+
+  --radius: 11px;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 16px;
   --space-4: 24px;
-  --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-
-  --estado-disponible: #7b8794;
-  --estado-reservado: #2563eb;
-  --estado-confirmado: #2f9e5b;
-  --estado-atendido: #176b36;
-  --estado-cancelado: #d64545;
-  --cama-disponible: #2f9e5b;
-  --cama-ocupada: #2563eb;
-  --cama-reservada: #d99a00;
-  --cama-mantenimiento: #7b8794;
-  --prio-alta: #d64545;
-  --prio-media: #e8890c;
-  --prio-baja: #2f9e5b;
-
-  --cama-disponible: #2f9e5b;
-  --cama-ocupada: #2563eb;
-  --cama-reservada: #d99a00;
-  --cama-mantenimiento: #7b8794;
+  --font: 'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Manrope', 'DM Sans', system-ui, sans-serif;
 }

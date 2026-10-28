@@ -1,11 +1,14 @@
 <script setup lang="ts">
-defineProps<{
-  role: 'Médico' | 'Enfermero' | 'Administrativo';
-}>();
+import { computed } from 'vue';
+import { ROLE_LABELS, type Role } from '../../features/iam/types';
+import StatusChip, { type ChipTone } from './StatusChip.vue';
+
+const props = defineProps<{ role: Role }>();
+
+const TONES: Record<Role, ChipTone> = { MEDICO: 'info', ENFERMERO: 'success', ADMINISTRATIVO: 'violet' };
+const label = computed(() => ROLE_LABELS[props.role]);
 </script>
 
 <template>
-  <span class="role-chip" :class="role.toLowerCase()">
-    {{ role }}
-  </span>
+  <StatusChip :label="label" :tone="TONES[role]" />
 </template>

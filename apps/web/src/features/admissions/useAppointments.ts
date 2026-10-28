@@ -1,6 +1,7 @@
 import { ref } from 'vue';
-import { ApiError } from '../../shared/http';
+import { messageFrom } from '../../shared/errors';
 import {
+  crearEntreturno,
   crearTurno,
   listarAgenda,
   reservarTurno,
@@ -10,49 +11,55 @@ import {
   type TurnoAgenda,
 } from '../../services/turnos';
 
-function messageFrom(error: unknown): string {
-  return error instanceof ApiError ? error.message : 'No se pudo completar la operación.';
-}
-
 export function useAppointments() {
   const turnos = ref<TurnoAgenda[]>([]);
   const cargando = ref(false);
   const error = ref<string | null>(null);
+  // Los errores de una acción no reemplazan la tabla: se muestran aparte.
+  const actuando = ref(false);
+  const errorAccion = ref<string | null>(null);
 
-  async function execute<T>(operation: () => Promise<T>): Promise<T | null> {
+  async function cargar(): Promise<boolean> {
     cargando.value = true;
     error.value = null;
     try {
-      return await operation();
+      turnos.value = await listarAgenda();
+      return true;
     } catch (reason) {
       error.value = messageFrom(reason);
-      return null;
+      return false;
     } finally {
       cargando.value = false;
     }
   }
 
-  async function cargar(): Promise<boolean> {
-    const result = await execute(listarAgenda);
-    if (result === null) return false;
-    turnos.value = result;
-    return true;
+  /** Ejecuta una acción y, si salió bien o falló por conflicto, refresca la agenda. */
+  async function accion(operation: () => Promise<unknown>): Promise<boolean> {
+    actuando.value = true;
+    errorAccion.value = null;
+    try {
+      await operation();
+      await cargar();
+      return true;
+    } catch (reason) {
+      errorAccion.value = messageFrom(reason);
+      await cargar();
+      return false;
+    } finally {
+      actuando.value = false;
+    }
   }
 
-  async function crear(datos: CrearTurnoInput): Promise<boolean> {
-    const result = await execute(() => crearTurno(datos));
-    return result !== null && cargar();
-  }
-
-  async function transicionar(id: string, estado: EstadoTurno): Promise<boolean> {
-    const result = await execute(() => transicionarTurno(id, estado));
-    return result !== null && cargar();
-  }
-
-  async function reservar(id: string, pacienteId: string): Promise<boolean> {
-    const result = await execute(() => reservarTurno(id, pacienteId));
-    return result !== null && cargar();
-  }
-
-  return { turnos, cargando, error, cargar, crear, transicionar, reservar };
+  return {
+    turnos,
+    cargando,
+    error,
+    actuando,
+    errorAccion,
+    cargar,
+    crear: (datos: CrearTurnoInput) => accion(() => crearTurno(datos)),
+    crearEntreturno: (datos: CrearTurnoInput) => accion(() => crearEntreturno(datos)),
+    reservar: (id: string, pacienteId: string) => accion(() => reservarTurno(id, pacienteId)),
+    transicionar: (id: string, estado: EstadoTurno) => accion(() => transicionarTurno(id, estado)),
+  };
 }

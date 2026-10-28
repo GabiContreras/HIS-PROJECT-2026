@@ -9,17 +9,7 @@ export interface Patient {
   telefono: string | null;
 }
 
-const MOCK: Patient[] = [
-  { id: '1', nombre: 'Marta', apellido: 'Pérez', documento: '20111222', fechaNacimiento: '1958-03-12', telefono: null },
-  { id: '2', nombre: 'Luis', apellido: 'Rossi', documento: '27333444', fechaNacimiento: '1985-07-30', telefono: '3511234567' },
-  { id: '3', nombre: 'Ana', apellido: 'Díaz', documento: '30555666', fechaNacimiento: '1992-11-02', telefono: null },
-];
-
-export async function listPatients(): Promise<Patient[]> {
-  return MOCK; // TODO: http.get<Patient[]>('/pacientes') cuando exista el endpoint
-}
-
-export interface CrearPacienteInput {
+export interface CreatePatientInput {
   nombre: string;
   apellido: string;
   documento: string;
@@ -27,11 +17,12 @@ export interface CrearPacienteInput {
   telefono?: string;
 }
 
+/** Busca por nombre, apellido o documento (el back devuelve hasta 50). Sin texto lista los primeros. */
 export function searchPatients(q = ''): Promise<Patient[]> {
-  const term = q.trim();
-  return http.get<Patient[]>(term ? `/pacientes?q=${encodeURIComponent(term)}` : '/pacientes');
+  const text = q.trim();
+  return http.get<Patient[]>(`/pacientes${text ? `?q=${encodeURIComponent(text)}` : ''}`);
 }
 
-export function createPatient(datos: CrearPacienteInput): Promise<Patient> {
-  return http.post<Patient>('/pacientes', datos);
+export function createPatient(input: CreatePatientInput): Promise<Patient> {
+  return http.post<Patient>('/pacientes', input);
 }
