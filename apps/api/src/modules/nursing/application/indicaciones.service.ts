@@ -146,6 +146,7 @@ export class IndicacionesService {
         quantity: 1,
         administeredBy: identity.accountId,
         administeredAt: administracion.fechaHoraAdministracion.toISOString(),
+        administrationId: administracion.id,
       }),
     );
 

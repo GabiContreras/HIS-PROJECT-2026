@@ -150,6 +150,7 @@ describe('IndicacionesService', () => {
         quantity: 1,
         administeredBy: 'nurse-1',
         administeredAt: '2030-01-01T14:10:00.000Z',
+        administrationId: 'adm-1',
       });
     });
 
