@@ -74,6 +74,17 @@ La interfaz muestra estados de carga, vacío, error y reintento.
 - No se expone la reserva de turnos: requiere seleccionar un paciente, pero la API no publica un endpoint para listar o buscar pacientes.
 - Camas e internaciones no se integran todavía porque el backend no publica controladores HTTP para esos dominios.
 
+## Enfermería e inventario (Módulo 1)
+
+Las pantallas de Enfermería e Insumos consumen la API real mediante `shared/http.ts`:
+
+- **Signos vitales** (`/enfermeria/signos-vitales`): `GET /signos-vitales/tipos` carga los tipos con sus límites de plausibilidad; el formulario (paciente, tipo, valor) valida campos obligatorios, valor numérico, rango plausible y máximo 2 decimales antes de enviar `POST /signos-vitales`. Los errores de la API (por ejemplo `400` por valor implausible) se muestran bajo el formulario. En el listado, los valores con `fueraDeRango` se resaltan en rojo (`--color-danger`) con un chip. Los códigos de la API (`PRESION_ARTERIAL`, etc.) se traducen a etiquetas en `services/vitalSigns.ts`.
+- **Medicación** (`/enfermeria/medicaciones`): lista `GET /indicaciones` (todos los pacientes o uno elegido) con las dosis del día. El botón "Registrar administración" solo se habilita para el rol ENFERMERO y para dosis pendientes dentro de la ventana de ±30 min; los `409` se muestran con el mensaje del servidor. Tras registrar se vuelven a consultar indicaciones e inventario (el descuento de stock lo hace el backend).
+- **Inventario** (`/insumos`): `GET /resources/inventory` con `DataTable` y chips de stock bajo.
+- **Dashboard**: las tarjetas de signos vitales, stock y medicaciones pendientes usan los mismos servicios; el rol administrativo no consulta signos vitales ni indicaciones (la API responde `403`).
+
+Mejoras posibles (no implementadas): pantalla para que el médico cree indicaciones (`POST /indicaciones` ya existe), campo de observaciones al administrar, historial de signos por paciente y gráficas de evolución.
+
 ## Criterios frontend demostrados
 
 - Comunicación entre componentes mediante props tipadas, eventos y slots.
