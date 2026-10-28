@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, type Relation } from 'typeorm';
 import { ProtocoloIngreso } from './protocolo-ingreso.entity.js';
 
 @Entity('tareas_protocolo')
@@ -8,7 +8,8 @@ export class TareaProtocolo {
 
   @ManyToOne(() => ProtocoloIngreso, (protocolo) => protocolo.tareas, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'protocolo_id' })
-  protocolo: ProtocoloIngreso;
+  /** `Relation<>` evita el error de inicialización por la importación circular entre entidades (ESM). */
+  protocolo: Relation<ProtocoloIngreso>;
 
   @Column({ type: 'int' })
   orden: number;
