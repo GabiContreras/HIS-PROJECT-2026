@@ -55,6 +55,13 @@ datos básicos de la cuenta se devuelven en el body.
 | `GET /protocolos?pacienteId=` | Enfermero o médico | Protocolos de ingreso del paciente (más nuevo primero): `[{ id, ingresoId, pacienteId, tipo (PRE_QUIRURGICO/RESPIRATORIO), motivoIngreso, generadoEn, tareas: [{ orden, descripcion, frecuenciaHoras }] }]`. `400` si falta o es inválido `pacienteId`, `401` sin sesión, `403` rol sin permiso, `404` paciente inexistente; lista vacía si no tiene protocolo. |
 | `POST /protocolos/ingresos` | Médico o administrativo | Registra un ingreso `{ ingresoId (UUID), pacienteId (UUID), motivoIngreso (3-200) }` y genera su protocolo con el Patrón Builder: "cirugía programada" / "pre-quirúrgico" → tareas pre-operatorias; "neumonía" / "infección respiratoria" → tareas respiratorias. Idempotente por `ingresoId`: reenviarlo devuelve el protocolo existente sin duplicar. `400` validación o motivo sin protocolo, `403` rol sin permiso, `404` paciente inexistente. Equivale al evento `patient.admitted`; es el punto de entrada mientras ningún módulo lo publique. |
 | Evento `patient.admitted` (suscriptor de Enfermería) | Interno, sin endpoint | Payload `{ admissionId, patientId, reason, admittedAt }`. Enfermería genera el protocolo con `ProtocolosService` (misma lógica que el endpoint, idempotente por `admissionId` gracias al índice único de `protocolos_ingreso`). Si falla (motivo sin protocolo, paciente inexistente, error de BD) solo se registra un log: no se propaga al bus. Hoy ningún módulo publica este evento (Admisión/Recursos aún no registran internaciones). |
+| `GET /historia-clinica/:pacienteId` | Médico o enfermero | Historia clínica: `{ paciente (ficha demográfica de Admisión), alergias, antecedentesFamiliares, evoluciones, estudios }`; cada sección es una lista `[{ id, categoria, titulo, detalle, registradoPor, fechaHora }]` del más nuevo al más viejo (`titulo` es `null` en las evoluciones). `400` si `pacienteId` no es UUID, `401` sin sesión, `403` administrativo, `404` paciente inexistente. |
+| `POST /historia-clinica/:pacienteId/alergias` | Médico | Registra `{ sustancia (2-120), reaccion (2-1000) }`. Autor y fecha los pone el servidor. `201` con el registro; `400` validación, `403` rol sin permiso, `404` paciente inexistente. |
+| `POST /historia-clinica/:pacienteId/antecedentes-familiares` | Médico | Registra `{ parentesco (2-120), descripcion (2-1000) }`. Mismos errores que alergias. |
+| `POST /historia-clinica/:pacienteId/evoluciones` | Médico | Registra la evolución médica `{ nota (3-4000) }`. Mismos errores que alergias. |
+| `POST /historia-clinica/:pacienteId/estudios` | Médico | Registra un estudio para su visualización `{ tipo (2-120), resultado (2-4000) }` (texto; no hay carga de archivos). Mismos errores que alergias. |
+
+La historia clínica es inmutable: no existen endpoints de modificación ni borrado, y la tabla `registros_clinicos` rechaza `UPDATE` y `DELETE` con un trigger. Los textos se guardan sin espacios en los extremos. Las lecturas excluyen al administrativo porque los datos clínicos no forman parte de su función; la ficha demográfica sigue disponible para él en `GET /pacientes/:id`.
 
 Las contraseñas requieren 8 caracteres, una mayúscula y un dígito; se rechazan
 pares de dígitos consecutivos ascendentes o descendentes. Los endpoints devuelven
@@ -73,7 +80,7 @@ de agenda y reserva bloquean filas en PostgreSQL dentro de transacciones.
 
 - IAM: usuarios y roles.
 - Admissions: pacientes y turnos.
-- EHR: historia clínica y eventos clínicos.
+- EHR: historia clínica (alergias, antecedentes familiares, evoluciones y estudios en `registros_clinicos`) y eventos clínicos.
 - Nursing: administración de medicación y cuidados.
 - Resources: camas, insumos y movimientos de inventario.
 - Billing: cargos, cobertura y facturación.

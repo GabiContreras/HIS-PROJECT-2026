@@ -28,8 +28,8 @@ npm run build
 | Rol | Accesos actuales |
 |---|---|
 | `ADMINISTRATIVO` | Panel, Usuarios y Turnos |
-| `MEDICO` | Panel y agenda de Turnos |
-| `ENFERMERO` | Panel; la pantalla de turnos disponibles queda pendiente |
+| `MEDICO` | Panel, agenda de Turnos, Enfermería e Historia clínica (lectura y alta) |
+| `ENFERMERO` | Panel, Enfermería, Insumos e Historia clínica (solo lectura); la pantalla de turnos disponibles queda pendiente |
 
 ## Rutas
 
@@ -40,6 +40,7 @@ npm run build
 | `/usuarios` | `ADMINISTRATIVO` | Listado y alta de personal médico/enfermero |
 | `/usuarios/:id` | `ADMINISTRATIVO` | Detalle de usuario |
 | `/turnos` | `MEDICO`, `ADMINISTRATIVO` | Agenda, creación de franjas y transiciones |
+| `/historia-clinica` | `MEDICO`, `ENFERMERO` | Historia clínica del paciente: ficha, alergias, antecedentes familiares, evoluciones y estudios |
 
 ## Gestión de usuarios
 
@@ -85,6 +86,15 @@ Las pantallas de Enfermería e Insumos consumen la API real mediante `shared/htt
 - **Dashboard**: las tarjetas de signos vitales, stock y medicaciones pendientes usan los mismos servicios; el rol administrativo no consulta signos vitales ni indicaciones (la API responde `403`).
 
 Mejoras posibles (no implementadas): pantalla para que el médico cree indicaciones (`POST /indicaciones` ya existe), campo de observaciones al administrar, historial de signos por paciente y gráficas de evolución.
+
+## Historia clínica (Módulo 1)
+
+`src/features/ehr/ClinicalHistoryView.vue` (ruta `/historia-clinica`, entrada de menú "Historia clínica" para médico y enfermero) consume `GET /historia-clinica/:pacienteId` mediante `useClinicalHistory` (`composables/`) y `services/clinicalHistory.ts`.
+
+- Selector de paciente; muestra la ficha demográfica y cuatro tarjetas (alergias, antecedentes familiares, evoluciones médicas y estudios) con autor y fecha de cada registro, del más nuevo al más viejo.
+- Solo el rol `MEDICO` ve los formularios de alta (`POST /historia-clinica/:pacienteId/{alergias,antecedentes-familiares,evoluciones,estudios}`); el botón se habilita con el texto mínimo y los errores de la API (`400`, `403`, `404`) se muestran bajo el formulario. Tras guardar se vuelve a consultar la historia.
+- Estados: sin paciente elegido, cargando, error con botón Reintentar, y vacío por sección (por ejemplo "No hay alergias registradas.").
+- No hay edición ni borrado: la historia es inmutable.
 
 ## Criterios frontend demostrados
 
