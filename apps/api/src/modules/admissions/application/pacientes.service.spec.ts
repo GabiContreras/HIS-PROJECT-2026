@@ -70,6 +70,29 @@ describe('PacientesService', () => {
     expect(repo.findByDocumento).not.toHaveBeenCalled();
   });
 
+  it('admite una persona de 115 años cumplidos', async () => {
+    const repo = makeRepository();
+
+    await makeService(repo).create(
+      { ...input, fechaNacimiento: '1910-10-28' },
+      '2026-10-27',
+    );
+
+    expect(repo.create).toHaveBeenCalledOnce();
+  });
+
+  it('rechaza una fecha de nacimiento que supera los 115 años', async () => {
+    const repo = makeRepository();
+
+    await expect(
+      makeService(repo).create(
+        { ...input, fechaNacimiento: '1910-10-27' },
+        '2026-10-27',
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(repo.findByDocumento).not.toHaveBeenCalled();
+  });
+
   it('informa 404 cuando el paciente no existe', async () => {
     await expect(
       makeService(makeRepository()).get('p-404'),
