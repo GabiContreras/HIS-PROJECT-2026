@@ -16,6 +16,7 @@ import { AdministracionMedicacion } from './entities/administracion-medicacion.e
 import { Cargo } from './entities/cargo.entity.js';
 import { ProtocoloIngreso } from './entities/protocolo-ingreso.entity.js';
 import { TareaProtocolo } from './entities/tarea-protocolo.entity.js';
+import { RegistroClinico } from './entities/registro-clinico.entity.js';
 import { IamModule } from './modules/iam/iam.module.js';
 import { AdmissionsModule } from './modules/admissions/admissions.module.js';
 import { EhrModule } from './modules/ehr/ehr.module.js';
@@ -47,6 +48,7 @@ import { AllExceptionsFilter } from './shared/http/all-exceptions.filter.js';
         Cargo,
         ProtocoloIngreso,
         TareaProtocolo,
+        RegistroClinico,
       ],
       autoLoadEntities: true,
       synchronize: false,
