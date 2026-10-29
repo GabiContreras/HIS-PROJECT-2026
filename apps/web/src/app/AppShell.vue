@@ -16,6 +16,7 @@ const allItems: MenuItem[] = [
   { to: '/turnos', label: 'Turnos', roles: ['MEDICO', 'ADMINISTRATIVO'] },
   { to: '/pacientes', label: 'Pacientes' },
   { to: '/camas', label: 'Camas' },
+  { to: '/historia-clinica', label: 'Historia clínica', roles: ['MEDICO', 'ENFERMERO'] },
   { to: '/enfermeria', label: 'Enfermería', roles: ['ENFERMERO', 'MEDICO'] },
   { to: '/insumos', label: 'Insumos', roles: ['ENFERMERO', 'ADMINISTRATIVO'] },
   { to: '/facturacion', label: 'Facturación', roles: ['ADMINISTRATIVO'] },
