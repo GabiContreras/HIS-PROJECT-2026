@@ -1,5 +1,10 @@
 
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Insumo } from '../../../entities/insumo.entity.js';
@@ -19,34 +24,36 @@ export class InventoryService implements InventoryPort {
   async descontarStock(
     input: DescontarStockInput,
   ): Promise<DescontarStockResult> {
-    if (
-      !Number.isInteger(input.cantidad) ||
-      input.cantidad <= 0
-    ) {
-      throw new Error('La cantidad debe ser un entero positivo');
+    const { insumoId, cantidad } = input;
+
+    if (!Number.isInteger(cantidad) || cantidad <= 0) {
+      throw new BadRequestException(
+        'La cantidad debe ser un entero positivo',
+      );
     }
 
     const result = await this.insumoRepository
       .createQueryBuilder()
       .update(Insumo)
       .set({
-        cantidadDisponible: () =>
-          '"cantidad_disponible" - :cantidad',
+        cantidadDisponible: () => '"cantidad_disponible" - :cantidad',
       })
-      .where('id = :insumoId', {
-        insumoId: input.insumoId,
-      })
-      .andWhere('cantidad_disponible >= :cantidad', {
-        cantidad: input.cantidad,
-      })
-      .setParameters({ cantidad: input.cantidad })
-      .returning(['id', 'cantidad_disponible'])
+      .where('"id" = :insumoId', { insumoId })
+      .andWhere('"cantidad_disponible" >= :cantidad', { cantidad })
+      .setParameters({ cantidad })
+      .returning('*')
       .execute();
 
     if (result.affected !== 1 || !result.raw?.[0]) {
-      throw new Error(
-        'Insumo inexistente o stock insuficiente',
-      );
+      const insumo = await this.insumoRepository.findOneBy({
+        id: insumoId,
+      });
+
+      if (!insumo) {
+        throw new NotFoundException('El insumo no existe');
+      }
+
+      throw new ConflictException('Stock insuficiente');
     }
 
     const actualizado = result.raw[0] as {
@@ -56,7 +63,7 @@ export class InventoryService implements InventoryPort {
 
     return {
       insumoId: actualizado.id,
-      cantidadDescontada: input.cantidad,
+      cantidadDescontada: cantidad,
       cantidadRestante: Number(actualizado.cantidad_disponible),
     };
   }
