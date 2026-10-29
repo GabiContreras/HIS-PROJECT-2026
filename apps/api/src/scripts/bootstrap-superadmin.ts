@@ -61,3 +61,13 @@ async function bootstrapSuperadmin(): Promise<void> {
 }
 
 await bootstrapSuperadmin();
+//en caso d reiniciar contraseña
+//31 a 39
+// const hasher = new PasswordHasher();
+      // currentRoot.nombre = nombre;
+      // currentRoot.apellido = apellido;
+      // currentRoot.email = email;
+      // currentRoot.passwordHash = await hasher.hash(password); 
+      // await users.save(currentRoot);
+      // console.info('Se actualizó el superadmin raíz.');
+      // return;
