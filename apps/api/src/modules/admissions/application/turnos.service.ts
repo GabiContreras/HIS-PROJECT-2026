@@ -316,6 +316,7 @@ export class TurnosService {
       const initial = await manager.getRepository(Turno).findOne({
         where: { id },
         relations: { medico: true },
+        lock: { mode: 'pessimistic_write', tables: ['turnos'] },
       });
       if (!initial) throw new NotFoundException('No se encontró el turno.');
       this.assertCanManageDoctor(identity, initial.medico.id);
@@ -326,6 +327,7 @@ export class TurnosService {
         where: { id },
         relations: { medico: true },
         lock: { mode: 'pessimistic_write', tables: ['turnos'] },
+        
       });
       if (!turno) throw new NotFoundException('No se encontró el turno.');
       const allowedTransitions: Partial<Record<EstadoTurno, EstadoTurno[]>> = {
