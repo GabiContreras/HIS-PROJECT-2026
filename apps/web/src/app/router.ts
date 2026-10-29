@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import AppShell from './AppShell.vue';
 import { useSessionStore } from '../features/iam/session.store';
 import type { Role } from '../features/iam/types';
+import { BRAND } from '../shared/brand';
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -135,5 +136,5 @@ router.beforeEach(async (to) => {
 });
 
 router.afterEach((to) => {
-  document.title = to.meta.title ? `${to.meta.title} · HIS` : 'HIS';
+  document.title = to.meta.title ? `${to.meta.title} · ${BRAND.name}` : BRAND.name;
 });

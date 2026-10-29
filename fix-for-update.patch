@@ -1,0 +1,215 @@
+--- a/apps/api/src/modules/admissions/application/turnos.service.spec.ts	2026-10-26 14:58:27.000000000 +0000
++++ b/apps/api/src/modules/admissions/application/turnos.service.spec.ts	2026-10-28 18:23:26.513079408 +0000
+@@ -152,8 +152,11 @@
+     expect(usuarioRepository.findOne).toHaveBeenCalledWith(
+       expect.objectContaining({ lock: { mode: 'pessimistic_write' } }),
+     );
++    // El bloqueo se limita a "turnos": no puede alcanzar el LEFT JOIN con el médico.
+     expect(turnoRepository.findOne).toHaveBeenLastCalledWith(
+-      expect.objectContaining({ lock: { mode: 'pessimistic_write' } }),
++      expect.objectContaining({
++        lock: { mode: 'pessimistic_write', tables: ['turnos'] },
++      }),
+     );
+     expect(pacienteRepository.findOne).toHaveBeenCalledWith(
+       expect.objectContaining({ lock: { mode: 'pessimistic_write' } }),
+--- a/apps/api/src/modules/admissions/application/turnos.service.ts	2026-10-26 14:58:27.000000000 +0000
++++ b/apps/api/src/modules/admissions/application/turnos.service.ts	2026-10-28 18:23:26.512941987 +0000
+@@ -257,7 +257,9 @@
+       const turno = await turnosRepo.findOne({
+         where: { id },
+         relations: { medico: true },
+-        lock: { mode: 'pessimistic_write' },
++        // FOR UPDATE solo sobre turnos: PostgreSQL no permite bloquear el lado
++        // nullable de un LEFT JOIN (la relación con el médico).
++        lock: { mode: 'pessimistic_write', tables: ['turnos'] },
+       });
+       if (!turno) throw new NotFoundException('No se encontró el turno.');
+       if (
+@@ -325,7 +327,9 @@
+       const turno = await repository.findOne({
+         where: { id },
+         relations: { medico: true },
+-        lock: { mode: 'pessimistic_write' },
++        // FOR UPDATE solo sobre turnos: PostgreSQL no permite bloquear el lado
++        // nullable de un LEFT JOIN (la relación con el médico).
++        lock: { mode: 'pessimistic_write', tables: ['turnos'] },
+       });
+       if (!turno) throw new NotFoundException('No se encontró el turno.');
+       const allowedTransitions: Partial<Record<EstadoTurno, EstadoTurno[]>> = {
+--- a/apps/api/test/turnos-lock.integration.spec.ts	1970-01-01 00:00:00.000000000 +0000
++++ b/apps/api/test/turnos-lock.integration.spec.ts	2026-10-28 18:23:26.517605397 +0000
+@@ -0,0 +1,173 @@
++import { afterAll, beforeAll, describe, expect, it } from 'vitest';
++import { DataSource } from 'typeorm';
++import { Paciente } from '../src/entities/paciente.entity.js';
++import { EstadoTurno, Turno } from '../src/entities/turno.entity.js';
++import {
++  EstadoCuenta,
++  RolUsuario,
++  Usuario,
++} from '../src/entities/usuario.entity.js';
++import { TurnosService } from '../src/modules/admissions/application/turnos.service.js';
++import { EventBus } from '../src/shared/events/event-bus.service.js';
++
++/**
++ * Prueba contra PostgreSQL real. Los tests unitarios de TurnosService usan
++ * repositorios simulados y nunca ejecutan estas consultas: un FOR UPDATE sobre
++ * un LEFT JOIN (relations + lock) solo falla contra la base de verdad.
++ *
++ * Se omite si no hay PGLOCAL_PASSWORD. Usa una base propia (nombre terminado en
++ * "_test") y RECREA su esquema: nunca apuntar a una base con datos.
++ *   createdb his_lock_test
++ *   PGLOCAL_PASSWORD=... npx vitest run turnos-lock
++ */
++const password = process.env.PGLOCAL_PASSWORD;
++const database = process.env.PGLOCAL_TURNOS_DB ?? 'his_lock_test';
++
++describe.skipIf(!password)(
++  'TurnosService - bloqueos FOR UPDATE contra PostgreSQL real',
++  () => {
++    let dataSource: DataSource;
++    let service: TurnosService;
++    let medico: Usuario;
++    let paciente: Paciente;
++
++    const identity = () => ({
++      accountId: medico.id,
++      sessionId: 'session-1',
++      rol: RolUsuario.MEDICO,
++      esSuperadmin: false,
++    });
++
++    const slot = (iso: string, duracionMinutos = 30) =>
++      dataSource.getRepository(Turno).save({
++        medico,
++        fechaHora: new Date(iso),
++        duracionMinutos,
++        estado: EstadoTurno.DISPONIBLE,
++        urgente: false,
++      });
++
++    beforeAll(async () => {
++      if (!database.endsWith('_test')) {
++        throw new Error('La base de prueba debe terminar en "_test".');
++      }
++      dataSource = new DataSource({
++        type: 'postgres',
++        host: 'localhost',
++        port: 5432,
++        username: 'postgres',
++        password,
++        database,
++        entities: [Usuario, Paciente, Turno],
++        dropSchema: true,
++        synchronize: true,
++        ssl: false,
++      });
++      await dataSource.initialize();
++
++      service = new TurnosService(
++        dataSource.getRepository(Turno),
++        dataSource.getRepository(Usuario),
++        dataSource.getRepository(Paciente),
++        dataSource,
++        new EventBus(),
++      );
++      medico = await dataSource.getRepository(Usuario).save({
++        nombre: 'Roberto',
++        apellido: 'Ramirez',
++        email: 'medico@prueba.local',
++        passwordHash: 'x',
++        rol: RolUsuario.MEDICO,
++        estado: EstadoCuenta.ACTIVO,
++      });
++      paciente = await dataSource.getRepository(Paciente).save({
++        nombre: 'Marta',
++        apellido: 'Pérez',
++        documento: '20111222',
++        fechaNacimiento: '1958-03-12',
++      });
++    });
++
++    afterAll(async () => {
++      if (dataSource?.isInitialized) await dataSource.destroy();
++    });
++
++    it('reserva un turno disponible (reserve)', async () => {
++      const turno = await slot('2030-01-01T10:00:00.000Z');
++
++      const reservado = await service.reserve(
++        turno.id,
++        { pacienteId: paciente.id },
++        identity(),
++      );
++
++      expect(reservado.estado).toBe(EstadoTurno.RESERVADO);
++    });
++
++    it('rechaza una segunda reserva del mismo turno', async () => {
++      const turno = await slot('2030-01-01T11:00:00.000Z');
++      const otro = await dataSource.getRepository(Paciente).save({
++        nombre: 'Luis',
++        apellido: 'Rossi',
++        documento: '27333444',
++        fechaNacimiento: '1985-07-30',
++      });
++
++      const results = await Promise.allSettled([
++        service.reserve(turno.id, { pacienteId: paciente.id }, identity()),
++        service.reserve(turno.id, { pacienteId: otro.id }, identity()),
++      ]);
++
++      expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
++      expect(results.filter((r) => r.status === 'rejected')).toHaveLength(1);
++    });
++
++    it('confirma, atiende y cancela un turno (transition)', async () => {
++      const turno = await slot('2030-01-01T12:00:00.000Z');
++      await service.reserve(turno.id, { pacienteId: paciente.id }, identity());
++
++      const confirmado = await service.transition(
++        turno.id,
++        EstadoTurno.CONFIRMADO,
++        identity(),
++      );
++      const atendido = await service.transition(
++        turno.id,
++        EstadoTurno.ATENDIDO,
++        identity(),
++      );
++
++      expect(confirmado.estado).toBe(EstadoTurno.CONFIRMADO);
++      expect(atendido.estado).toBe(EstadoTurno.ATENDIDO);
++    });
++
++    it('al cancelar libera una franja disponible (transition)', async () => {
++      const turno = await slot('2030-01-02T09:00:00.000Z');
++      await service.reserve(turno.id, { pacienteId: paciente.id }, identity());
++
++      await service.transition(turno.id, EstadoTurno.CANCELADO, identity());
++
++      const libres = await dataSource.getRepository(Turno).findBy({
++        fechaHora: new Date('2030-01-02T09:00:00.000Z'),
++        estado: EstadoTurno.DISPONIBLE,
++      });
++      expect(libres).toHaveLength(1);
++    });
++
++    it('inserta un entreturno acortando el turno adyacente (createUrgentSlot)', async () => {
++      const adyacente = await slot('2030-01-03T09:00:00.000Z');
++
++      const urgente = await service.createUrgentSlot(
++        { medicoId: medico.id, fechaHora: '2030-01-03T09:15:00.000Z' },
++        identity(),
++      );
++
++      const recargado = await dataSource
++        .getRepository(Turno)
++        .findOneByOrFail({ id: adyacente.id });
++      expect(urgente.urgente).toBe(true);
++      expect(urgente.duracionMinutos).toBe(15);
++      expect(recargado.duracionMinutos).toBe(15);
++    });
++  },
++);
