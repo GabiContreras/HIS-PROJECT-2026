@@ -1,7 +1,6 @@
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -17,7 +16,6 @@ import {
 import { RefreshSession } from '../../../entities/refresh-session.entity.js';
 import { CreateAdminDto } from '../api/dto/create-admin.dto.js';
 import { RegistroDto } from '../api/dto/registro.dto.js';
-import { ResetPasswordDto } from '../api/dto/reset-password.dto.js';
 import { PasswordHasher } from './password-hasher.js';
 import { TokenService } from './token.service.js';
 
@@ -88,12 +86,12 @@ export class AuthService {
     }
   }
 
-  async register(dto: RegistroDto): Promise<{ message: string }> {
-    if (process.env.NODE_ENV === 'production') {
-      throw new ForbiddenException(
-        'El alta sin verificación de correo solo está habilitada durante el desarrollo.',
-      );
-    }
+  /**
+   * Alta de personal médico o de enfermería. Solo se invoca desde
+   * `POST /usuarios`, que exige un administrativo autenticado; el método no
+   * se expone como ruta pública ni depende de NODE_ENV.
+   */
+  async createStaff(dto: RegistroDto): Promise<{ message: string }> {
     const nombre = dto.nombre.trim();
     const apellido = dto.apellido.trim();
     if (!nombre || !apellido) {
@@ -279,45 +277,37 @@ export class AuthService {
   async forgotPassword(_emailInput: string): Promise<{ message: string }> {
     return {
       message:
-        'La recuperación por correo está temporalmente deshabilitada. En desarrollo, restablecé la contraseña mediante /auth/reset-password.',
+        'La recuperación por correo no está disponible. Pedile a un administrativo que restablezca tu contraseña.',
     };
   }
 
-  async resetPassword(dto: ResetPasswordDto): Promise<{ message: string }> {
-    if (process.env.NODE_ENV === 'production') {
-      throw new ForbiddenException(
-        'El restablecimiento sin verificación solo está habilitado durante el desarrollo.',
-      );
-    }
-    const user = await this.findByEmail(dto.email);
-    if (!user || user.estado === EstadoCuenta.DESHABILITADO) {
-      throw new NotFoundException('No se encontró una cuenta habilitada.');
-    }
-
-    await this.dataSource.transaction(async (manager) => {
-      await manager.getRepository(Usuario).update(
-        { id: user.id },
-        {
-          passwordHash: await this.passwordHasher.hash(dto.password),
-          estado:
-            user.estado === EstadoCuenta.PENDIENTE_VERIFICACION
-              ? user.rol === RolUsuario.MEDICO
-                ? EstadoCuenta.PENDIENTE_HABILITACION
-                : EstadoCuenta.ACTIVO
-              : user.estado,
-          emailVerificado: true,
-          intentosFallidos: 0,
-          bloqueadoHasta: null,
-        },
+  /**
+   * Asigna una contraseña temporal a una cuenta existente y revoca todas sus
+   * sesiones. Las comprobaciones de permiso (quién puede restablecer a quién)
+   * las hace `AccountAdminService` antes de llamar a este método.
+   */
+  async setTemporaryPassword(
+    accountId: string,
+    temporaryPassword: string,
+  ): Promise<{ message: string }> {
+    const passwordHash = await this.passwordHasher.hash(temporaryPassword);
+    const affected = await this.dataSource.transaction(async (manager) => {
+      const result = await manager.getRepository(Usuario).update(
+        { id: accountId },
+        { passwordHash, intentosFallidos: 0, bloqueadoHasta: null },
       );
       await manager
         .getRepository(RefreshSession)
         .update(
-          { usuarioId: user.id, revocadoEn: IsNull() },
+          { usuarioId: accountId, revocadoEn: IsNull() },
           { revocadoEn: new Date() },
         );
+      return result.affected ?? 0;
     });
-    return { message: 'La contraseña fue restablecida.' };
+    if (affected === 0) {
+      throw new NotFoundException('No se encontró la cuenta.');
+    }
+    return { message: 'La contraseña temporal fue asignada.' };
   }
 
   async changePassword(
