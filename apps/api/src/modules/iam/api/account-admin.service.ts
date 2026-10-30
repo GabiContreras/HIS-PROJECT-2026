@@ -1,15 +1,25 @@
 import {
   ConflictException,
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
-import { EstadoCuenta, Usuario } from '../../../entities/usuario.entity.js';
+import {
+  EstadoCuenta,
+  RolUsuario,
+  Usuario,
+} from '../../../entities/usuario.entity.js';
 import { RefreshSession } from '../../../entities/refresh-session.entity.js';
-import { AuthService, PublicAccount } from '../application/auth.service.js';
+import {
+  AuthService,
+  PublicAccount,
+  SessionIdentity,
+} from '../application/auth.service.js';
 import { CreateAdminDto } from './dto/create-admin.dto.js';
+import { RestablecerClaveDto } from './dto/restablecer-clave.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
 
 @Injectable()
@@ -32,7 +42,11 @@ export class AccountAdminService {
     return this.toPublicAccount(account);
   }
 
-  async updateProfile(id: string, dto: UpdateUserDto): Promise<PublicAccount> {
+  async updateProfile(
+    id: string,
+    dto: UpdateUserDto,
+    caller: SessionIdentity,
+  ): Promise<PublicAccount> {
     const nombre = dto.nombre?.trim();
     const apellido = dto.apellido?.trim();
     if (!nombre && !apellido) {
@@ -46,6 +60,7 @@ export class AccountAdminService {
         'El perfil del superadmin raíz no puede modificarse desde administración.',
       );
     }
+    this.assertCanManage(account, caller);
     if (dto.nombre !== undefined) {
       if (!nombre) {
         throw new BadRequestException('El nombre no puede quedar vacío.');
@@ -65,8 +80,12 @@ export class AccountAdminService {
     return this.auth.createAdministrator(dto);
   }
 
-  async enableDoctor(id: string): Promise<PublicAccount> {
+  async enableDoctor(
+    id: string,
+    caller: SessionIdentity,
+  ): Promise<PublicAccount> {
     const account = await this.findAccount(id);
+    this.assertCanManage(account, caller);
     if (
       !account.emailVerificado ||
       account.esSuperadmin ||
@@ -83,13 +102,20 @@ export class AccountAdminService {
     return this.toPublicAccount(await this.usuarios.save(account));
   }
 
-  async deactivate(id: string): Promise<PublicAccount> {
+  async deactivate(
+    id: string,
+    caller: SessionIdentity,
+  ): Promise<PublicAccount> {
     const account = await this.findAccount(id);
     if (account.esSuperadmin) {
       throw new ConflictException(
         'No se puede deshabilitar al superadmin raíz.',
       );
     }
+    if (account.id === caller.accountId) {
+      throw new ConflictException('No podés deshabilitar tu propia cuenta.');
+    }
+    this.assertCanManage(account, caller);
     account.estado = EstadoCuenta.DESHABILITADO;
     const saved = await this.usuarios.save(account);
     await this.sesiones.update(
@@ -97,6 +123,38 @@ export class AccountAdminService {
       { revocadoEn: new Date() },
     );
     return this.toPublicAccount(saved);
+  }
+
+  async resetPassword(
+    id: string,
+    dto: RestablecerClaveDto,
+    caller: SessionIdentity,
+  ): Promise<{ message: string }> {
+    const account = await this.findAccount(id);
+    if (account.esSuperadmin) {
+      throw new ConflictException(
+        'La contraseña del superadmin raíz no puede restablecerse desde administración.',
+      );
+    }
+    if (account.id === caller.accountId) {
+      throw new ConflictException(
+        'Para cambiar tu propia contraseña usá el cambio de contraseña con tu clave actual.',
+      );
+    }
+    this.assertCanManage(account, caller);
+    return this.auth.setTemporaryPassword(account.id, dto.passwordTemporal);
+  }
+
+  /**
+   * Una cuenta administrativa solo puede ser gestionada por el superadmin.
+   * El resto de los roles los gestiona cualquier administrativo.
+   */
+  private assertCanManage(account: Usuario, caller: SessionIdentity): void {
+    if (account.rol === RolUsuario.ADMINISTRATIVO && !caller.esSuperadmin) {
+      throw new ForbiddenException(
+        'Solo el superadmin puede gestionar cuentas administrativas.',
+      );
+    }
   }
 
   private async findAccount(id: string): Promise<Usuario> {

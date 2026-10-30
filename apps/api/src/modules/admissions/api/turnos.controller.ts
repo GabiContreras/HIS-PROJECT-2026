@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -68,7 +69,7 @@ export class TurnosController {
   @Patch(':id/reservar')
   @Roles(RolUsuario.MEDICO, RolUsuario.ADMINISTRATIVO)
   reserve(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: ReservarTurnoDto,
     @CurrentIdentity() identity: SessionIdentity,
   ) {
@@ -78,7 +79,7 @@ export class TurnosController {
   @Patch(':id/transiciones')
   @Roles(RolUsuario.MEDICO, RolUsuario.ADMINISTRATIVO)
   transition(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: TransicionTurnoDto,
     @CurrentIdentity() identity: SessionIdentity,
   ) {

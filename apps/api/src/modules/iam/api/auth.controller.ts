@@ -18,8 +18,6 @@ import { TokenService } from '../application/token.service.js';
 import { ChangePasswordDto } from './dto/change-password.dto.js';
 import { EmailDto } from './dto/email.dto.js';
 import { LoginDto } from './dto/login.dto.js';
-import { RegistroDto } from './dto/registro.dto.js';
-import { ResetPasswordDto } from './dto/reset-password.dto.js';
 import { AuthGuard } from './auth.guard.js';
 import { CurrentIdentity } from './auth.decorator.js';
 
@@ -32,11 +30,6 @@ export class AuthController {
     private readonly auth: AuthService,
     private readonly tokens: TokenService,
   ) {}
-
-  @Post('register')
-  register(@Body() dto: RegistroDto) {
-    return this.auth.register(dto);
-  }
 
   @Post('login')
   @HttpCode(200)
@@ -91,12 +84,6 @@ export class AuthController {
   @HttpCode(200)
   forgotPassword(@Body() dto: EmailDto) {
     return this.auth.forgotPassword(dto.email);
-  }
-
-  @Post('reset-password')
-  @HttpCode(200)
-  resetPassword(@Body() dto: ResetPasswordDto) {
-    return this.auth.resetPassword(dto);
   }
 
   @Post('change-password')
