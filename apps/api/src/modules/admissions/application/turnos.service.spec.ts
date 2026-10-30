@@ -224,4 +224,121 @@ describe('TurnosService', () => {
       events.publish.mock.invocationCallOrder[0],
     );
   });
+
+  describe('reservation conflicts', () => {
+    const admin = {
+      accountId: 'admin-1',
+      sessionId: 'session-1',
+      rol: RolUsuario.ADMINISTRATIVO,
+      esSuperadmin: false,
+    };
+
+    function serviceWithSlot(slot: Partial<Turno>) {
+      const medico = {
+        id: 'doctor-1',
+        rol: RolUsuario.MEDICO,
+        estado: EstadoCuenta.ACTIVO,
+      } as Usuario;
+      const turno = { id: 'slot-1', medico, ...slot } as Turno;
+      const turnoRepository = {
+        findOne: vi
+          .fn()
+          .mockResolvedValueOnce(turno)
+          .mockResolvedValueOnce(turno),
+      };
+      const usuarioRepository = { findOne: vi.fn().mockResolvedValue(medico) };
+      const pacienteRepository = { findOne: vi.fn() };
+      const manager = {
+        getRepository: vi.fn((entity) => {
+          if (entity === Usuario) return usuarioRepository;
+          if (entity === Paciente) return pacienteRepository;
+          return turnoRepository;
+        }),
+      };
+      const dataSource = {
+        transaction: vi.fn((operation) => operation(manager)),
+      };
+      return new TurnosService(
+        turnoRepository as never,
+        usuarioRepository as never,
+        pacienteRepository as never,
+        dataSource as never,
+        {} as never,
+      );
+    }
+
+    it('tells the second receptionist that the slot was just taken', async () => {
+      const service = serviceWithSlot({
+        fechaHora: new Date('2030-01-01T13:00:00.000Z'),
+        estado: EstadoTurno.RESERVADO,
+      });
+
+      await expect(
+        service.reserve('slot-1', { pacienteId: 'patient-2' }, admin),
+      ).rejects.toThrow('Este turno acaba de ser ocupado. Elegí otro horario.');
+    });
+
+    it('does not say "taken" when the slot is simply in the past', async () => {
+      const service = serviceWithSlot({
+        fechaHora: new Date('2020-01-01T13:00:00.000Z'),
+        estado: EstadoTurno.DISPONIBLE,
+      });
+
+      await expect(
+        service.reserve('slot-1', { pacienteId: 'patient-2' }, admin),
+      ).rejects.toThrow('Este turno ya pasó. Elegí otro horario.');
+    });
+  });
+
+  describe('regular slot hours (08:00 to 20:00, Argentina time)', () => {
+    const admin = {
+      accountId: 'admin-1',
+      sessionId: 'session-1',
+      rol: RolUsuario.ADMINISTRATIVO,
+      esSuperadmin: false,
+    };
+
+    // La transacción falla a propósito: si el error es este, la validación de horario ya pasó.
+    function service() {
+      const dataSource = {
+        transaction: vi.fn().mockRejectedValue(new Error('reached-database')),
+      };
+      return new TurnosService(
+        {} as never,
+        {} as never,
+        {} as never,
+        dataSource as never,
+        {} as never,
+      );
+    }
+
+    it.each([
+      ['07:30', '2030-01-01T10:30:00.000Z'],
+      ['20:00', '2030-01-01T23:00:00.000Z'],
+      ['03:00', '2030-01-01T06:00:00.000Z'],
+    ])('rejects a regular slot at %s', async (_label, fechaHora) => {
+      await expect(
+        service().createSlot({ medicoId: 'doctor-1', fechaHora }, admin),
+      ).rejects.toThrow('Los turnos regulares se atienden de 08:00 a 20:00.');
+    });
+
+    it.each([
+      ['08:00', '2030-01-01T11:00:00.000Z'],
+      ['19:30', '2030-01-01T22:30:00.000Z'],
+    ])('accepts a regular slot at %s', async (_label, fechaHora) => {
+      await expect(
+        service().createSlot({ medicoId: 'doctor-1', fechaHora }, admin),
+      ).rejects.toThrow('reached-database');
+    });
+
+    it('does not restrict urgent slots to clinic hours', async () => {
+      // 03:15 hora de Argentina: pasa la validación de horario y recién falla al buscar el turno vecino.
+      await expect(
+        service().createUrgentSlot(
+          { medicoId: 'doctor-1', fechaHora: '2030-01-01T06:15:00.000Z' },
+          admin,
+        ),
+      ).rejects.toThrow('reached-database');
+    });
+  });
 });
