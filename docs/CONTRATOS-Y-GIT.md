@@ -20,20 +20,19 @@ datos básicos de la cuenta se devuelven en el body.
 
 | Método y ruta | Acceso | Uso |
 | --- | --- | --- |
-| `POST /auth/register` | Público | Alta de médico/enfermero sin verificación por correo durante desarrollo; el médico queda pendiente de habilitación. |
 | `POST /auth/login` | Origen frontend permitido | Inicio de sesión y emisión de access/refresh. |
 | `POST /auth/refresh` | Cookie + origen permitido | Rota el refresh token y revoca el anterior. |
 | `POST /auth/logout` | Cookie + origen permitido | Revoca la sesión actual. |
 | `GET /auth/me` | Autenticado | Devuelve datos básicos, rol y estado de la cuenta. |
-| `POST /auth/forgot-password` | Público | Informa que la recuperación por correo está temporalmente deshabilitada. |
-| `POST /auth/reset-password` | Público solo en desarrollo | Actualiza contraseña con email y contraseña nueva; sin código de correo. Deshabilitado en producción. |
+| `POST /auth/forgot-password` | Público | Informa que la recuperación por correo no está disponible y que debe pedirse a un administrativo. |
 | `POST /auth/change-password` | Autenticado | Cambia contraseña y revoca las demás sesiones. |
-| `POST /usuarios` | Administrativo | Alta de personal médico/enfermería sin códigos de correo durante desarrollo. |
+| `POST /usuarios` | Administrativo | Alta de personal médico/enfermería sin códigos de correo; el médico queda pendiente de habilitación. Única vía de alta de personal. |
 | `POST /usuarios/administrativos` | Solo superadmin | Alta directa de otro administrativo. |
 | `GET /usuarios`, `GET /usuarios/:id` | Administrativo | Consulta de cuentas, sin hashes ni credenciales. |
-| `PATCH /usuarios/:id` | Administrativo | Modifica nombre/apellido. |
-| `PATCH /usuarios/:id/habilitar` | Administrativo | Habilita cuentas verificadas pendientes o deshabilitadas. |
-| `PATCH /usuarios/:id/deshabilitar` | Administrativo | Deshabilita cuenta y revoca sus sesiones. |
+| `PATCH /usuarios/:id` | Administrativo (cuentas administrativas: solo superadmin) | Modifica nombre/apellido. |
+| `PATCH /usuarios/:id/habilitar` | Administrativo (cuentas administrativas: solo superadmin) | Habilita cuentas verificadas pendientes o deshabilitadas. |
+| `PATCH /usuarios/:id/deshabilitar` | Administrativo (cuentas administrativas: solo superadmin) | Deshabilita cuenta y revoca sus sesiones. No permite autodeshabilitarse. |
+| `PATCH /usuarios/:id/restablecer-clave` | Administrativo (cuentas administrativas: solo superadmin) | Asigna una contraseña temporal (`passwordTemporal`) y revoca todas las sesiones de la cuenta. No aplica a la propia cuenta ni al superadmin raíz. |
 | `GET /turnos/disponibles` | Autenticado | Consulta turnos libres próximos. |
 | `GET /turnos/agenda` | Médico (propia) o administrativo | Consulta agenda y datos básicos del paciente asignado. |
 | `POST /turnos` | Médico (propia) o administrativo | Crea disponibilidad estándar de 30 minutos. |
@@ -43,6 +42,8 @@ datos básicos de la cuenta se devuelven en el body.
 | `GET /pacientes?q=` | Médico, enfermero o administrativo | Busca pacientes por nombre, apellido o documento (máx. 50). |
 | `GET /pacientes/:id` | Médico, enfermero o administrativo | Devuelve un paciente; `404` si no existe. |
 | `POST /pacientes` | Administrativo | Alta de paciente; `400` por validación, `409` si el documento ya existe. |
+
+Los `:id` de `/usuarios` y `/turnos` deben ser UUID; si no lo son, la API responde `400`.
 
 Las contraseñas requieren 8 caracteres, una mayúscula y un dígito; se rechazan
 pares de dígitos consecutivos ascendentes o descendentes. Los endpoints devuelven
