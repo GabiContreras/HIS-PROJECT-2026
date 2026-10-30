@@ -6,6 +6,7 @@ import { Paciente } from './entities/paciente.entity.js';
 import { Turno } from './entities/turno.entity.js';
 import { Cama } from './entities/cama.entity.js';
 import { Insumo } from './entities/insumo.entity.js';
+import { Internacion } from './entities/internacion.entity.js';
 import { SignoVital } from './entities/signo-vital.entity.js';
 import { IndicacionMedica } from './entities/indicacion-medica.entity.js';
 import { AdministracionMedicacion } from './entities/administracion-medicacion.entity.js';
@@ -25,6 +26,7 @@ export default new DataSource({
     IndicacionMedica,
     AdministracionMedicacion,
     Cargo,
+    Internacion,
   ],
   migrations: ['src/migrations/*.ts'],
   synchronize: false,
