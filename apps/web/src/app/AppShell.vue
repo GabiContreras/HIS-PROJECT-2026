@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router';
+import BrandMark from '../components/ui/BrandMark.vue';
 import RoleChip from '../components/ui/RoleChip.vue';
 import { useSessionStore } from '../features/iam/session.store';
 import type { Role } from '../features/iam/types';
+import { BRAND } from '../shared/brand';
 import { useNotificationsStore } from '../stores/notifications.store';
 
 interface MenuItem {
@@ -39,7 +41,7 @@ const menu = computed(() =>
 const initials = computed(() =>
   `${session.account?.nombre.charAt(0) ?? ''}${session.account?.apellido.charAt(0) ?? ''}`.toUpperCase(),
 );
-const title = computed(() => String(route.meta.title ?? 'HIS'));
+const title = computed(() => String(route.meta.title ?? BRAND.name));
 
 watch(() => route.fullPath, () => {
   menuOpen.value = false;
@@ -67,10 +69,10 @@ async function logout(): Promise<void> {
 
     <aside class="sidebar" :class="{ open: menuOpen }">
       <div class="brand">
-        <span class="brand-mark">H</span>
+        <BrandMark />
         <span>
-          <strong>HIS</strong>
-          <small>Gestión hospitalaria</small>
+          <strong>{{ BRAND.name }}</strong>
+          <small>{{ BRAND.tagline }}</small>
         </span>
       </div>
       <p class="caption">MÓDULOS</p>
@@ -88,7 +90,7 @@ async function logout(): Promise<void> {
       <header class="topbar">
         <button class="burger" type="button" aria-label="Abrir menú" @click="menuOpen = !menuOpen">☰</button>
         <div class="heading">
-          <small>HIS</small>
+          <small>{{ BRAND.name.toUpperCase() }}</small>
           <h1>{{ title }}</h1>
         </div>
         <form class="search" role="search" @submit.prevent="search">
@@ -132,8 +134,6 @@ async function logout(): Promise<void> {
 .sidebar { width: 248px; flex-shrink: 0; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column;
   padding: 24px 18px; background: #0b3f38; color: #fff; }
 .brand { display: flex; align-items: center; gap: 12px; padding: 0 8px 26px; font-family: var(--font-display); }
-.brand-mark { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 9px; background: #fff;
-  color: var(--color-brand); font-weight: 700; font-size: 1.2rem; }
 .brand strong { display: block; font-size: 1.1rem; line-height: 1.1; }
 .brand small { color: #9ed2c8; font-size: 0.68rem; font-family: var(--font); }
 .caption { font-size: 0.6rem; letter-spacing: 0.13em; color: #8eb2aa; margin: 4px 10px 8px; }
