@@ -23,6 +23,10 @@ export function searchPatients(q = ''): Promise<Patient[]> {
   return http.get<Patient[]>(`/pacientes${text ? `?q=${encodeURIComponent(text)}` : ''}`);
 }
 
+export function getPatient(id: string): Promise<Patient> {
+  return http.get<Patient>(`/pacientes/${id}`);
+}
+
 export function createPatient(input: CreatePatientInput): Promise<Patient> {
   return http.post<Patient>('/pacientes', input);
 }

@@ -24,6 +24,27 @@ const URGENT_DURATION_MINUTES = 15;
 const MINIMUM_DURATION_MINUTES = 15;
 const ADJACENT_SLOT_OFFSET_MS = URGENT_DURATION_MINUTES * 60_000;
 
+// Los turnos regulares se atienden de 08:00 a 20:00 (hora de Argentina).
+// Las urgencias (entreturnos) no tienen restricción horaria: son las 24 horas.
+const CLINIC_TIME_ZONE = 'America/Argentina/Buenos_Aires';
+const OPENING_MINUTES = 8 * 60;
+const CLOSING_MINUTES = 20 * 60;
+
+const clinicClock = new Intl.DateTimeFormat('en-GB', {
+  timeZone: CLINIC_TIME_ZONE,
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+});
+
+/** Minutos transcurridos desde la medianoche, en la hora local de la clínica. */
+function clinicMinutesOfDay(date: Date): number {
+  const parts = clinicClock.formatToParts(date);
+  const hour = Number(parts.find((part) => part.type === 'hour')?.value);
+  const minute = Number(parts.find((part) => part.type === 'minute')?.value);
+  return hour * 60 + minute;
+}
+
 export interface TurnoSummary {
   id: string;
   fechaHora: Date;
@@ -147,6 +168,15 @@ export class TurnosService {
         'Los turnos regulares deben comenzar cada 30 minutos.',
       );
     }
+    const startMinutes = clinicMinutesOfDay(start);
+    if (
+      startMinutes < OPENING_MINUTES ||
+      startMinutes + STANDARD_DURATION_MINUTES > CLOSING_MINUTES
+    ) {
+      throw new BadRequestException(
+        'Los turnos regulares se atienden de 08:00 a 20:00.',
+      );
+    }
     this.assertCanManageDoctor(identity, dto.medicoId);
     return this.dataSource.transaction(async (manager) => {
       const doctor = await this.lockDoctor(manager, dto.medicoId);
@@ -260,11 +290,15 @@ export class TurnosService {
         lock: { mode: 'pessimistic_write', tables: ['turnos'] },
       });
       if (!turno) throw new NotFoundException('No se encontró el turno.');
-      if (
-        turno.estado !== EstadoTurno.DISPONIBLE ||
-        turno.fechaHora <= new Date()
-      ) {
-        throw new ConflictException('El turno ya no está disponible.');
+      if (turno.estado !== EstadoTurno.DISPONIBLE) {
+        throw new ConflictException(
+          'Este turno acaba de ser ocupado. Elegí otro horario.',
+        );
+      }
+      if (turno.fechaHora <= new Date()) {
+        throw new ConflictException(
+          'Este turno ya pasó. Elegí otro horario.',
+        );
       }
 
       const patient = await manager.getRepository(Paciente).findOne({
@@ -316,7 +350,6 @@ export class TurnosService {
       const initial = await manager.getRepository(Turno).findOne({
         where: { id },
         relations: { medico: true },
-        lock: { mode: 'pessimistic_write', tables: ['turnos'] },
       });
       if (!initial) throw new NotFoundException('No se encontró el turno.');
       this.assertCanManageDoctor(identity, initial.medico.id);
@@ -327,7 +360,6 @@ export class TurnosService {
         where: { id },
         relations: { medico: true },
         lock: { mode: 'pessimistic_write', tables: ['turnos'] },
-        
       });
       if (!turno) throw new NotFoundException('No se encontró el turno.');
       const allowedTransitions: Partial<Record<EstadoTurno, EstadoTurno[]>> = {

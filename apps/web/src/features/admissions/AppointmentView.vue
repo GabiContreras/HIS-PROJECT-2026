@@ -1,23 +1,23 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
-import PatientPicker from '../../components/PatientPicker.vue';
+import AppIcon from '../../components/ui/AppIcon.vue';
 import BaseCard from '../../components/ui/BaseCard.vue';
 import NoticeBanner from '../../components/ui/NoticeBanner.vue';
 import PageHeader from '../../components/ui/PageHeader.vue';
 import StatCard from '../../components/ui/StatCard.vue';
 import StatusChip from '../../components/ui/StatusChip.vue';
-import type { Patient } from '../../services/patients';
 import type { EstadoTurno, TurnoAgenda } from '../../services/turnos';
 import { listarUsuarios, type Usuario } from '../../services/users';
 import { messageFrom } from '../../shared/errors';
 import { formatDateTime } from '../../shared/format';
 import { useSessionStore } from '../iam/session.store';
 import { doctorName, ESTADO_LABELS, ESTADO_TONES, isShortened, patientName } from './appointment-ui';
+import AvailableSlotsPanel from './AvailableSlotsPanel.vue';
+import NewAppointmentPanel, { type DoctorOption } from './NewAppointmentPanel.vue';
 import { useAppointments } from './useAppointments';
 
 const session = useSessionStore();
-const { turnos, cargando, error, actuando, errorAccion, cargar, crear, crearEntreturno, reservar, transicionar } =
-  useAppointments();
+const { turnos, cargando, error, actuando, errorAccion, cargar, crear, crearEntreturno, transicionar } = useAppointments();
 
 const isAdmin = computed(() => session.role === 'ADMINISTRATIVO');
 const medicos = ref<Usuario[]>([]);
@@ -27,8 +27,20 @@ const filtro = ref<EstadoTurno | ''>('');
 
 const slotForm = reactive({ medicoId: session.account?.id ?? '', fechaHora: '' });
 const urgentForm = reactive({ medicoId: session.account?.id ?? '', fechaHora: '' });
-const reservando = ref<TurnoAgenda | null>(null);
-const paciente = ref<Patient | null>(null);
+
+// Panel lateral "Nuevo turno". Si se abre desde una fila de la tabla, llega con ese turno ya elegido.
+const panelAbierto = ref(false);
+const turnoElegido = ref<TurnoAgenda | null>(null);
+// Panel lateral "Ver horarios disponibles".
+const horariosAbierto = ref(false);
+
+// El médico solo puede sacar turnos en su propia agenda; el administrativo elige entre los médicos activos.
+const medicosPanel = computed<DoctorOption[]>(() => {
+  if (isAdmin.value) return medicos.value;
+  const cuenta = session.account;
+  return cuenta ? [{ id: cuenta.id, nombre: cuenta.nombre, apellido: cuenta.apellido }] : [];
+});
+const medicoFijo = computed(() => (isAdmin.value ? null : (session.account?.id ?? null)));
 
 const nowInput = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 
@@ -76,22 +88,20 @@ async function insertarEntreturno(): Promise<void> {
   }
 }
 
-function iniciarReserva(turno: TurnoAgenda): void {
+function abrirNuevoTurno(turno: TurnoAgenda | null = null): void {
   aviso.value = null;
-  paciente.value = null;
-  reservando.value = turno;
+  turnoElegido.value = turno;
+  panelAbierto.value = true;
 }
 
-async function confirmarReserva(): Promise<void> {
-  const turno = reservando.value;
-  const elegido = paciente.value;
-  if (!turno || !elegido) return;
-  aviso.value = null;
-  const ok = await reservar(turno.id, elegido.id);
-  // Se cierra siempre: si falló (por ejemplo, otro usuario tomó el turno) la agenda ya se refrescó.
-  reservando.value = null;
-  paciente.value = null;
-  if (ok) aviso.value = `Turno reservado para ${elegido.apellido}, ${elegido.nombre}. Estado: Programado.`;
+/** Se tocó un horario libre en "Ver horarios disponibles": se pasa a Nuevo turno con ese horario cargado. */
+function reservarDesdeHorarios(turno: TurnoAgenda): void {
+  horariosAbierto.value = false;
+  abrirNuevoTurno(turno);
+}
+
+function alReservar(nombrePaciente: string): void {
+  aviso.value = `Turno reservado para ${nombrePaciente}. Estado: Programado.`;
 }
 
 async function cambiarEstado(turno: TurnoAgenda, estado: EstadoTurno): Promise<void> {
@@ -107,7 +117,14 @@ onMounted(() => Promise.all([cargar(), cargarMedicos()]));
     <PageHeader
       :title="isAdmin ? 'Agenda de turnos' : 'Mi agenda'"
       subtitle="Creá franjas, reservá turnos para pacientes registrados y gestioná la atención."
-    />
+    >
+      <button class="btn btn-secondary" type="button" @click="horariosAbierto = true">
+        <AppIcon name="clock" :size="18" /> Ver horarios disponibles
+      </button>
+      <button class="btn" type="button" @click="abrirNuevoTurno()">
+        <AppIcon name="plus" :size="18" /> Nuevo turno
+      </button>
+    </PageHeader>
 
     <div class="stats">
       <StatCard titulo="Disponibles" :valor="count('DISPONIBLE')" detalle="Franjas libres" tone="brand" />
@@ -162,21 +179,6 @@ onMounted(() => Promise.all([cargar(), cargarMedicos()]));
       </BaseCard>
     </div>
 
-    <BaseCard v-if="reservando">
-      <template #header><h3>Reservar turno</h3></template>
-      <div class="reserve">
-        <p>
-          <strong>{{ formatDateTime(reservando.fechaHora) }}</strong> con {{ doctorName(reservando) }}
-          · {{ reservando.duracionMinutos }} min
-        </p>
-        <PatientPicker v-model="paciente" label="Paciente registrado" />
-        <div class="actions">
-          <button class="btn" type="button" :disabled="!paciente || actuando" @click="confirmarReserva">Confirmar reserva</button>
-          <button class="btn btn-secondary" type="button" :disabled="actuando" @click="reservando = null">Cancelar</button>
-        </div>
-      </div>
-    </BaseCard>
-
     <BaseCard>
       <template #header><h3>Turnos</h3></template>
       <template #action>
@@ -213,7 +215,7 @@ onMounted(() => Promise.all([cargar(), cargarMedicos()]));
               </td>
               <td>
                 <div class="actions">
-                  <button v-if="t.estado === 'DISPONIBLE'" class="btn btn-sm" type="button" :disabled="actuando" @click="iniciarReserva(t)">
+                  <button v-if="t.estado === 'DISPONIBLE'" class="btn btn-sm" type="button" :disabled="actuando" @click="abrirNuevoTurno(t)">
                     Reservar
                   </button>
                   <button
@@ -234,11 +236,28 @@ onMounted(() => Promise.all([cargar(), cargarMedicos()]));
         </table>
       </div>
     </BaseCard>
+
+    <AvailableSlotsPanel
+      :open="horariosAbierto"
+      :medicos="medicosPanel"
+      :locked-medico-id="medicoFijo"
+      @close="horariosAbierto = false"
+      @book="reservarDesdeHorarios"
+    />
+
+    <NewAppointmentPanel
+      :open="panelAbierto"
+      :medicos="medicosPanel"
+      :prefill="turnoElegido"
+      :locked-medico-id="medicoFijo"
+      @close="panelAbierto = false"
+      @reserved="alReservar"
+      @changed="cargar"
+    />
   </div>
 </template>
 
 <style scoped>
-.reserve { display: grid; gap: 14px; max-width: 560px; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .filter { width: auto; padding: 6px 10px; font-size: 0.8rem; }
 </style>
