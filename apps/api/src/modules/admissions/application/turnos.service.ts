@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
+import { EntreturnoStandby, EstadoStandby } from '../../../entities/entreturno-standby.entity.js';
 import { Paciente } from '../../../entities/paciente.entity.js';
 import {
   EstadoCuenta,
@@ -15,20 +16,35 @@ import {
 } from '../../../entities/usuario.entity.js';
 import { EstadoTurno, Turno } from '../../../entities/turno.entity.js';
 import { SessionIdentity } from '../../iam/application/auth.service.js';
-import { CrearTurnoDto } from '../api/dto/crear-turno.dto.js';
 import { ReservarTurnoDto } from '../api/dto/reservar-turno.dto.js';
+import { clinicDateOf } from './clinic-time.js';
 import { EventBus } from '../../../shared/events/event-bus.service.js';
+import {
+  tablaTransiciones,
+  turnoStateFor,
+} from '../domain/states/turno-states.js';
+import { TransicionTurnoInvalidaError } from '../domain/states/turno-state.interface.js';
 
 const STANDARD_DURATION_MINUTES = 30;
 const URGENT_DURATION_MINUTES = 15;
-const MINIMUM_DURATION_MINUTES = 15;
-const ADJACENT_SLOT_OFFSET_MS = URGENT_DURATION_MINUTES * 60_000;
+const SLOT_MS = STANDARD_DURATION_MINUTES * 60_000;
+const DAY_MS = 24 * 60 * 60_000;
+const DEFAULT_AVAILABILITY_DAYS = 7;
+const MAX_AVAILABILITY_DAYS = 31;
 
-// Los turnos regulares se atienden de 08:00 a 20:00 (hora de Argentina).
-// Las urgencias (entreturnos) no tienen restricción horaria: son las 24 horas.
+// Horario general de la clínica: 08:00 a 20:00 (hora de Argentina). Cada médico
+// atiende dentro de su propio horario (usuarios.horaInicio/horaFin), que nunca
+// puede salir de ese rango. La disponibilidad se calcula, no se carga a mano.
 const CLINIC_TIME_ZONE = 'America/Argentina/Buenos_Aires';
-const OPENING_MINUTES = 8 * 60;
-const CLOSING_MINUTES = 20 * 60;
+
+/** Estados que no ocupan agenda: los cancelados y las franjas libres heredadas. */
+const NON_OCCUPYING_STATES = [EstadoTurno.CANCELADO, EstadoTurno.DISPONIBLE];
+/** Estados en los que un paciente "tiene" el turno (para evitar dobles reservas). */
+const PATIENT_ACTIVE_STATES = [
+  EstadoTurno.RESERVADO,
+  EstadoTurno.CONFIRMADO,
+  EstadoTurno.EN_SALA_DE_ESPERA,
+];
 
 const clinicClock = new Intl.DateTimeFormat('en-GB', {
   timeZone: CLINIC_TIME_ZONE,
@@ -43,6 +59,25 @@ function clinicMinutesOfDay(date: Date): number {
   const hour = Number(parts.find((part) => part.type === 'hour')?.value);
   const minute = Number(parts.find((part) => part.type === 'minute')?.value);
   return hour * 60 + minute;
+}
+
+/** 'HH:MM' o 'HH:MM:SS' → minutos desde la medianoche. */
+function scheduleMinutes(time: string): number {
+  const [hour, minute] = time.split(':').map(Number);
+  return hour * 60 + minute;
+}
+
+/** Paciente de la lista de espera al que se le asignó el horario liberado (HU 1.3). */
+export interface PromocionStandby {
+  turno: TurnoSummary;
+  paciente: { id: string; nombre: string; apellido: string };
+}
+
+export interface SlotDisponible {
+  fechaHora: Date;
+  /** 30, o 15 si un entreturno ocupa la segunda mitad del horario. */
+  duracionMinutos: number;
+  medico: { id: string; nombre: string; apellido: string };
 }
 
 export interface TurnoSummary {
@@ -71,33 +106,95 @@ export class TurnosService {
     private readonly events: EventBus,
   ) {}
 
+  /**
+   * Horarios libres calculados: grilla de 30 min dentro del horario de cada
+   * médico activo, menos lo ocupado. No incluye entreturnos (se insertan sobre
+   * un horario libre de 30 min, a los :15 o :45).
+   */
   async listAvailable(
     medicoId?: string,
     desde?: string,
     hasta?: string,
-  ): Promise<TurnoSummary[]> {
+  ): Promise<SlotDisponible[]> {
     this.validateDateRange(desde, hasta);
-    const query = this.turnos
+    const now = Date.now();
+    const requestedStart = desde ? new Date(desde).getTime() : now;
+    const from = Math.ceil(Math.max(requestedStart, now) / SLOT_MS) * SLOT_MS;
+    const to = hasta
+      ? new Date(hasta).getTime()
+      : from + DEFAULT_AVAILABILITY_DAYS * DAY_MS;
+    if (to - from > MAX_AVAILABILITY_DAYS * DAY_MS) {
+      throw new BadRequestException(
+        `El rango no puede superar ${MAX_AVAILABILITY_DAYS} días.`,
+      );
+    }
+    if (to <= from) return [];
+
+    const doctors = await this.usuarios.find({
+      where: {
+        rol: RolUsuario.MEDICO,
+        estado: EstadoCuenta.ACTIVO,
+        ...(medicoId ? { id: medicoId } : {}),
+      },
+      order: { apellido: 'ASC', nombre: 'ASC' },
+    });
+    if (doctors.length === 0) return [];
+
+    const occupiedRows = await this.turnos
       .createQueryBuilder('turno')
       .innerJoin('turno.medico', 'medico')
       .select([
-        'turno.id',
         'turno.fechaHora',
         'turno.duracionMinutos',
-        'turno.estado',
-        'turno.urgente',
         'medico.id',
-        'medico.nombre',
-        'medico.apellido',
       ])
-      .where('turno.estado = :estado', { estado: EstadoTurno.DISPONIBLE })
-      .andWhere('turno.fechaHora >= :now', { now: new Date() })
-      .orderBy('turno.fechaHora', 'ASC');
-    if (medicoId) query.andWhere('medico.id = :medicoId', { medicoId });
-    if (desde) query.andWhere('turno.fechaHora >= :desde', { desde });
-    if (hasta) query.andWhere('turno.fechaHora < :hasta', { hasta });
-    const rows = await query.getMany();
-    return rows.map((turno) => this.toSummary(turno));
+      .where('medico.id IN (:...ids)', { ids: doctors.map((d) => d.id) })
+      .andWhere('turno.estado NOT IN (:...inactive)', {
+        inactive: NON_OCCUPYING_STATES,
+      })
+      .andWhere('turno.fechaHora < :end', { end: new Date(to) })
+      .andWhere(
+        `turno.fechaHora + turno.duracionMinutos * INTERVAL '1 minute' > :start`,
+        { start: new Date(from) },
+      )
+      .getMany();
+    const occupiedByDoctor = new Map<string, Array<[number, number]>>();
+    for (const row of occupiedRows) {
+      const begin = row.fechaHora.getTime();
+      const list = occupiedByDoctor.get(row.medico.id) ?? [];
+      list.push([begin, begin + row.duracionMinutos * 60_000]);
+      occupiedByDoctor.set(row.medico.id, list);
+    }
+
+    const slots: SlotDisponible[] = [];
+    for (let time = from; time < to; time += SLOT_MS) {
+      const minutes = clinicMinutesOfDay(new Date(time));
+      for (const doctor of doctors) {
+        if (
+          minutes < scheduleMinutes(doctor.horaInicio) ||
+          minutes + STANDARD_DURATION_MINUTES > scheduleMinutes(doctor.horaFin)
+        ) {
+          continue;
+        }
+        const occupied = occupiedByDoctor.get(doctor.id) ?? [];
+        const half = time + URGENT_DURATION_MINUTES * 60_000;
+        const overlaps = (start: number, end: number) =>
+          occupied.some(([b, e]) => b < end && e > start);
+        if (overlaps(time, half)) continue;
+        slots.push({
+          fechaHora: new Date(time),
+          duracionMinutos: overlaps(half, time + SLOT_MS)
+            ? URGENT_DURATION_MINUTES
+            : STANDARD_DURATION_MINUTES,
+          medico: {
+            id: doctor.id,
+            nombre: doctor.nombre,
+            apellido: doctor.apellido,
+          },
+        });
+      }
+    }
+    return slots;
   }
 
   async listAgenda(
@@ -154,198 +251,99 @@ export class TurnosService {
     }));
   }
 
-  async createSlot(
-    dto: CrearTurnoDto,
+  /** HU 1.1: reserva de un horario libre. Lock del médico + índice único. */
+  async reserve(
+    dto: ReservarTurnoDto,
     identity: SessionIdentity,
   ): Promise<TurnoSummary> {
-    const start = this.parseFutureDate(dto.fechaHora);
-    if (
-      start.getUTCMinutes() % 30 !== 0 ||
-      start.getUTCSeconds() !== 0 ||
-      start.getUTCMilliseconds() !== 0
-    ) {
+    const start = this.parseDate(dto.fechaHora);
+    if (!this.isAligned(start, 0)) {
       throw new BadRequestException(
         'Los turnos regulares deben comenzar cada 30 minutos.',
       );
     }
-    const startMinutes = clinicMinutesOfDay(start);
-    if (
-      startMinutes < OPENING_MINUTES ||
-      startMinutes + STANDARD_DURATION_MINUTES > CLOSING_MINUTES
-    ) {
-      throw new BadRequestException(
-        'Los turnos regulares se atienden de 08:00 a 20:00.',
-      );
-    }
     this.assertCanManageDoctor(identity, dto.medicoId);
     return this.dataSource.transaction(async (manager) => {
       const doctor = await this.lockDoctor(manager, dto.medicoId);
+      this.assertNotPast(start);
+      this.assertWithinSchedule(doctor, start);
       const repository = manager.getRepository(Turno);
       if (
         await this.hasOverlap(
           repository,
-          dto.medicoId,
+          doctor.id,
           start,
-          STANDARD_DURATION_MINUTES,
+          URGENT_DURATION_MINUTES,
         )
       ) {
-        throw new ConflictException('El horario se superpone con otro turno.');
+        throw new ConflictException(
+          'Este turno acaba de ser ocupado. Elegí otro horario.',
+        );
       }
-      const turno = repository.create({
-        medico: doctor,
-        fechaHora: start,
-        duracionMinutos: STANDARD_DURATION_MINUTES,
-        estado: EstadoTurno.DISPONIBLE,
-        urgente: false,
-      });
-      return this.toSummary(await repository.save(turno));
+      // Si un entreturno ya ocupa la segunda mitad, el turno queda en 15 min (HU 1.2).
+      const secondHalf = new Date(start.getTime() + URGENT_DURATION_MINUTES * 60_000);
+      const duration = (await this.hasOverlap(
+        repository,
+        doctor.id,
+        secondHalf,
+        URGENT_DURATION_MINUTES,
+      ))
+        ? URGENT_DURATION_MINUTES
+        : STANDARD_DURATION_MINUTES;
+      return this.createReservation(manager, doctor, dto.pacienteId, start, duration, false);
     });
   }
 
-  async createUrgentSlot(
-    dto: CrearTurnoDto,
+  /**
+   * HU 1.2: entreturno de 15 min a los :15/:45 dentro de un horario libre de 30 min.
+   * El horario adyacente queda en 15 min (se deriva solo, no se modifica ninguna fila).
+   */
+  async reserveUrgent(
+    dto: ReservarTurnoDto,
     identity: SessionIdentity,
   ): Promise<TurnoSummary> {
-    const urgentStart = this.parseFutureDate(dto.fechaHora);
-    if (
-      urgentStart.getUTCMinutes() % 30 !== 15 ||
-      urgentStart.getUTCSeconds() !== 0 ||
-      urgentStart.getUTCMilliseconds() !== 0
-    ) {
+    const start = this.parseDate(dto.fechaHora);
+    if (!this.isAligned(start, 15)) {
       throw new BadRequestException(
-        'Los turnos de urgencia deben comenzar en un límite de 15 minutos.',
+        'Los entreturnos deben comenzar a los :15 o :45.',
       );
     }
     this.assertCanManageDoctor(identity, dto.medicoId);
     return this.dataSource.transaction(async (manager) => {
       const doctor = await this.lockDoctor(manager, dto.medicoId);
+      this.assertNotPast(start);
+      const slotStart = new Date(start.getTime() - URGENT_DURATION_MINUTES * 60_000);
+      this.assertWithinSchedule(doctor, slotStart);
       const repository = manager.getRepository(Turno);
-      const adjacentStart = new Date(
-        urgentStart.getTime() - ADJACENT_SLOT_OFFSET_MS,
-      );
-      const adjacent = await repository.findOne({
-        where: {
-          fechaHora: adjacentStart,
-          duracionMinutos: STANDARD_DURATION_MINUTES,
-          estado: EstadoTurno.DISPONIBLE,
-          urgente: false,
-          medico: { id: dto.medicoId },
-        },
-        lock: { mode: 'pessimistic_write' },
-      });
       if (
-        !adjacent ||
-        adjacent.duracionMinutos - URGENT_DURATION_MINUTES <
-          MINIMUM_DURATION_MINUTES
+        await this.hasOverlap(
+          repository,
+          doctor.id,
+          slotStart,
+          STANDARD_DURATION_MINUTES,
+        )
       ) {
         throw new ConflictException(
           'No hay un turno disponible adyacente que pueda ajustarse.',
         );
       }
-      if (
-        await this.hasOverlap(
-          repository,
-          dto.medicoId,
-          urgentStart,
-          URGENT_DURATION_MINUTES,
-          adjacent.id,
-        )
-      ) {
-        throw new ConflictException(
-          'El horario de urgencia no está disponible.',
-        );
-      }
-
-      adjacent.duracionMinutos -= URGENT_DURATION_MINUTES;
-      await repository.save(adjacent);
-      const urgent = repository.create({
-        medico: doctor,
-        fechaHora: urgentStart,
-        duracionMinutos: URGENT_DURATION_MINUTES,
-        estado: EstadoTurno.DISPONIBLE,
-        urgente: true,
-      });
-      return this.toSummary(await repository.save(urgent));
+      return this.createReservation(
+        manager,
+        doctor,
+        dto.pacienteId,
+        start,
+        URGENT_DURATION_MINUTES,
+        true,
+      );
     });
   }
 
-  async reserve(
-    id: string,
-    dto: ReservarTurnoDto,
-    identity: SessionIdentity,
-  ): Promise<TurnoSummary> {
-    return this.dataSource.transaction(async (manager) => {
-      const initial = await manager.getRepository(Turno).findOne({
-        where: { id },
-        relations: { medico: true },
-      });
-      if (!initial) throw new NotFoundException('No se encontró el turno.');
-      this.assertCanManageDoctor(identity, initial.medico.id);
-      await this.lockDoctor(manager, initial.medico.id);
-
-      const turnosRepo = manager.getRepository(Turno);
-      const turno = await turnosRepo.findOne({
-        where: { id },
-        relations: { medico: true },
-        lock: { mode: 'pessimistic_write', tables: ['turnos'] },
-      });
-      if (!turno) throw new NotFoundException('No se encontró el turno.');
-      if (turno.estado !== EstadoTurno.DISPONIBLE) {
-        throw new ConflictException(
-          'Este turno acaba de ser ocupado. Elegí otro horario.',
-        );
-      }
-      if (turno.fechaHora <= new Date()) {
-        throw new ConflictException(
-          'Este turno ya pasó. Elegí otro horario.',
-        );
-      }
-
-      const patient = await manager.getRepository(Paciente).findOne({
-        where: { id: dto.pacienteId },
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (!patient) throw new NotFoundException('No se encontró el paciente.');
-
-      if (
-        await this.hasOverlap(
-          turnosRepo,
-          turno.medico.id,
-          turno.fechaHora,
-          turno.duracionMinutos,
-          turno.id,
-          [EstadoTurno.RESERVADO, EstadoTurno.CONFIRMADO],
-        )
-      ) {
-        throw new ConflictException(
-          'El médico tiene otro turno reservado en ese horario.',
-        );
-      }
-      if (
-        await this.patientHasOverlap(
-          turnosRepo,
-          patient.id,
-          turno.fechaHora,
-          turno.duracionMinutos,
-          turno.id,
-        )
-      ) {
-        throw new ConflictException(
-          'El paciente ya tiene un turno reservado en ese horario.',
-        );
-      }
-
-      turno.paciente = patient;
-      turno.estado = EstadoTurno.RESERVADO;
-      return this.toSummary(await turnosRepo.save(turno));
-    });
-  }
-
+  /** HU 2.1: transiciones del flujo de atención según el Patrón State. */
   async transition(
     id: string,
     nextState: EstadoTurno,
     identity: SessionIdentity,
-  ): Promise<TurnoSummary> {
+  ): Promise<TurnoSummary & { promovido: PromocionStandby | null }> {
     const result = await this.dataSource.transaction(async (manager) => {
       const initial = await manager.getRepository(Turno).findOne({
         where: { id },
@@ -358,54 +356,170 @@ export class TurnosService {
       const repository = manager.getRepository(Turno);
       const turno = await repository.findOne({
         where: { id },
-        relations: { medico: true },
+        relations: { medico: true, paciente: true },
         lock: { mode: 'pessimistic_write', tables: ['turnos'] },
       });
       if (!turno) throw new NotFoundException('No se encontró el turno.');
-      const allowedTransitions: Partial<Record<EstadoTurno, EstadoTurno[]>> = {
-        [EstadoTurno.RESERVADO]: [
-          EstadoTurno.CONFIRMADO,
-          EstadoTurno.CANCELADO,
-        ],
-        [EstadoTurno.CONFIRMADO]: [EstadoTurno.CANCELADO, EstadoTurno.ATENDIDO],
-      };
-      if (!allowedTransitions[turno.estado]?.includes(nextState)) {
-        throw new ConflictException(
-          `No se permite pasar de ${turno.estado} a ${nextState}.`,
-        );
+      try {
+        turno.estado = turnoStateFor(turno.estado).transicionarA(nextState);
+      } catch (error) {
+        if (error instanceof TransicionTurnoInvalidaError) {
+          throw new ConflictException(error.message);
+        }
+        throw error;
       }
-      turno.estado = nextState;
       const saved = await repository.save(turno);
-      if (nextState === EstadoTurno.CANCELADO) {
-        await repository.save(
-          repository.create({
-            medico: turno.medico,
-            fechaHora: turno.fechaHora,
-            duracionMinutos: turno.duracionMinutos,
-            urgente: turno.urgente,
-            estado: EstadoTurno.DISPONIBLE,
-          }),
-        );
-      }
+      // HU 1.3: el horario liberado pasa al primero de la lista de espera, en la misma transacción.
+      const promovido =
+        nextState === EstadoTurno.CANCELADO
+          ? await this.promoteFromStandby(manager, saved)
+          : null;
       return {
         summary: this.toSummary(saved),
-        appointmentAttended:
-          nextState === EstadoTurno.ATENDIDO
-            ? { appointmentId: saved.id, urgente: saved.urgente }
-            : undefined,
+        patientId: turno.paciente?.id,
+        promovido,
       };
     });
-    if (result.appointmentAttended) {
+    const occurredAt = new Date().toISOString();
+    if (nextState === EstadoTurno.ATENDIDO) {
       this.events.publish({
         type: 'admissions.appointment-attended',
-        occurredAt: new Date().toISOString(),
-        payload: result.appointmentAttended,
+        occurredAt,
+        payload: { appointmentId: id, urgente: result.summary.urgente },
       });
     }
-    return result.summary;
+    if (nextState === EstadoTurno.EN_SALA_DE_ESPERA) {
+      // Alerta al consultorio del médico (HU 2.1, escenario 1).
+      this.events.publish({
+        type: 'admissions.patient-waiting',
+        occurredAt,
+        payload: {
+          appointmentId: id,
+          doctorId: result.summary.medico.id,
+          patientId: result.patientId,
+        },
+      });
+    }
+    if (result.promovido) {
+      this.events.publish({
+        type: 'admissions.standby-promoted',
+        occurredAt,
+        payload: {
+          appointmentId: result.promovido.turno.id,
+          doctorId: result.promovido.turno.medico.id,
+          patientId: result.promovido.paciente.id,
+        },
+      });
+    }
+    return { ...result.summary, promovido: result.promovido };
   }
 
-  private async lockDoctor(
+  /**
+   * HU 1.3: al cancelarse un turno, el horario liberado se le asigna al primero de la cola de
+   * espera de ese médico y día. Se salta a quien ya tenga otro turno en ese horario.
+   * Corre dentro de la transacción de la cancelación, con el lock del médico ya tomado.
+   */
+  private async promoteFromStandby(
+    manager: EntityManager,
+    cancelled: Turno,
+  ): Promise<PromocionStandby | null> {
+    if (cancelled.fechaHora <= new Date()) return null;
+    const standby = manager.getRepository(EntreturnoStandby);
+    const queue = await standby.find({
+      where: {
+        medico: { id: cancelled.medico.id },
+        fecha: clinicDateOf(cancelled.fechaHora),
+        estado: EstadoStandby.EN_COLA,
+      },
+      relations: { paciente: true },
+      order: { createdAt: 'ASC' },
+    });
+    const repository = manager.getRepository(Turno);
+    for (const entry of queue) {
+      if (
+        await this.patientHasOverlap(
+          repository,
+          entry.paciente.id,
+          cancelled.fechaHora,
+          cancelled.duracionMinutos,
+        )
+      ) {
+        continue;
+      }
+      const created = await repository.save(
+        repository.create({
+          medico: cancelled.medico,
+          paciente: entry.paciente,
+          fechaHora: cancelled.fechaHora,
+          duracionMinutos: cancelled.duracionMinutos,
+          urgente: cancelled.urgente,
+          estado: EstadoTurno.RESERVADO,
+        }),
+      );
+      entry.estado = EstadoStandby.ASIGNADO;
+      entry.turno = created;
+      await standby.save(entry);
+      return {
+        turno: this.toSummary(created),
+        paciente: {
+          id: entry.paciente.id,
+          nombre: entry.paciente.nombre,
+          apellido: entry.paciente.apellido,
+        },
+      };
+    }
+    return null;
+  }
+
+  /** Destinos válidos por estado, para que el front habilite el drag & drop. */
+  getTransitionTable(): Record<string, EstadoTurno[]> {
+    return tablaTransiciones();
+  }
+
+  private async createReservation(
+    manager: EntityManager,
+    doctor: Usuario,
+    patientId: string,
+    start: Date,
+    duration: number,
+    urgent: boolean,
+  ): Promise<TurnoSummary> {
+    const patient = await manager.getRepository(Paciente).findOne({
+      where: { id: patientId },
+      lock: { mode: 'pessimistic_write' },
+    });
+    if (!patient) throw new NotFoundException('No se encontró el paciente.');
+    const repository = manager.getRepository(Turno);
+    if (
+      await this.patientHasOverlap(repository, patient.id, start, duration)
+    ) {
+      throw new ConflictException(
+        'El paciente ya tiene un turno reservado en ese horario.',
+      );
+    }
+    try {
+      const saved = await repository.save(
+        repository.create({
+          medico: doctor,
+          paciente: patient,
+          fechaHora: start,
+          duracionMinutos: duration,
+          estado: EstadoTurno.RESERVADO,
+          urgente: urgent,
+        }),
+      );
+      return this.toSummary(saved);
+    } catch (error) {
+      if (this.isUniqueViolation(error)) {
+        throw new ConflictException(
+          'Este turno acaba de ser ocupado. Elegí otro horario.',
+        );
+      }
+      throw error;
+    }
+  }
+
+  async lockDoctor(
     manager: EntityManager,
     doctorId: string,
   ): Promise<Usuario> {
@@ -428,25 +542,23 @@ export class TurnosService {
     doctorId: string,
     start: Date,
     durationMinutes: number,
-    exceptId?: string,
-    states?: EstadoTurno[],
   ): Promise<boolean> {
     const end = new Date(start.getTime() + durationMinutes * 60_000);
-    const query = repository
-      .createQueryBuilder('turno')
-      .innerJoin('turno.medico', 'medico')
-      .where('medico.id = :doctorId', { doctorId })
-      .andWhere(`turno.fechaHora < :end`, { end })
-      .andWhere(
-        `turno.fechaHora + turno.duracionMinutos * INTERVAL '1 minute' > :start`,
-        { start },
-      )
-      .andWhere('turno.estado != :cancelled', {
-        cancelled: EstadoTurno.CANCELADO,
-      });
-    if (exceptId) query.andWhere('turno.id != :exceptId', { exceptId });
-    if (states) query.andWhere('turno.estado IN (:...states)', { states });
-    return (await query.getCount()) > 0;
+    return (
+      (await repository
+        .createQueryBuilder('turno')
+        .innerJoin('turno.medico', 'medico')
+        .where('medico.id = :doctorId', { doctorId })
+        .andWhere('turno.fechaHora < :end', { end })
+        .andWhere(
+          `turno.fechaHora + turno.duracionMinutos * INTERVAL '1 minute' > :start`,
+          { start },
+        )
+        .andWhere('turno.estado NOT IN (:...inactive)', {
+          inactive: NON_OCCUPYING_STATES,
+        })
+        .getCount()) > 0
+    );
   }
 
   private async patientHasOverlap(
@@ -454,7 +566,6 @@ export class TurnosService {
     patientId: string,
     start: Date,
     durationMinutes: number,
-    exceptId: string,
   ): Promise<boolean> {
     const end = new Date(start.getTime() + durationMinutes * 60_000);
     return (
@@ -462,9 +573,8 @@ export class TurnosService {
         .createQueryBuilder('turno')
         .innerJoin('turno.paciente', 'paciente')
         .where('paciente.id = :patientId', { patientId })
-        .andWhere('turno.id != :exceptId', { exceptId })
         .andWhere('turno.estado IN (:...states)', {
-          states: [EstadoTurno.RESERVADO, EstadoTurno.CONFIRMADO],
+          states: PATIENT_ACTIVE_STATES,
         })
         .andWhere('turno.fechaHora < :end', { end })
         .andWhere(
@@ -475,14 +585,45 @@ export class TurnosService {
     );
   }
 
-  private parseFutureDate(value: string): Date {
+  private parseDate(value: string): Date {
     const date = new Date(value);
-    if (Number.isNaN(date.getTime()) || date <= new Date()) {
-      throw new BadRequestException(
-        'La fecha del turno debe ser futura y válida.',
-      );
+    if (Number.isNaN(date.getTime())) {
+      throw new BadRequestException('La fecha del turno no es válida.');
     }
     return date;
+  }
+
+  private assertNotPast(date: Date): void {
+    if (date <= new Date()) {
+      throw new ConflictException('Este turno ya pasó. Elegí otro horario.');
+    }
+  }
+
+  /** ¿Cae exactamente en minuto `offset` de cada media hora (0 → :00/:30, 15 → :15/:45)? */
+  private isAligned(date: Date, offset: number): boolean {
+    return (
+      date.getUTCMinutes() % 30 === offset &&
+      date.getUTCSeconds() === 0 &&
+      date.getUTCMilliseconds() === 0
+    );
+  }
+
+  /** El horario regular de 30 min debe entrar completo en la jornada del médico. */
+  private assertWithinSchedule(doctor: Usuario, slotStart: Date): void {
+    const minutes = clinicMinutesOfDay(slotStart);
+    if (
+      minutes < scheduleMinutes(doctor.horaInicio) ||
+      minutes + STANDARD_DURATION_MINUTES > scheduleMinutes(doctor.horaFin)
+    ) {
+      throw new BadRequestException(
+        `El médico atiende de ${doctor.horaInicio.slice(0, 5)} a ${doctor.horaFin.slice(0, 5)}.`,
+      );
+    }
+  }
+
+  private isUniqueViolation(error: unknown): boolean {
+    const e = error as { code?: string; driverError?: { code?: string } };
+    return e?.code === '23505' || e?.driverError?.code === '23505';
   }
 
   private validateDateRange(desde?: string, hasta?: string): void {
@@ -499,7 +640,7 @@ export class TurnosService {
     }
   }
 
-  private assertCanManageDoctor(
+  assertCanManageDoctor(
     identity: SessionIdentity,
     doctorId: string,
   ): void {

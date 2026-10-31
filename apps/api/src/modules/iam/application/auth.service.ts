@@ -38,6 +38,9 @@ export interface PublicAccount {
   rol: RolUsuario;
   estado: EstadoCuenta;
   esSuperadmin: boolean;
+  /** Solo médicos: jornada de atención 'HH:MM'. */
+  horaInicio?: string;
+  horaFin?: string;
 }
 
 export interface SessionIdentity {

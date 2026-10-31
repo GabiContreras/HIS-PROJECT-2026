@@ -18,6 +18,7 @@ import { Roles } from './roles.decorator.js';
 import { RegistroDto } from './dto/registro.dto.js';
 import { CreateAdminDto } from './dto/create-admin.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
+import { HorarioMedicoDto } from './dto/horario-medico.dto.js';
 
 @Controller('usuarios')
 @ApiTags('Usuarios')
@@ -60,6 +61,13 @@ export class UsuariosController {
   @Roles(RolUsuario.ADMINISTRATIVO)
   updateProfile(@Param('id') id: string, @Body() dto: UpdateUserDto) {
     return this.accounts.updateProfile(id, dto);
+  }
+
+  @Patch(':id/horario')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(RolUsuario.ADMINISTRATIVO)
+  updateSchedule(@Param('id') id: string, @Body() dto: HorarioMedicoDto) {
+    return this.accounts.updateSchedule(id, dto);
   }
 
   @Patch(':id/habilitar')
