@@ -6,11 +6,12 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
-import { EstadoCuenta, Usuario } from '../../../entities/usuario.entity.js';
+import { EstadoCuenta, RolUsuario, Usuario } from '../../../entities/usuario.entity.js';
 import { RefreshSession } from '../../../entities/refresh-session.entity.js';
 import { AuthService, PublicAccount } from '../application/auth.service.js';
 import { CreateAdminDto } from './dto/create-admin.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
+import { HorarioMedicoDto } from './dto/horario-medico.dto.js';
 
 @Injectable()
 export class AccountAdminService {
@@ -58,6 +59,36 @@ export class AccountAdminService {
       }
       account.apellido = apellido;
     }
+    return this.toPublicAccount(await this.usuarios.save(account));
+  }
+
+  /** Asigna la jornada de atención del médico (la disponibilidad se calcula con ella). */
+  async updateSchedule(
+    id: string,
+    dto: HorarioMedicoDto,
+  ): Promise<PublicAccount> {
+    const account = await this.findAccount(id);
+    if (account.rol !== RolUsuario.MEDICO) {
+      throw new ConflictException('Solo los médicos tienen horario de atención.');
+    }
+    const toMinutes = (time: string) => {
+      const [hour, minute] = time.split(':').map(Number);
+      return hour * 60 + minute;
+    };
+    const start = toMinutes(dto.horaInicio);
+    const end = toMinutes(dto.horaFin);
+    if (start < 8 * 60 || end > 20 * 60) {
+      throw new BadRequestException(
+        'El horario debe estar dentro del horario de la clínica (08:00 a 20:00).',
+      );
+    }
+    if (start >= end) {
+      throw new BadRequestException(
+        'La hora de inicio debe ser anterior a la hora de fin.',
+      );
+    }
+    account.horaInicio = dto.horaInicio;
+    account.horaFin = dto.horaFin;
     return this.toPublicAccount(await this.usuarios.save(account));
   }
 
@@ -114,6 +145,12 @@ export class AccountAdminService {
       rol: account.rol,
       estado: account.estado,
       esSuperadmin: account.esSuperadmin,
+      ...(account.rol === RolUsuario.MEDICO
+        ? {
+            horaInicio: account.horaInicio?.slice(0, 5),
+            horaFin: account.horaFin?.slice(0, 5),
+          }
+        : {}),
     };
   }
 }

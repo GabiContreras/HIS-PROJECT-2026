@@ -45,6 +45,13 @@ export class Usuario {
   @Column({ type: 'boolean', default: false })
   emailVerificado: boolean;
 
+  /** Horario laboral (HH:MM:SS, hora de la clínica). Solo se usa para médicos. */
+  @Column({ type: 'time', default: '08:00' })
+  horaInicio: string;
+
+  @Column({ type: 'time', default: '20:00' })
+  horaFin: string;
+
   @Column({ type: 'boolean', default: false })
   esSuperadmin: boolean;
 
