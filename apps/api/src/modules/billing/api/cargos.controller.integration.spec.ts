@@ -4,6 +4,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { QueryFailedError } from 'typeorm';
 import { Cargo, TipoAtencionFacturable } from '../../../entities/cargo.entity.js';
+import { Turno } from '../../../entities/turno.entity.js';
 import { AuthGuard } from '../../iam/api/auth.guard.js';
 import { RolesGuard } from '../../iam/api/roles.guard.js';
 import { EventBus } from '../../../shared/events/event-bus.service.js';
@@ -42,8 +43,19 @@ describe('Billing integration', () => {
     }),
   };
 
+  // Turnos que originaron los cargos (paciente y médico se leen de acá).
+  const appointments: Array<Partial<Turno>> = [];
+  const turnosRepository = {
+    find: vi.fn(async () => [...appointments]),
+    findOne: vi.fn(
+      async ({ where }: { where: { id: string } }) =>
+        appointments.find((turno) => turno.id === where.id) ?? null,
+    ),
+  };
+
   beforeEach(async () => {
     charges.length = 0;
+    appointments.length = 0;
     vi.clearAllMocks();
     const module = await Test.createTestingModule({
       controllers: [CargosController],
@@ -54,6 +66,7 @@ describe('Billing integration', () => {
         ConsultaUrgenciaStrategy,
         AppointmentAttendedSubscriber,
         { provide: getRepositoryToken(Cargo), useValue: repository },
+        { provide: getRepositoryToken(Turno), useValue: turnosRepository },
       ],
     })
       .overrideGuard(AuthGuard)
@@ -106,5 +119,86 @@ describe('Billing integration', () => {
       }),
     ]);
     expect(repository.save).toHaveBeenCalledTimes(3);
+  });
+
+  it('incluye paciente, médico y fecha del turno en cada cargo', async () => {
+    appointments.push({
+      id: 'appointment-regular',
+      fechaHora: new Date('2030-01-01T12:00:00.000Z'),
+      duracionMinutos: 30,
+      urgente: false,
+      medico: { id: 'doctor-1', nombre: 'Ada', apellido: 'Lovelace' },
+      paciente: {
+        id: 'patient-1',
+        nombre: 'Ana',
+        apellido: 'Rojas',
+        documento: '28456921',
+        tipoCobertura: 'PARTICULAR',
+        entidadCobertura: null,
+      },
+    } as unknown as Partial<Turno>);
+    events.publish({
+      type: APPOINTMENT_ATTENDED_EVENT,
+      occurredAt: '2030-01-01T00:00:00.000Z',
+      payload: { appointmentId: 'appointment-regular', urgente: false },
+    });
+    events.publish({
+      type: APPOINTMENT_ATTENDED_EVENT,
+      occurredAt: '2030-01-01T00:00:01.000Z',
+      payload: { appointmentId: 'appointment-gone', urgente: false },
+    });
+    await vi.waitFor(() => expect(charges).toHaveLength(2));
+
+    const response = await request(app.getHttpServer())
+      .get('/billing/cargos')
+      .expect(200);
+
+    expect(response.body).toEqual([
+      // El turno no se pudo leer: el cargo igual se lista.
+      expect.objectContaining({ turnoId: 'appointment-gone', turno: null }),
+      expect.objectContaining({
+        turnoId: 'appointment-regular',
+        turno: expect.objectContaining({
+          duracionMinutos: 30,
+          medico: expect.objectContaining({ apellido: 'Lovelace' }),
+          paciente: expect.objectContaining({ apellido: 'Rojas', documento: '28456921' }),
+        }),
+      }),
+    ]);
+  });
+
+  it.each([
+    ['OBRA_SOCIAL_PUBLICA', null, 0, 15_000],
+    ['MEDICINA_PREPAGA', 'Medicina Prepaga Premium', 3_000, 12_000],
+    ['PARTICULAR', null, 15_000, 0],
+  ])('factura según la cobertura %s del paciente', async (tipo, entidad, paciente, tercero) => {
+    appointments.push({
+      id: 'appointment-covered',
+      fechaHora: new Date('2030-01-01T12:00:00.000Z'),
+      duracionMinutos: 30,
+      urgente: false,
+      medico: { id: 'doctor-1', nombre: 'Ada', apellido: 'Lovelace' },
+      paciente: {
+        id: 'patient-1',
+        nombre: 'Ana',
+        apellido: 'Rojas',
+        documento: '28456921',
+        tipoCobertura: tipo,
+        entidadCobertura: entidad,
+      },
+    } as unknown as Partial<Turno>);
+    events.publish({
+      type: APPOINTMENT_ATTENDED_EVENT,
+      occurredAt: '2030-01-01T00:00:00.000Z',
+      payload: { appointmentId: 'appointment-covered', urgente: false },
+    });
+    await vi.waitFor(() => expect(charges).toHaveLength(1));
+
+    const response = await request(app.getHttpServer()).get('/billing/cargos').expect(200);
+
+    expect(response.body[0]).toMatchObject({
+      importePesos: 15_000,
+      cobertura: { tipo, entidad, pacientePesos: paciente, terceroPesos: tercero },
+    });
   });
 });

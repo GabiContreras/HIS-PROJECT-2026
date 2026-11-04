@@ -1,5 +1,12 @@
 import { ref } from 'vue';
-import { createPatient, searchPatients, type CreatePatientInput, type Patient } from '../services/patients';
+import {
+  actualizarCobertura,
+  createPatient,
+  searchPatients,
+  type CoberturaInput,
+  type CreatePatientInput,
+  type Patient,
+} from '../services/patients';
 import { messageFrom } from '../shared/errors';
 
 export function usePatients() {
@@ -39,5 +46,21 @@ export function usePatients() {
     }
   }
 
-  return { patients, loading, error, saving, saveError, load, create };
+  /** Cambia la cobertura y refleja el cambio en la lista sin recargarla. */
+  async function updateCoverage(id: string, input: CoberturaInput): Promise<Patient | null> {
+    saving.value = true;
+    saveError.value = null;
+    try {
+      const updated = await actualizarCobertura(id, input);
+      patients.value = patients.value.map((p) => (p.id === id ? updated : p));
+      return updated;
+    } catch (reason) {
+      saveError.value = messageFrom(reason, 'No se pudo actualizar la cobertura.');
+      return null;
+    } finally {
+      saving.value = false;
+    }
+  }
+
+  return { patients, loading, error, saving, saveError, load, create, updateCoverage };
 }

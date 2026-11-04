@@ -1,5 +1,5 @@
-// Horario de atención de la clínica. Los turnos regulares se dan de 08:00 a 20:00;
-// las urgencias (entreturnos) no tienen restricción horaria: son las 24 horas.
+// Horario general de la clínica: 08:00 a 20:00. Cada médico atiende dentro de su propia
+// jornada (la define administración) y el backend calcula los horarios libres con ella.
 export const CLINIC_TIME_ZONE = 'America/Argentina/Buenos_Aires';
 export const OPENING_HOUR = 8;
 export const CLOSING_HOUR = 20;
@@ -60,6 +60,11 @@ export function clinicDateOf(iso: string): string {
 export function dayRange(date: string): { desde: string; hasta: string } {
   const start = new Date(`${date}T00:00:00${CLINIC_OFFSET}`);
   return { desde: start.toISOString(), hasta: new Date(start.getTime() + DAY_MS).toISOString() };
+}
+
+/** Fecha (AAAA-MM-DD) desplazada `days` días. */
+export function addDays(date: string, days: number): string {
+  return day.format(new Date(new Date(`${date}T12:00:00${CLINIC_OFFSET}`).getTime() + days * DAY_MS));
 }
 
 /** "Martes, 15 de octubre de 2024" */

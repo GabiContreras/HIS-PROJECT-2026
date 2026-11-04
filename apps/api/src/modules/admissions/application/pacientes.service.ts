@@ -5,6 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { CoverageType } from '../../../shared/events/coverage-type.js';
 import { validateBirthDate } from '../domain/paciente.rules.js';
 import {
   DocumentoDuplicadoError,
@@ -21,6 +22,35 @@ export interface CrearPacienteInput {
   documento: string;
   fechaNacimiento: string;
   telefono?: string;
+  tipoCobertura: CoverageType;
+  entidadCobertura?: string;
+}
+
+export interface CoberturaInput {
+  tipoCobertura: CoverageType;
+  entidadCobertura?: string;
+}
+
+/**
+ * Reglas de la cobertura: la prepaga necesita su nombre (el copago depende de ella), la obra
+ * social pública lo admite opcional y el particular no tiene entidad.
+ */
+export function normalizeCoverage(input: CoberturaInput): {
+  tipoCobertura: CoverageType;
+  entidadCobertura: string | null;
+} {
+  const entidad = input.entidadCobertura?.trim() || null;
+  switch (input.tipoCobertura) {
+    case CoverageType.PREPAID:
+      if (!entidad) {
+        throw new BadRequestException('Indicá la medicina prepaga del paciente.');
+      }
+      return { tipoCobertura: input.tipoCobertura, entidadCobertura: entidad };
+    case CoverageType.PUBLIC_INSURANCE:
+      return { tipoCobertura: input.tipoCobertura, entidadCobertura: entidad };
+    default:
+      return { tipoCobertura: CoverageType.SELF_PAY, entidadCobertura: null };
+  }
 }
 
 @Injectable()
@@ -55,6 +85,8 @@ export class PacientesService {
       throw new BadRequestException('La fecha de nacimiento no es válida.');
     }
 
+    const coverage = normalizeCoverage(input);
+
     if (await this.repository.findByDocumento(input.documento)) {
       throw new ConflictException('Ya existe un paciente con ese documento.');
     }
@@ -66,6 +98,7 @@ export class PacientesService {
         documento: input.documento,
         fechaNacimiento: birth,
         telefono: input.telefono ?? null,
+        ...coverage,
       });
     } catch (error) {
       // Dos altas simultáneas con el mismo documento: gana una, la otra recibe 409.
@@ -74,5 +107,16 @@ export class PacientesService {
       }
       throw error;
     }
+  }
+
+  async updateCoverage(id: string, input: CoberturaInput): Promise<PacienteData> {
+    const { tipoCobertura, entidadCobertura } = normalizeCoverage(input);
+    const updated = await this.repository.updateCoverage(
+      id,
+      tipoCobertura,
+      entidadCobertura,
+    );
+    if (!updated) throw new NotFoundException('No se encontró el paciente.');
+    return updated;
   }
 }

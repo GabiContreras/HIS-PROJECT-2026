@@ -6,9 +6,9 @@ import NoticeBanner from '../../components/ui/NoticeBanner.vue';
 import SideDrawer from '../../components/ui/SideDrawer.vue';
 import DayPicker from './DayPicker.vue';
 import type { Patient } from '../../services/patients';
-import { listarDisponibles, reservarTurno, type Turno, type TurnoAgenda } from '../../services/turnos';
+import { agregarEspera, listarDisponibles, reservarEntreturno, reservarTurno, type SlotDisponible } from '../../services/turnos';
 import { messageFrom } from '../../shared/errors';
-import { clinicDateOf, clinicTime, dayRange, isWithinClinicHours, longDateLabel, todayInClinic } from './clinic-hours';
+import { clinicDateOf, clinicTime, dayRange, longDateLabel, todayInClinic } from './clinic-hours';
 
 export interface DoctorOption {
   id: string;
@@ -19,25 +19,29 @@ export interface DoctorOption {
 const props = defineProps<{
   open: boolean;
   medicos: DoctorOption[];
-  /** Turno elegido desde la tabla: abre el panel con fecha, médico y horario ya cargados. */
-  prefill: TurnoAgenda | null;
+  /** Horario elegido en la pantalla (chip de "Horarios libres" o panel de horarios): abre con fecha, médico y hora ya cargados. */
+  prefill: SlotDisponible | null;
   /** Si la persona es médico, solo puede sacar turnos en su propia agenda. */
   lockedMedicoId: string | null;
 }>();
 
 const emit = defineEmits<{
   close: [];
-  /** La reserva salió bien. */
-  reserved: [patientName: string];
+  /** La reserva salió bien; trae el mensaje para mostrar en la pantalla. */
+  reserved: [mensaje: string];
   /** Cambió la agenda (salió bien o hubo un conflicto): la pantalla de fondo tiene que refrescarse. */
   changed: [];
 }>();
 
+const QUARTER_MS = 15 * 60_000;
+
 const fecha = ref(todayInClinic());
 const medicoId = ref('');
 const paciente = ref<Patient | null>(null);
-const selectedId = ref<string | null>(null);
-const slots = ref<Turno[]>([]);
+/** Inicio (ISO) del horario elegido. */
+const selectedStart = ref<string | null>(null);
+const esEntreturno = ref(false);
+const slots = ref<SlotDisponible[]>([]);
 const loadingSlots = ref(false);
 const slotsError = ref<string | null>(null);
 const reservando = ref(false);
@@ -47,8 +51,23 @@ let slotsRequest = 0;
 
 const today = todayInClinic();
 const medicoActual = computed(() => props.medicos.find((m) => m.id === medicoId.value) ?? null);
-const selectedSlot = computed(() => slots.value.find((s) => s.id === selectedId.value) ?? null);
-const canSubmit = computed(() => !!paciente.value && !!selectedSlot.value && !reservando.value);
+
+/**
+ * Turno regular: los horarios libres tal cual. Entreturno: se inserta a los :15/:45 dentro de un
+ * horario libre de 30 minutos, así que cada horario de 30 min ofrece su segunda mitad.
+ */
+const opciones = computed<SlotDisponible[]>(() => {
+  if (!esEntreturno.value) return slots.value;
+  return slots.value
+    .filter((s) => s.duracionMinutos === 30)
+    .map((s) => ({
+      ...s,
+      fechaHora: new Date(new Date(s.fechaHora).getTime() + QUARTER_MS).toISOString(),
+      duracionMinutos: 15,
+    }));
+});
+const selected = computed(() => opciones.value.find((o) => o.fechaHora === selectedStart.value) ?? null);
+const canSubmit = computed(() => !!paciente.value && !!selected.value && !reservando.value);
 
 async function loadSlots(): Promise<void> {
   const current = ++slotsRequest;
@@ -61,13 +80,10 @@ async function loadSlots(): Promise<void> {
   try {
     const found = await listarDisponibles({ medicoId: medicoId.value, ...dayRange(fecha.value) });
     if (current !== slotsRequest) return;
-    const prefillId = props.prefill?.id;
-    // Solo turnos regulares dentro del horario de atención. Los entreturnos (15 min) se agregan en otro paso,
-    // salvo el que la persona eligió a propósito desde la tabla.
-    slots.value = found
-      .filter((s) => s.id === prefillId || (!s.urgente && isWithinClinicHours(s.fechaHora, s.duracionMinutos)))
-      .sort((a, b) => a.fechaHora.localeCompare(b.fechaHora));
-    if (selectedId.value && !slots.value.some((s) => s.id === selectedId.value)) selectedId.value = null;
+    slots.value = [...found].sort((a, b) => a.fechaHora.localeCompare(b.fechaHora));
+    if (selectedStart.value && !opciones.value.some((o) => o.fechaHora === selectedStart.value)) {
+      selectedStart.value = null;
+    }
   } catch (reason) {
     if (current === slotsRequest) slotsError.value = messageFrom(reason, 'No se pudieron cargar los horarios.');
   } finally {
@@ -79,14 +95,15 @@ function reset(): void {
   paciente.value = null;
   errorReserva.value = null;
   reservando.value = false;
+  esEntreturno.value = false;
   if (props.prefill) {
     fecha.value = clinicDateOf(props.prefill.fechaHora);
     medicoId.value = props.prefill.medico.id;
-    selectedId.value = props.prefill.id;
+    selectedStart.value = props.prefill.fechaHora;
   } else {
     fecha.value = todayInClinic();
     medicoId.value = props.lockedMedicoId ?? props.medicos[0]?.id ?? '';
-    selectedId.value = null;
+    selectedStart.value = null;
   }
   void loadSlots();
 }
@@ -110,38 +127,67 @@ watch(
   },
 );
 
-function onDateChange(): void {
-  selectedId.value = null;
+function onChoiceChange(): void {
+  selectedStart.value = null;
   errorReserva.value = null;
   void loadSlots();
 }
 
-function onDoctorChange(): void {
-  selectedId.value = null;
-  errorReserva.value = null;
-  void loadSlots();
-}
-
-function pickSlot(slot: Turno): void {
-  selectedId.value = slot.id;
+function onUrgentToggle(): void {
+  selectedStart.value = null;
   errorReserva.value = null;
 }
 
-async function submit(): Promise<void> {
-  const slot = selectedSlot.value;
+function pickSlot(slot: SlotDisponible): void {
+  selectedStart.value = slot.fechaHora;
+  errorReserva.value = null;
+}
+
+/** HU 1.3: sin horarios libres ese día, el paciente queda en la cola y recibe el primer horario que se libere. */
+async function anotarEnEspera(): Promise<void> {
   const patient = paciente.value;
-  if (!slot || !patient) return;
+  if (!patient || !medicoId.value || reservando.value) return;
   reservando.value = true;
   errorReserva.value = null;
   try {
-    await reservarTurno(slot.id, patient.id);
+    const entry = await agregarEspera({ medicoId: medicoId.value, pacienteId: patient.id, fecha: fecha.value });
     emit('changed');
-    emit('reserved', `${patient.nombre} ${patient.apellido}`);
+    emit(
+      'reserved',
+      `${patient.nombre} ${patient.apellido} quedó en la lista de espera (lugar ${entry.posicion}). Si alguien cancela ese día, se le asigna el horario automáticamente.`,
+    );
+    emit('close');
+  } catch (reason) {
+    errorReserva.value = messageFrom(reason, 'No se pudo anotar en la lista de espera.');
+    await loadSlots();
+  } finally {
+    reservando.value = false;
+  }
+}
+
+async function submit(): Promise<void> {
+  const slot = selected.value;
+  const patient = paciente.value;
+  if (!slot || !patient) return;
+  const urgente = esEntreturno.value;
+  const nombre = `${patient.nombre} ${patient.apellido}`;
+  reservando.value = true;
+  errorReserva.value = null;
+  try {
+    const datos = { medicoId: medicoId.value, fechaHora: slot.fechaHora, pacienteId: patient.id };
+    await (urgente ? reservarEntreturno(datos) : reservarTurno(datos));
+    emit('changed');
+    emit(
+      'reserved',
+      urgente
+        ? `Entreturno insertado para ${nombre}. El horario anterior quedó con duración reducida.`
+        : `Turno reservado para ${nombre}. Estado: Programado.`,
+    );
     emit('close');
   } catch (reason) {
     // Por ejemplo, otra recepcionista tomó el mismo horario: se avisa y se recarga la grilla.
     errorReserva.value = messageFrom(reason, 'No se pudo reservar el turno.');
-    selectedId.value = null;
+    selectedStart.value = null;
     emit('changed');
     await loadSlots();
   } finally {
@@ -155,7 +201,7 @@ async function submit(): Promise<void> {
     <template #icon><AppIcon name="calendar" :size="22" /></template>
 
     <form id="new-appointment-form" class="form" novalidate @submit.prevent="submit">
-      <DayPicker v-model="fecha" :min="today" label="FECHA DEL TURNO" @change="onDateChange" />
+      <DayPicker v-model="fecha" :min="today" label="FECHA DEL TURNO" @change="onChoiceChange" />
 
       <section class="group">
         <h3 class="label">Paciente <span class="req">*</span></h3>
@@ -170,7 +216,7 @@ async function submit(): Promise<void> {
             id="appointment-doctor"
             v-model="medicoId"
             :disabled="!!lockedMedicoId || medicos.length === 0"
-            @change="onDoctorChange"
+            @change="onChoiceChange"
           >
             <option value="" disabled>Seleccioná un médico</option>
             <option v-for="m in medicos" :key="m.id" :value="m.id">{{ m.nombre }} {{ m.apellido }}</option>
@@ -179,10 +225,18 @@ async function submit(): Promise<void> {
         </div>
       </section>
 
+      <label class="urgent-toggle">
+        <input v-model="esEntreturno" type="checkbox" @change="onUrgentToggle" />
+        <span class="text">
+          <strong>Es un entreturno</strong>
+          <small>Turno de 15 min a los :15 o :45, dentro de un horario libre. El horario de al lado queda reducido a 15 min.</small>
+        </span>
+      </label>
+
       <section class="group">
         <div class="slots-head">
-          <h3 class="label">Horario disponible <span class="req">*</span></h3>
-          <span class="duration">{{ selectedSlot?.duracionMinutos ?? 30 }} min</span>
+          <h3 class="label">{{ esEntreturno ? 'Horario del entreturno' : 'Horario disponible' }} <span class="req">*</span></h3>
+          <span class="duration">{{ selected?.duracionMinutos ?? (esEntreturno ? 15 : 30) }} min</span>
         </div>
         <p class="hint">Seleccioná un horario válido. La hora no se ingresa manualmente.</p>
 
@@ -199,24 +253,38 @@ async function submit(): Promise<void> {
           <span v-for="n in 8" :key="n" class="skeleton"></span>
           <span class="sr-only">Cargando horarios...</span>
         </div>
-        <p v-else-if="slots.length === 0" class="empty">
-          No hay horarios disponibles para
+        <p v-else-if="opciones.length === 0" class="empty">
+          No hay horarios {{ esEntreturno ? 'con lugar para un entreturno' : 'disponibles' }} para
           <strong>{{ medicoActual ? `${medicoActual.nombre} ${medicoActual.apellido}` : 'este médico' }}</strong>
           el {{ longDateLabel(fecha).toLowerCase() }}. Probá con otro día.
+          <template v-if="!esEntreturno">
+            <br />
+            <span class="wait-offer">
+              ¿Querés anotar al paciente en la lista de espera? Si alguien cancela ese día, se le asigna el horario automáticamente.
+            </span>
+            <button
+              type="button"
+              class="btn btn-secondary btn-sm"
+              :disabled="!paciente || reservando"
+              @click="anotarEnEspera"
+            >
+              {{ paciente ? 'Anotar en lista de espera' : 'Elegí un paciente para anotarlo' }}
+            </button>
+          </template>
         </p>
         <div v-else class="grid" role="group" aria-label="Horarios disponibles">
           <button
-            v-for="slot in slots"
-            :key="slot.id"
+            v-for="slot in opciones"
+            :key="slot.fechaHora"
             type="button"
             class="time"
-            :class="{ selected: slot.id === selectedId }"
-            :aria-pressed="slot.id === selectedId"
-            :title="slot.urgente ? 'Entreturno de 15 minutos' : undefined"
+            :class="{ selected: slot.fechaHora === selectedStart, 'urgent-opt': esEntreturno }"
+            :aria-pressed="slot.fechaHora === selectedStart"
+            :title="esEntreturno ? 'Entreturno de 15 minutos' : slot.duracionMinutos < 30 ? 'Duración reducida: 15 minutos' : undefined"
             @click="pickSlot(slot)"
           >
             {{ clinicTime(slot.fechaHora) }}
-            <AppIcon v-if="slot.id === selectedId" name="check" :size="15" />
+            <AppIcon v-if="slot.fechaHora === selectedStart" name="check" :size="15" />
           </button>
         </div>
       </section>
@@ -230,7 +298,11 @@ async function submit(): Promise<void> {
           {{ reservando ? 'Reservando...' : 'Reservar turno' }}
         </button>
       </div>
-      <p class="note"><AppIcon name="check" :size="13" /> Al confirmar quedará <strong>Programado</strong> y bloqueado.</p>
+      <p class="note">
+        <AppIcon name="check" :size="13" />
+        <template v-if="esEntreturno">Entreturno de <strong>15 min</strong>: el horario anterior quedará reducido a 15 min.</template>
+        <template v-else>Al confirmar quedará <strong>Programado</strong> y bloqueado.</template>
+      </p>
     </template>
   </SideDrawer>
 </template>
@@ -257,6 +329,16 @@ async function submit(): Promise<void> {
 .skeleton { height: 46px; border-radius: 10px; background: linear-gradient(90deg, #eef1f0, #f7f9f8, #eef1f0); }
 .empty { padding: 14px; border: 1px dashed var(--color-line); border-radius: 10px; color: var(--color-muted); font-size: 0.85rem; }
 .hint.empty { border: 0; padding: 4px 0; }
+
+.wait-offer { display: block; margin: 8px 0; }
+.urgent-toggle { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border: 1px solid var(--color-line); border-radius: 12px; background: #fff; cursor: pointer; }
+.urgent-toggle:has(input:checked) { border-color: #d49a2e; background: #fdf6e7; }
+.urgent-toggle input { width: 18px; height: 18px; margin-top: 2px; accent-color: #d49a2e; flex: none; }
+.urgent-toggle .text { display: grid; gap: 2px; line-height: 1.35; }
+.urgent-toggle strong { font-size: 0.88rem; }
+.urgent-toggle small { color: var(--color-muted); font-size: 0.78rem; }
+.time.urgent-opt { border-color: #e5c987; }
+.time.urgent-opt.selected, .time.urgent-opt.selected:hover:not(:disabled) { background: #d49a2e; border-color: #d49a2e; }
 
 .actions-row { display: flex; gap: 12px; }
 .cancel { flex: 0 0 auto; padding: 12px 22px; }
