@@ -1,5 +1,8 @@
 import { http } from '../shared/http';
 
+/** Cómo se factura la atención (HU de Facturación). */
+export type TipoCobertura = 'OBRA_SOCIAL_PUBLICA' | 'MEDICINA_PREPAGA' | 'PARTICULAR';
+
 export interface Patient {
   id: string;
   nombre: string;
@@ -7,6 +10,9 @@ export interface Patient {
   documento: string;
   fechaNacimiento: string;
   telefono: string | null;
+  tipoCobertura: TipoCobertura;
+  /** Prepaga u obra social; null si es particular. */
+  entidadCobertura: string | null;
 }
 
 export interface CreatePatientInput {
@@ -15,6 +21,13 @@ export interface CreatePatientInput {
   documento: string;
   fechaNacimiento: string;
   telefono?: string;
+  tipoCobertura: TipoCobertura;
+  entidadCobertura?: string;
+}
+
+export interface CoberturaInput {
+  tipoCobertura: TipoCobertura;
+  entidadCobertura?: string;
 }
 
 /** Busca por nombre, apellido o documento (el back devuelve hasta 50). Sin texto lista los primeros. */
@@ -23,6 +36,14 @@ export function searchPatients(q = ''): Promise<Patient[]> {
   return http.get<Patient[]>(`/pacientes${text ? `?q=${encodeURIComponent(text)}` : ''}`);
 }
 
+export function getPatient(id: string): Promise<Patient> {
+  return http.get<Patient>(`/pacientes/${id}`);
+}
+
 export function createPatient(input: CreatePatientInput): Promise<Patient> {
   return http.post<Patient>('/pacientes', input);
+}
+
+export function actualizarCobertura(id: string, input: CoberturaInput): Promise<Patient> {
+  return http.patch<Patient>(`/pacientes/${id}/cobertura`, input);
 }

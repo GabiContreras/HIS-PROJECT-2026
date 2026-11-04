@@ -11,6 +11,7 @@ import { SignoVital } from './entities/signo-vital.entity.js';
 import { IndicacionMedica } from './entities/indicacion-medica.entity.js';
 import { AdministracionMedicacion } from './entities/administracion-medicacion.entity.js';
 import { Cargo } from './entities/cargo.entity.js';
+import { EntreturnoStandby } from './entities/entreturno-standby.entity.js';
 
 export default new DataSource({
   type: 'postgres',
@@ -27,6 +28,7 @@ export default new DataSource({
     AdministracionMedicacion,
     Cargo,
     Internacion,
+    EntreturnoStandby,
   ],
   migrations: ['src/migrations/*.ts'],
   synchronize: false,

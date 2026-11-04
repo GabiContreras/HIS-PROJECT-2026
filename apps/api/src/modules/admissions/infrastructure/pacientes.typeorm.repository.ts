@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, QueryFailedError, Repository } from 'typeorm';
 import { Paciente } from '../../../entities/paciente.entity.js';
+import { CoverageType } from '../../../shared/events/coverage-type.js';
 import {
   DocumentoDuplicadoError,
   type NuevoPaciente,
@@ -19,6 +20,8 @@ function toData(entity: Paciente): PacienteData {
     documento: entity.documento,
     fechaNacimiento: entity.fechaNacimiento,
     telefono: entity.telefono ?? null,
+    tipoCobertura: entity.tipoCobertura,
+    entidadCobertura: entity.entidadCobertura ?? null,
   };
 }
 
@@ -88,5 +91,17 @@ export class PacientesTypeOrmRepository implements PacientesRepository {
       }
       throw error;
     }
+  }
+
+  async updateCoverage(
+    id: string,
+    tipoCobertura: CoverageType,
+    entidadCobertura: string | null,
+  ): Promise<PacienteData | null> {
+    const entity = await this.pacientes.findOne({ where: { id } });
+    if (!entity) return null;
+    entity.tipoCobertura = tipoCobertura;
+    entity.entidadCobertura = entidadCobertura;
+    return toData(await this.pacientes.save(entity));
   }
 }

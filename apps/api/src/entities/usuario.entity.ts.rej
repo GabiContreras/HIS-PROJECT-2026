@@ -1,0 +1,16 @@
+--- apps/api/src/entities/usuario.entity.ts	2026-10-30 14:03:16.000000000 +0000
++++ apps/api/src/entities/usuario.entity.ts	2026-10-30 14:18:47.024483620 +0000
+@@ -45,6 +45,13 @@
+   @Column({ type: 'boolean', default: false })
+   emailVerificado: boolean;
+ 
++  /** Horario laboral (HH:MM:SS, hora de la clínica). Solo se usa para médicos. */
++  @Column({ type: 'time', default: '08:00' })
++  horaInicio: string;
++
++  @Column({ type: 'time', default: '20:00' })
++  horaFin: string;
++
+   @Column({ type: 'boolean', default: false })
+   esSuperadmin: boolean;
+ 

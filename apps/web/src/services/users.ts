@@ -27,3 +27,14 @@ export function listarUsuarios(): Promise<Usuario[]> {
 export function obtenerUsuario(id: string): Promise<Usuario> {
   return http.get<Usuario>(`/usuarios/${id}`);
 }
+
+export interface HorarioMedico {
+  /** 'HH:MM', en bloques de 30 minutos, dentro de 08:00–20:00. */
+  horaInicio: string;
+  horaFin: string;
+}
+
+/** Define la jornada del médico; la disponibilidad de turnos se calcula con ella. */
+export function actualizarHorario(id: string, horario: HorarioMedico): Promise<Usuario> {
+  return http.patch<Usuario>(`/usuarios/${id}/horario`, horario);
+}

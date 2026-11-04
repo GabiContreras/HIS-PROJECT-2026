@@ -20,3 +20,7 @@ export function greeting(name: string | undefined): string {
 export function longDate(): string {
   return new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
 }
+
+/** DNI con puntos de miles (28456921 pasa a 28.456.921); si trae letras se deja tal cual. */
+export const formatDocument = (documento: string): string =>
+  /^\d+$/.test(documento) ? Number(documento).toLocaleString('es-AR') : documento;
