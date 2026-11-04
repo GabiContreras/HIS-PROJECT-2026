@@ -6,5 +6,7 @@ export const INTEGRATION_EVENTS = {
   BED_ASSIGNED: 'bed.assigned',
   BED_RELEASED: 'bed.released',
   BED_CLEANED: 'bed.cleaned',
+  PATIENT_ADMITTED: 'patient.admitted',
   MEDICATION_ADMINISTERED: 'medication.administered',
+  VITAL_SIGN_ALERT: 'vital-sign.alert-raised',
 } as const;

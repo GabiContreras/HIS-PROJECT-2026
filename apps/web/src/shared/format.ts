@@ -4,6 +4,16 @@ export const formatTime = (iso: string): string =>
 export const formatDateTime = (iso: string): string =>
   new Date(iso).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' });
 
+/** La API devuelve "Apellido, Nombre"; las pantallas muestran "Nombre Apellido". */
+export function displayName(apiName: string): string {
+  const at = apiName.indexOf(', ');
+  return at === -1 ? apiName : `${apiName.slice(at + 2)} ${apiName.slice(0, at)}`;
+}
+
+/** Fecha calendario (aaaa-mm-dd) como dd/mm/aaaa, sin el desfase de zona horaria de `new Date('aaaa-mm-dd')`. */
+export const formatDate = (isoDate: string): string =>
+  new Date(`${isoDate.slice(0, 10)}T12:00:00`).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
 export const isToday = (iso: string): boolean => new Date(iso).toDateString() === new Date().toDateString();
 
 export const formatMoney = (amount: number): string =>

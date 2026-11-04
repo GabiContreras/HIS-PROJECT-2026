@@ -107,6 +107,12 @@ export const router = createRouter({
           component: () => import('../features/inventory/InventoryView.vue'),
         },
         {
+          path: 'historia-clinica',
+          name: 'clinical-history',
+          meta: { roles: ['MEDICO', 'ENFERMERO'], title: 'Historia clínica' },
+          component: () => import('../features/ehr/ClinicalHistoryView.vue'),
+        },
+        {
           path: 'facturacion',
           name: 'billing',
           meta: { roles: ['ADMINISTRATIVO'], title: 'Facturación' },

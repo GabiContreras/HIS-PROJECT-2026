@@ -28,8 +28,8 @@ npm run build
 | Rol | Accesos actuales |
 |---|---|
 | `ADMINISTRATIVO` | Panel, Usuarios y Turnos |
-| `MEDICO` | Panel y agenda de Turnos |
-| `ENFERMERO` | Panel; la pantalla de turnos disponibles queda pendiente |
+| `MEDICO` | Panel, agenda de Turnos, Enfermería e Historia clínica (lectura y alta) |
+| `ENFERMERO` | Panel, Enfermería, Insumos e Historia clínica (solo lectura); la pantalla de turnos disponibles queda pendiente |
 
 ## Rutas
 
@@ -40,6 +40,7 @@ npm run build
 | `/usuarios` | `ADMINISTRATIVO` | Listado y alta de personal médico/enfermero |
 | `/usuarios/:id` | `ADMINISTRATIVO` | Detalle de usuario |
 | `/turnos` | `MEDICO`, `ADMINISTRATIVO` | Agenda, creación de franjas y transiciones |
+| `/historia-clinica` | `MEDICO`, `ENFERMERO` | Historia clínica del paciente: ficha, alergias, antecedentes familiares, evoluciones y estudios |
 
 ## Gestión de usuarios
 
@@ -73,6 +74,27 @@ La interfaz muestra estados de carga, vacío, error y reintento.
 
 - No se expone la reserva de turnos: requiere seleccionar un paciente, pero la API no publica un endpoint para listar o buscar pacientes.
 - Camas e internaciones no se integran todavía porque el backend no publica controladores HTTP para esos dominios.
+
+## Enfermería e inventario (Módulo 1)
+
+Las pantallas de Enfermería e Insumos consumen la API real mediante `shared/http.ts`:
+
+- **Signos vitales** (`/enfermeria/signos-vitales`, store `vitals.store.ts`): el formulario carga sistólica, diastólica, frecuencia cardíaca y temperatura de un paciente elegido con `PatientPicker` y valida rangos plausibles antes de enviar. `services/vitalSigns.ts` guarda el control completo con un único `POST /signos-vitales/controles` y arma el listado con un único `GET /signos-vitales/controles`, que devuelve un registro por control. La nota y el estado crítico (temperatura mayor a 39 °C) vienen del backend, que además publica la alerta. Los registros sueltos creados con el endpoint viejo (`POST /signos-vitales`, un valor por vez) no aparecen en la lista. Solo el rol ENFERMERO ve el formulario.
+- **Medicación** (`/enfermeria/medicaciones`, store `medications.store.ts`): `services/medications.ts` lista `GET /indicaciones` y muestra una fila por dosis del día. "Administrar" lo ve solo el ENFERMERO y llama a `POST /indicaciones/:id/administraciones`; el backend valida la ventana de ±30 min, registra al enfermero de la sesión y descuenta el insumo. Los `409` se muestran con el mensaje del servidor. Tras administrar se vuelven a consultar medicaciones e inventario.
+- **Inventario** (`/insumos`, store `inventory.store.ts`): `GET /resources/inventory`; el frontend ya no descuenta stock, lo hace el backend al administrar.
+- **Protocolos de ingreso** (`/enfermeria/protocolos`): la pantalla `ProtocolsView.vue` sigue generando el plan de cuidados en el cliente. `services/protocols.ts` incluye además `listProtocols` y `useProtocols` (`GET /protocolos?pacienteId=`) para mostrar los protocolos que el backend genera al admitir al paciente (Patrón Builder); todavía no se usan en ninguna pantalla.
+- **Dashboard por rol**: las pantallas de inicio de médico y enfermería usan los stores anteriores; el rol administrativo no consulta signos vitales ni indicaciones (la API responde `403`) y sí el inventario.
+
+Mejoras posibles (no implementadas): pantalla para que el médico cree indicaciones (`POST /indicaciones` ya existe), campo de observaciones al administrar, historial de signos por paciente y mostrar en pantalla los protocolos generados por el backend.
+
+## Historia clínica (Módulo 1)
+
+`src/features/ehr/ClinicalHistoryView.vue` (ruta `/historia-clinica`, entrada de menú "Historia clínica" para médico y enfermero) consume `GET /historia-clinica/:pacienteId` mediante `useClinicalHistory` (`composables/`) y `services/clinicalHistory.ts`.
+
+- Buscador de paciente (`PatientPicker`); muestra la ficha demográfica y cuatro tarjetas (alergias, antecedentes familiares, evoluciones médicas y estudios) con autor y fecha de cada registro, del más nuevo al más viejo.
+- Solo el rol `MEDICO` ve los formularios de alta (`POST /historia-clinica/:pacienteId/{alergias,antecedentes-familiares,evoluciones,estudios}`); el botón se habilita con el texto mínimo y los errores de la API (`400`, `403`, `404`) se muestran bajo el formulario. Tras guardar se vuelve a consultar la historia.
+- Estados: sin paciente elegido, cargando, error con botón Reintentar, y vacío por sección (por ejemplo "No hay alergias registradas.").
+- No hay edición ni borrado: la historia es inmutable.
 
 ## Criterios frontend demostrados
 
