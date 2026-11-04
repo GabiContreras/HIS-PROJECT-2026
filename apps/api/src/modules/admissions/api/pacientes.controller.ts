@@ -9,7 +9,14 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBadRequestResponse,
+  ApiBearerAuth,
+  ApiConflictResponse,
+  ApiCreatedResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { RolUsuario } from '../../../entities/usuario.entity.js';
 import { AuthGuard } from '../../iam/api/auth.guard.js';
 import { Roles } from '../../iam/api/roles.decorator.js';
@@ -39,6 +46,10 @@ export class PacientesController {
 
   @Post()
   @Roles(RolUsuario.ADMINISTRATIVO)
+  @ApiOperation({ summary: 'Registrar un paciente' })
+  @ApiCreatedResponse({ description: 'Paciente registrado correctamente.' })
+  @ApiBadRequestResponse({ description: 'Los datos enviados no son válidos.' })
+  @ApiConflictResponse({ description: 'Ya existe un paciente con ese documento.' })
   create(@Body() dto: CrearPacienteDto) {
     return this.pacientes.create(dto);
   }

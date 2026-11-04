@@ -1,3 +1,4 @@
+import { describe, expect, it, vi } from 'vitest';
 import {
   BadRequestException,
   ConflictException,
@@ -60,6 +61,16 @@ describe('PacientesService', () => {
     const repo = makeRepository({
       create: vi.fn().mockRejectedValue(new DocumentoDuplicadoError()),
     });
+       it('propaga los errores inesperados del repositorio', async () => {
+     const error = new Error('Error inesperado de la base de datos');
+     const repo = makeRepository({
+       create: vi.fn().mockRejectedValue(error),
+     });
+
+     await expect(
+       makeService(repo).create(input, '2026-10-27'),
+     ).rejects.toBe(error);
+   });
 
     await expect(
       makeService(repo).create(input, '2026-10-27'),
