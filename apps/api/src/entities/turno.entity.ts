@@ -28,7 +28,6 @@ export class Turno {
   paciente: Paciente;
 
   @ManyToOne(() => Usuario, { onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'medico_id' })
   medico: Usuario;
 
   @Column({ name: 'fecha_hora', type: 'timestamptz' })
