@@ -58,7 +58,7 @@ export class InventoryService implements InventoryPort {
 
     const actualizado = result.raw[0] as {
       id: string;
-      cantidad_disponible: number;
+      cantidad_disponible: number | string;
     };
 
     return {

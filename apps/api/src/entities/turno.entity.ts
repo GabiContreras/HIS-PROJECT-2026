@@ -23,11 +23,13 @@ export class Turno {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-    @ManyToOne(() => Paciente, { onDelete: 'RESTRICT' })
+  @ManyToOne(() => Paciente, { onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'paciente_id' })
   paciente: Paciente;
 
   @ManyToOne(() => Usuario, { onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'medico_id' })
+ 
   medico: Usuario;
 
   @Column({ name: 'fecha_hora', type: 'timestamptz' })
@@ -39,7 +41,12 @@ export class Turno {
   @Column({ type: 'boolean', default: false })
   urgente: boolean;
 
-  @Column({ type: 'enum', enum: EstadoTurno, default: EstadoTurno.DISPONIBLE })
+    @Column({
+    type: 'enum',
+    enum: EstadoTurno,
+    enumName: 'estado_turno',
+    default: EstadoTurno.DISPONIBLE,
+  })
   estado: EstadoTurno;
 
   @VersionColumn()
