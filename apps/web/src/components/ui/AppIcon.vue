@@ -1,5 +1,5 @@
 <script setup lang="ts">
-export type IconName = 'calendar' | 'search' | 'check' | 'x' | 'plus' | 'chevron-down' | 'stethoscope' | 'alert' | 'clock';
+export type IconName = 'calendar' | 'search' | 'check' | 'x' | 'plus' | 'chevron-down' | 'stethoscope' | 'alert' | 'clock' | 'chevron-left' | 'chevron-right' | 'grip';
 
 withDefaults(defineProps<{ name: IconName; size?: number }>(), { size: 18 });
 
@@ -14,6 +14,9 @@ const PATHS: Record<IconName, string> = {
   stethoscope:
     '<path d="M11 2v2M5 2v2M5 3H4a2 2 0 0 0-2 2v4a6 6 0 0 0 12 0V5a2 2 0 0 0-2-2h-1"/><path d="M8 15a6 6 0 0 0 12 0v-3"/><circle cx="20" cy="10" r="2"/>',
   alert: '<circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>',
+  'chevron-left': '<path d="m15 18-6-6 6-6"/>',
+  'chevron-right': '<path d="m9 18 6-6-6-6"/>',
+  grip: '<circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/>',
   clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
 };
 </script>

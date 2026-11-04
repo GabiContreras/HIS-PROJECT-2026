@@ -1,5 +1,6 @@
 import { Transform } from 'class-transformer';
 import {
+  IsEnum,
   IsDateString,
   IsNotEmpty,
   IsOptional,
@@ -7,6 +8,7 @@ import {
   Matches,
   MaxLength,
 } from 'class-validator';
+import { CoverageType } from '../../../../shared/events/coverage-type.js';
 
 const trim = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim() : value;
@@ -39,4 +41,29 @@ export class CrearPacienteDto {
     message: 'El teléfono solo admite números, espacios, +, - y paréntesis.',
   })
   telefono?: string;
+
+  @IsEnum(CoverageType, {
+    message: 'La cobertura debe ser OBRA_SOCIAL_PUBLICA, MEDICINA_PREPAGA o PARTICULAR.',
+  })
+  tipoCobertura: CoverageType;
+
+  /** Prepaga u obra social. Obligatoria en prepaga; se ignora en particular. */
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @MaxLength(100)
+  entidadCobertura?: string;
+}
+
+export class ActualizarCoberturaDto {
+  @IsEnum(CoverageType, {
+    message: 'La cobertura debe ser OBRA_SOCIAL_PUBLICA, MEDICINA_PREPAGA o PARTICULAR.',
+  })
+  tipoCobertura: CoverageType;
+
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @MaxLength(100)
+  entidadCobertura?: string;
 }

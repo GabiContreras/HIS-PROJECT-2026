@@ -6,6 +6,7 @@ export const ESTADO_LABELS: Record<EstadoTurno, string> = {
   DISPONIBLE: 'Disponible',
   RESERVADO: 'Programado',
   CONFIRMADO: 'Confirmado',
+  EN_SALA_DE_ESPERA: 'En sala de espera',
   ATENDIDO: 'Atendido',
   CANCELADO: 'Cancelado',
 };
@@ -14,6 +15,7 @@ export const ESTADO_TONES: Record<EstadoTurno, ChipTone> = {
   DISPONIBLE: 'neutral',
   RESERVADO: 'info',
   CONFIRMADO: 'success',
+  EN_SALA_DE_ESPERA: 'warning',
   ATENDIDO: 'dark',
   CANCELADO: 'danger',
 };

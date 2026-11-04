@@ -9,10 +9,11 @@ import type { EstadoTurno } from '@/services/turnos';
 const { upcomingAppointments, loading } = storeToRefs(useDashboardStore());
 const session = useSessionStore();
 
-const TONES: Record<EstadoTurno, 'neutral' | 'info' | 'success' | 'dark' | 'danger'> = {
+const TONES: Record<EstadoTurno, 'neutral' | 'info' | 'success' | 'dark' | 'danger' | 'warning'> = {
   DISPONIBLE: 'neutral',
   RESERVADO: 'info',
   CONFIRMADO: 'success',
+  EN_SALA_DE_ESPERA: 'warning',
   ATENDIDO: 'dark',
   CANCELADO: 'danger',
 };
@@ -20,6 +21,7 @@ const LABELS: Record<EstadoTurno, string> = {
   DISPONIBLE: 'Disponible',
   RESERVADO: 'Reservado',
   CONFIRMADO: 'Confirmado',
+  EN_SALA_DE_ESPERA: 'En sala de espera',
   ATENDIDO: 'Atendido',
   CANCELADO: 'Cancelado',
 };

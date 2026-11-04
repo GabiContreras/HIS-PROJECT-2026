@@ -34,15 +34,21 @@ datos básicos de la cuenta se devuelven en el body.
 | `PATCH /usuarios/:id` | Administrativo | Modifica nombre/apellido. |
 | `PATCH /usuarios/:id/habilitar` | Administrativo | Habilita cuentas verificadas pendientes o deshabilitadas. |
 | `PATCH /usuarios/:id/deshabilitar` | Administrativo | Deshabilita cuenta y revoca sus sesiones. |
-| `GET /turnos/disponibles` | Autenticado | Consulta turnos libres próximos. |
+| `PATCH /usuarios/:id/horario` | Administrativo | Define la jornada del médico (`horaInicio`/`horaFin`, bloques de 30 min dentro de 08:00–20:00). |
+| `GET /turnos/disponibles` | Autenticado | Horarios libres **calculados** con el horario de cada médico (rango por defecto 7 días, máximo 31). Los entreturnos no cuentan. |
 | `GET /turnos/agenda` | Médico (propia) o administrativo | Consulta agenda y datos básicos del paciente asignado. |
-| `POST /turnos` | Médico (propia) o administrativo | Crea disponibilidad estándar de 30 minutos. |
-| `POST /turnos/urgencia` | Médico (propia) o administrativo | Inserta urgencia de 15 minutos ajustando el turno libre adyacente. |
-| `PATCH /turnos/:id/reservar` | Médico (propia) o administrativo | Reserva un turno para un paciente. |
-| `PATCH /turnos/:id/transiciones` | Médico (propia) o administrativo | Confirma, cancela o marca atendido según la máquina de estados. |
-| `GET /pacientes?q=` | Médico, enfermero o administrativo | Busca pacientes por nombre, apellido o documento (máx. 50). |
+| `GET /turnos/transiciones` | Médico, enfermero o administrativo | Estados a los que puede pasar cada estado (fuente: Patrón State). |
+| `POST /turnos` | Médico (propia) o administrativo | Reserva un horario libre: `{ medicoId, fechaHora, pacienteId }`. `409` si acaba de ser ocupado. |
+| `POST /turnos/entreturno` | Médico (propia) o administrativo | Entreturno de 15 min a los :15/:45 dentro de un horario libre de 30 min. |
+| `PATCH /turnos/:id/transiciones` | Médico (propia) o administrativo | Confirma, registra llegada (`EN_SALA_DE_ESPERA`), atiende o cancela. Al cancelar devuelve `promovido` si la lista de espera ocupó el horario. |
+| `GET /turnos/espera?medicoId=&fecha=` | Médico (propia) o administrativo | Cola de espera de entreturnos del día, con posición. |
+| `POST /turnos/espera` | Médico (propia) o administrativo | Anota a un paciente (`{ medicoId, pacienteId, fecha }`); `409` si el médico aún tiene horarios libres ese día. |
+| `DELETE /turnos/espera/:id` | Médico (propia) o administrativo | Quita a un paciente de la cola. |
+| `GET /pacientes?q=` | Médico, enfermero o administrativo | Busca pacientes por nombre, apellido o documento (máx. 50). Incluye la cobertura. |
 | `GET /pacientes/:id` | Médico, enfermero o administrativo | Devuelve un paciente; `404` si no existe. |
-| `POST /pacientes` | Administrativo | Alta de paciente; `400` por validación, `409` si el documento ya existe. |
+| `POST /pacientes` | Administrativo | Alta de paciente con `tipoCobertura` (`OBRA_SOCIAL_PUBLICA`, `MEDICINA_PREPAGA`, `PARTICULAR`) y `entidadCobertura` (obligatoria en prepaga); `400` por validación, `409` si el documento ya existe. |
+| `PATCH /pacientes/:id/cobertura` | Administrativo | Cambia la cobertura; no modifica cargos ya emitidos. |
+| `GET /billing/cargos` | Administrativo | Cargos con el turno, paciente, médico y el reparto paciente / tercero según la cobertura. |
 
 Las contraseñas requieren 8 caracteres, una mayúscula y un dígito; se rechazan
 pares de dígitos consecutivos ascendentes o descendentes. Los endpoints devuelven
@@ -52,10 +58,18 @@ conflictos de estado/agenda. Los intentos bloqueados devuelven el mismo `401`
 que las credenciales inválidas. Las contraseñas históricas se conservan; un
 login válido en desarrollo las actualiza a scrypt.
 
-Una urgencia solo puede comenzar 15 minutos después del inicio de una
-disponibilidad estándar de 30 minutos. En una misma transacción, la disponibilidad
-anterior se reduce a 15 minutos y la urgencia ocupa los otros 15. Las operaciones
-de agenda y reserva bloquean filas en PostgreSQL dentro de transacciones.
+Un entreturno solo puede comenzar 15 minutos después del inicio de un horario libre
+de 30 minutos: ocupa la segunda mitad y el horario anterior queda en 15 minutos
+(se calcula, no se modifica ninguna fila). La reserva y la cancelación bloquean la
+fila del médico en PostgreSQL dentro de una transacción; un índice único evita
+dos turnos activos en el mismo horario. Al cancelar un turno, el horario liberado
+pasa en la misma transacción al primero de la lista de espera de ese médico y día.
+
+Facturación: el valor base de la consulta se reparte según la cobertura del
+paciente. Obra social pública: paciente 0, Estado 100%. Medicina prepaga: copago
+fijo para el paciente y el resto se reclama a la prepaga (el copago es un valor único
+hasta tener el nomenclador). Particular: paciente 100%. La cobertura y el reparto
+quedan congelados en el cargo al momento de facturar.
 
 ## Propiedad de datos
 
