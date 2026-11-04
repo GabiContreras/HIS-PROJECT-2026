@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -14,7 +15,7 @@ import { AuthGuard } from '../../iam/api/auth.guard.js';
 import { Roles } from '../../iam/api/roles.decorator.js';
 import { RolesGuard } from '../../iam/api/roles.guard.js';
 import { PacientesService } from '../application/pacientes.service.js';
-import { CrearPacienteDto } from './dto/crear-paciente.dto.js';
+import { ActualizarCoberturaDto, CrearPacienteDto } from './dto/crear-paciente.dto.js';
 import { PacientesFiltroDto } from './dto/pacientes-filtro.dto.js';
 
 @Controller('pacientes')
@@ -40,5 +41,14 @@ export class PacientesController {
   @Roles(RolUsuario.ADMINISTRATIVO)
   create(@Body() dto: CrearPacienteDto) {
     return this.pacientes.create(dto);
+  }
+
+  @Patch(':id/cobertura')
+  @Roles(RolUsuario.ADMINISTRATIVO)
+  updateCoverage(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ActualizarCoberturaDto,
+  ) {
+    return this.pacientes.updateCoverage(id, dto);
   }
 }

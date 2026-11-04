@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Cargo } from '../../entities/cargo.entity.js';
+import { Turno } from '../../entities/turno.entity.js';
 import { CargosController } from './api/cargos.controller.js';
 import { AppointmentAttendedSubscriber } from './application/appointment-attended.subscriber.js';
 import { BillingService } from './application/billing.service.js';
@@ -9,7 +10,7 @@ import { ConsultaUrgenciaStrategy } from './domain/consulta-urgencia.strategy.js
 import { IamModule } from '../iam/iam.module.js';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Cargo]), IamModule],
+  imports: [TypeOrmModule.forFeature([Cargo, Turno]), IamModule],
   controllers: [CargosController],
   providers: [
     BillingService,
