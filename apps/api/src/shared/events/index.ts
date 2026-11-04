@@ -7,4 +7,6 @@ export * from './patient-registered.event.js';
 export * from './appointment-booked.event.js';
 export * from './appointment-attended.event.js';
 export * from './bed-assigned.event.js';
+export * from './bed-released.event.js';
+export * from './bed-cleaned.event.js';
 export * from './medication-administered.event.js';
