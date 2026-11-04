@@ -1,0 +1,6 @@
+
+export enum CoverageType {
+  PUBLIC_INSURANCE = 'OBRA_SOCIAL_PUBLICA',
+  PREPAID = 'MEDICINA_PREPAGA',
+  SELF_PAY = 'PARTICULAR',
+}

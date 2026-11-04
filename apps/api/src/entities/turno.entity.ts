@@ -1,4 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, VersionColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  VersionColumn,
+  JoinColumn,
+} from 'typeorm';
 import { Paciente } from './paciente.entity.js';
 import { Usuario } from './usuario.entity.js';
 
@@ -6,6 +13,7 @@ export enum EstadoTurno {
   DISPONIBLE = 'DISPONIBLE',
   RESERVADO = 'RESERVADO',
   CONFIRMADO = 'CONFIRMADO',
+  EN_SALA_DE_ESPERA = 'EN_SALA_DE_ESPERA',
   ATENDIDO = 'ATENDIDO',
   CANCELADO = 'CANCELADO',
 }
@@ -15,14 +23,21 @@ export class Turno {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => Paciente, { onDelete: 'RESTRICT' })
-paciente: Paciente;
+    @ManyToOne(() => Paciente, { onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'paciente_id' })
+  paciente: Paciente;
 
   @ManyToOne(() => Usuario, { onDelete: 'RESTRICT' })
   medico: Usuario;
 
-  @Column({ type: 'timestamptz' })
+  @Column({ name: 'fecha_hora', type: 'timestamptz' })
   fechaHora: Date;
+
+  @Column({ type: 'integer', default: 30 })
+  duracionMinutos: number;
+
+  @Column({ type: 'boolean', default: false })
+  urgente: boolean;
 
   @Column({ type: 'enum', enum: EstadoTurno, default: EstadoTurno.DISPONIBLE })
   estado: EstadoTurno;
