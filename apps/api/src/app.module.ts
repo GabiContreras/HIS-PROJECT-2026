@@ -1,5 +1,5 @@
 import { Module, ValidationPipe } from '@nestjs/common';
-import { ConfigModule} from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_PIPE } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller.js';
@@ -24,37 +24,48 @@ import { ResourcesModule } from './modules/resources/resources.module.js';
 import { BillingModule } from './modules/billing/billing.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { SharedModule } from './shared/shared.module.js';
+import { SnakeNamingStrategy } from './config/snake-naming.strategy.js';
 import { AllExceptionsFilter } from './shared/http/all-exceptions.filter.js';
 
 @Module({
   imports: [
+    // 1. Cargamos ConfigModule especificando posibles rutas del .env
     ConfigModule.forRoot({
-  isGlobal: true,
-}),
-  TypeOrmModule.forRoot({
-      type: 'postgres',
-      url: process.env.DATABASE_URL,
-      entities: [
-        Usuario,
-        RefreshSession,
-        Paciente,
-        Turno,
-        Cama,
-        Insumo,
-        SignoVital,
-        IndicacionMedica,
-        AdministracionMedicacion,
-        Cargo,
-        Internacion,
-        EntreturnoStandby,
-      ],
-      autoLoadEntities: true,
-      synchronize: false,
-      ssl:
-        process.env.DATABASE_SSL === 'false'
-          ? false
-          : { rejectUnauthorized: false },
+      isGlobal: true,
+      envFilePath: ['.env', 'apps/api/.env', '../../.env'],
     }),
+
+    // 2. Usamos forRootAsync para esperar a que las variables de entorno se carguen
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        type: 'postgres',
+        url: configService.getOrThrow<string>('DATABASE_URL'),
+        namingStrategy: new SnakeNamingStrategy(),
+        entities: [
+          Usuario,
+          RefreshSession,
+          Paciente,
+          Turno,
+          Cama,
+          Insumo,
+          SignoVital,
+          IndicacionMedica,
+          AdministracionMedicacion,
+          Cargo,
+          Internacion,
+          EntreturnoStandby,
+        ],
+        autoLoadEntities: true,
+        synchronize: false,
+        ssl:
+          configService.get<string>('DATABASE_SSL') === 'false'
+            ? false
+            : { rejectUnauthorized: false },
+      }),
+    }),
+
     SharedModule,
     HealthModule,
     IamModule,
@@ -71,6 +82,4 @@ import { AllExceptionsFilter } from './shared/http/all-exceptions.filter.js';
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
   ],
 })
-
-
 export class AppModule {}

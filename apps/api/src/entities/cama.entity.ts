@@ -6,6 +6,7 @@ import {
   VersionColumn,
   JoinColumn,
 } from 'typeorm';
+
 import { Paciente } from './paciente.entity.js';
 import { EstadoCama } from '../modules/resources/domain/estado-cama.enum.js';
 
@@ -29,8 +30,10 @@ export class Cama {
   estado: EstadoCama;
 
   @ManyToOne(() => Paciente, { nullable: true, onDelete: 'SET NULL' })
+
   @JoinColumn({ name: 'paciente_actual_id' })
   pacienteActual: Paciente | null;
+
 
   @VersionColumn()
   version: number;

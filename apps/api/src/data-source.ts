@@ -10,12 +10,14 @@ import { Internacion } from './entities/internacion.entity.js';
 import { SignoVital } from './entities/signo-vital.entity.js';
 import { IndicacionMedica } from './entities/indicacion-medica.entity.js';
 import { AdministracionMedicacion } from './entities/administracion-medicacion.entity.js';
+import { SnakeNamingStrategy } from './config/snake-naming.strategy.js';
 import { Cargo } from './entities/cargo.entity.js';
 import { EntreturnoStandby } from './entities/entreturno-standby.entity.js';
 
 export default new DataSource({
   type: 'postgres',
   url: process.env.DATABASE_URL,
+  namingStrategy: new SnakeNamingStrategy(),
   entities: [
     Usuario,
     RefreshSession,
