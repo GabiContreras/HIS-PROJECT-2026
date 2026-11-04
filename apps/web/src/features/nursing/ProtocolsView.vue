@@ -3,7 +3,8 @@ import { ref } from 'vue';
 import PatientPicker from '../../components/PatientPicker.vue';
 import BaseCard from '../../components/ui/BaseCard.vue';
 import NoticeBanner from '../../components/ui/NoticeBanner.vue';
-import { ADMISSION_REASONS, buildProtocol, type AdmissionReason, type CareProtocol } from '../../services/protocols';
+import { ADMISSION_REASONS, buildProtocol, saveAdmissionProtocol, type AdmissionReason, type CareProtocol } from '../../services/protocols';
+import { messageFrom } from '../../shared/errors';
 import type { Patient } from '../../services/patients';
 
 const reasons = Object.entries(ADMISSION_REASONS) as [AdmissionReason, string][];
@@ -11,11 +12,24 @@ const reason = ref<AdmissionReason>('PRE_QUIRURGICO');
 const paciente = ref<Patient | null>(null);
 const protocol = ref<CareProtocol | null>(null);
 const forName = ref('');
+const saveNotice = ref<{ tone: 'success' | 'warning'; text: string } | null>(null);
 
-function generate(): void {
+async function generate(): Promise<void> {
   if (!paciente.value) return;
-  protocol.value = buildProtocol(reason.value);
-  forName.value = `${paciente.value.nombre} ${paciente.value.apellido}`;
+  const selected = paciente.value;
+  const selectedReason = reason.value;
+  protocol.value = buildProtocol(selectedReason);
+  forName.value = `${selected.nombre} ${selected.apellido}`;
+  saveNotice.value = null;
+  try {
+    await saveAdmissionProtocol(selected.id, selectedReason);
+    saveNotice.value = { tone: 'success', text: 'Protocolo guardado en el sistema.' };
+  } catch (error) {
+    saveNotice.value = {
+      tone: 'warning',
+      text: `No se pudo guardar el protocolo: ${messageFrom(error)} El plan se muestra solo en pantalla.`,
+    };
+  }
 }
 </script>
 
@@ -42,6 +56,7 @@ function generate(): void {
       <p v-if="!protocol" class="muted">Elegí el motivo de ingreso y un paciente para armar el protocolo base.</p>
       <template v-else>
         <NoticeBanner tone="info">Protocolo generado automáticamente para {{ forName }}.</NoticeBanner>
+        <NoticeBanner v-if="saveNotice" :tone="saveNotice.tone">{{ saveNotice.text }}</NoticeBanner>
         <ul class="tasks">
           <li v-for="task in protocol.tareas" :key="task.id">
             <label class="task">

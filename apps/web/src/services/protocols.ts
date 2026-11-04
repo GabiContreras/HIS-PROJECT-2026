@@ -1,3 +1,5 @@
+import { http } from '../shared/http';
+
 export type AdmissionReason = 'PRE_QUIRURGICO' | 'INFECCION_RESPIRATORIA';
 
 export const ADMISSION_REASONS: Record<AdmissionReason, string> = {
@@ -52,4 +54,50 @@ export function buildProtocol(reason: AdmissionReason): CareProtocol {
     .addTask('Monitoreo de saturación de oxígeno continuo')
     .addTask('Indicación de aislamiento de contacto y gotas')
     .build();
+}
+
+// --- API de protocolos generados por el backend al admitir al paciente ---
+export type TipoIngreso = 'PRE_QUIRURGICO' | 'RESPIRATORIO';
+
+/** Etiquetas de pantalla para cada tipo de ingreso de la API. */
+export const INGRESO_TYPE_LABELS: Record<TipoIngreso, string> = {
+  PRE_QUIRURGICO: 'Ingreso pre-quirúrgico',
+  RESPIRATORIO: 'Ingreso por infección respiratoria',
+};
+
+export const ingresoTypeLabel = (tipo: string): string => INGRESO_TYPE_LABELS[tipo as TipoIngreso] ?? tipo;
+
+export interface ProtocolTask {
+  orden: number;
+  descripcion: string;
+  frecuenciaHoras: number | null;
+}
+
+export interface Protocol {
+  id: string;
+  ingresoId: string;
+  pacienteId: string;
+  tipo: TipoIngreso;
+  motivoIngreso: string;
+  generadoEn: string; // ISO
+  tareas: ProtocolTask[];
+}
+
+export function listProtocols(pacienteId: string): Promise<Protocol[]> {
+  return http.get<Protocol[]>(`/protocolos?pacienteId=${encodeURIComponent(pacienteId)}`);
+}
+
+/** Motivo de ingreso en texto que el backend sabe resolver a un protocolo. */
+const BACKEND_MOTIVOS: Record<AdmissionReason, string> = {
+  PRE_QUIRURGICO: 'Cirugía programada',
+  INFECCION_RESPIRATORIA: 'Infección respiratoria',
+};
+
+/** Guarda en el backend el protocolo del ingreso (POST /protocolos/ingresos; solo médicos y administrativos). */
+export function saveAdmissionProtocol(pacienteId: string, reason: AdmissionReason): Promise<Protocol> {
+  return http.post<Protocol>('/protocolos/ingresos', {
+    ingresoId: crypto.randomUUID(),
+    pacienteId,
+    motivoIngreso: BACKEND_MOTIVOS[reason],
+  });
 }

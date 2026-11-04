@@ -13,6 +13,9 @@ import { AdministracionMedicacion } from './entities/administracion-medicacion.e
 import { SnakeNamingStrategy } from './config/snake-naming.strategy.js';
 import { Cargo } from './entities/cargo.entity.js';
 import { EntreturnoStandby } from './entities/entreturno-standby.entity.js';
+import { ProtocoloIngreso } from './entities/protocolo-ingreso.entity.js';
+import { TareaProtocolo } from './entities/tarea-protocolo.entity.js';
+import { RegistroClinico } from './entities/registro-clinico.entity.js';
 
 export default new DataSource({
   type: 'postgres',
@@ -31,6 +34,9 @@ export default new DataSource({
     Cargo,
     Internacion,
     EntreturnoStandby,
+    ProtocoloIngreso,
+    TareaProtocolo,
+    RegistroClinico,
   ],
   migrations: ['src/migrations/*.ts'],
   synchronize: false,

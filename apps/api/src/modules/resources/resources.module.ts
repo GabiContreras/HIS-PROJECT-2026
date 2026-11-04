@@ -9,6 +9,7 @@ import { IamModule } from '../iam/iam.module.js';
 import { CamasController } from './api/camas.controller.js';
 import { InventoryController } from './api/inventory.controller.js';
 import { CamasService } from './application/camas.service.js';
+import { MedicationAdministeredSubscriber } from './application/medication-administered.subscriber.js';
 import { InventoryService } from './infrastructure/inventory.service.js';
 
 @Module({
@@ -17,7 +18,7 @@ import { InventoryService } from './infrastructure/inventory.service.js';
     IamModule,
   ],
   controllers: [InventoryController, CamasController],
-  providers: [InventoryService, CamasService],
+  providers: [InventoryService, CamasService, MedicationAdministeredSubscriber],
   exports: [TypeOrmModule, InventoryService, CamasService],
 })
 export class ResourcesModule {}
