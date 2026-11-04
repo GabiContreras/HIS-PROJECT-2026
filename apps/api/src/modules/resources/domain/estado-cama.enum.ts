@@ -1,0 +1,6 @@
+export enum EstadoCama {
+  LIBRE = 'LIBRE',
+  OCUPADA = 'OCUPADA',
+  EN_LIMPIEZA = 'EN_LIMPIEZA',
+  BLOQUEADA = 'BLOQUEADA',
+}

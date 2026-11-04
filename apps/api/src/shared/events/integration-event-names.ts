@@ -4,5 +4,7 @@ export const INTEGRATION_EVENTS = {
   APPOINTMENT_BOOKED: 'appointment.booked',
   APPOINTMENT_ATTENDED: 'appointment.attended',
   BED_ASSIGNED: 'bed.assigned',
+  BED_RELEASED: 'bed.released',
+  BED_CLEANED: 'bed.cleaned',
   MEDICATION_ADMINISTERED: 'medication.administered',
 } as const;
