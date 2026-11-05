@@ -84,6 +84,10 @@ Convención: nombres de eventos en pasado, nombres estables y payloads versionab
   producción. Las contraseñas históricas se conservan y, en desarrollo, se
   convierten a scrypt luego de un login válido.
 - Las cuentas deshabilitadas no pueden iniciar sesión y sus sesiones se revocan.
+- Baja lógica: solo el superadmin puede dar de baja (estado `BAJA`) y restaurar cuentas. Una cuenta
+  dada de baja no inicia sesión ni aparece en listados, pero se conservan sus turnos y su historial
+  (los datos clínicos y de facturación no se borran). Un médico con turnos futuros activos no se da
+  de baja hasta resolverlos. Los administrativos comunes no pueden gestionar a otros administrativos.
 - La contraseña requiere 8 caracteres, una mayúscula, un dígito y no permite
   dígitos consecutivos ascendentes ni descendentes.
 - La agenda utiliza turnos regulares de 30 minutos y turnos urgentes de 15. La

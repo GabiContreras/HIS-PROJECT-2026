@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Reflector } from '@nestjs/core';
 import { Usuario } from '../../entities/usuario.entity.js';
+import { EntreturnoStandby } from '../../entities/entreturno-standby.entity.js';
+import { Turno } from '../../entities/turno.entity.js';
 import { RefreshSession } from '../../entities/refresh-session.entity.js';
 import { AuthController } from './api/auth.controller.js';
 import { UsuariosController } from './api/usuarios.controller.js';
@@ -16,7 +18,7 @@ import { TokenService } from './application/token.service.js';
 
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Usuario, RefreshSession])],
+  imports: [TypeOrmModule.forFeature([Usuario, RefreshSession, Turno, EntreturnoStandby])],
   controllers: [AuthController, UsuariosController],
   providers: [
     AuthService,
