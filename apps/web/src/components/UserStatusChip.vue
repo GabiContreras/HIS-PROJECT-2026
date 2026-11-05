@@ -10,12 +10,14 @@ const LABELS: Record<AccountStatus, string> = {
   PENDIENTE_HABILITACION: 'Pendiente de habilitación',
   ACTIVO: 'Activo',
   DESHABILITADO: 'Deshabilitado',
+  BAJA: 'Dado de baja',
 };
 const TONES: Record<AccountStatus, ChipTone> = {
   PENDIENTE_VERIFICACION: 'warning',
   PENDIENTE_HABILITACION: 'warning',
   ACTIVO: 'success',
   DESHABILITADO: 'danger',
+  BAJA: 'dark',
 };
 
 const label = computed(() => LABELS[props.status]);

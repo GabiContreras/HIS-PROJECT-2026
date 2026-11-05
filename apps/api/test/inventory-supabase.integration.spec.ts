@@ -2,6 +2,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DataSource } from 'typeorm';
 import { randomUUID } from 'node:crypto';
+import { SnakeNamingStrategy } from '../src/config/snake-naming.strategy.js';
 import { Insumo } from '../src/entities/insumo.entity.js';
 import { InventoryService } from '../src/modules/resources/infrastructure/inventory.service.js';
 
@@ -34,6 +35,7 @@ describe.skipIf(!ejecutarIntegracionSupabase)(
         type: 'postgres',
         url: databaseUrl,
         entities: [Insumo],
+        namingStrategy: new SnakeNamingStrategy(),
         synchronize: false,
         ssl: { rejectUnauthorized: false },
       });

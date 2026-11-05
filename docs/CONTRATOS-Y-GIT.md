@@ -30,10 +30,12 @@ datos básicos de la cuenta se devuelven en el body.
 | `POST /auth/change-password` | Autenticado | Cambia contraseña y revoca las demás sesiones. |
 | `POST /usuarios` | Administrativo | Alta de personal médico/enfermería sin códigos de correo durante desarrollo. |
 | `POST /usuarios/administrativos` | Solo superadmin | Alta directa de otro administrativo. |
-| `GET /usuarios`, `GET /usuarios/:id` | Administrativo | Consulta de cuentas, sin hashes ni credenciales. |
-| `PATCH /usuarios/:id` | Administrativo | Modifica nombre/apellido. |
-| `PATCH /usuarios/:id/habilitar` | Administrativo | Habilita cuentas verificadas pendientes o deshabilitadas. |
-| `PATCH /usuarios/:id/deshabilitar` | Administrativo | Deshabilita cuenta y revoca sus sesiones. |
+| `GET /usuarios`, `GET /usuarios/:id` | Administrativo | Consulta de cuentas, sin hashes ni credenciales. `GET /usuarios?incluirBajas=true` incluye las dadas de baja, solo si quien consulta es superadmin. |
+| `PATCH /usuarios/:id` | Administrativo | Modifica nombre/apellido. Sobre otro administrativo, solo el superadmin; cada uno puede corregir el suyo. |
+| `PATCH /usuarios/:id/habilitar` | Administrativo | Habilita cuentas verificadas pendientes o deshabilitadas. Sobre administrativos, solo el superadmin. |
+| `PATCH /usuarios/:id/deshabilitar` | Administrativo | Deshabilita cuenta y revoca sus sesiones. Sobre administrativos, solo el superadmin; nadie puede deshabilitarse a sí mismo ni al superadmin raíz. |
+| `PATCH /usuarios/:id/baja` | Solo superadmin | Baja lógica: archiva la cuenta (no inicia sesión, sale de listados y selectores, conserva su historial). `409` si es un médico con turnos futuros activos, el superadmin raíz o uno mismo. |
+| `PATCH /usuarios/:id/restaurar` | Solo superadmin | Restaura una cuenta dada de baja; vuelve como `DESHABILITADO`. |
 | `PATCH /usuarios/:id/horario` | Administrativo | Define la jornada del médico (`horaInicio`/`horaFin`, bloques de 30 min dentro de 08:00–20:00). |
 | `GET /turnos/disponibles` | Autenticado | Horarios libres **calculados** con el horario de cada médico (rango por defecto 7 días, máximo 31). Los entreturnos no cuentan. |
 | `GET /turnos/agenda` | Médico (propia) o administrativo | Consulta agenda y datos básicos del paciente asignado. |

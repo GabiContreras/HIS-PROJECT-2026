@@ -4,6 +4,8 @@ export class AlinearEstadosCama1793200000000 implements MigrationInterface {
   name = 'AlinearEstadosCama1793200000000';
 
   public async up(q: QueryRunner): Promise<void> {
+    // El CHECK de BaselineSchema compara estado con literales del enum y bloquea el cambio de tipo.
+    await q.query(`ALTER TABLE camas DROP CONSTRAINT IF EXISTS ck_camas_ocupacion_coherente`);
     // PostgreSQL no permite quitar valores de un enum: pasamos por varchar,
     // remapeamos los datos y recreamos el tipo estado_cama.
     await q.query(`ALTER TABLE camas ALTER COLUMN estado DROP DEFAULT`);
@@ -19,6 +21,13 @@ export class AlinearEstadosCama1793200000000 implements MigrationInterface {
     await q.query(`CREATE TYPE estado_cama AS ENUM ('LIBRE', 'OCUPADA', 'EN_LIMPIEZA', 'BLOQUEADA')`);
     await q.query(`ALTER TABLE camas ALTER COLUMN estado TYPE estado_cama USING estado::estado_cama`);
     await q.query(`ALTER TABLE camas ALTER COLUMN estado SET DEFAULT 'LIBRE'`);
+    await q.query(`
+      ALTER TABLE camas ADD CONSTRAINT ck_camas_ocupacion_coherente CHECK (
+        (estado = 'OCUPADA' AND paciente_actual_id IS NOT NULL) OR
+        (estado <> 'OCUPADA' AND paciente_actual_id IS NULL) OR
+        (estado = 'OCUPADA' AND paciente_actual_id IS NULL)
+      )
+    `);
 
     // Un paciente no puede tener dos internaciones activas
     // (la de cama ya existe: idx_cama_activa_unica).
@@ -29,6 +38,8 @@ export class AlinearEstadosCama1793200000000 implements MigrationInterface {
   }
 
   public async down(q: QueryRunner): Promise<void> {
+    // El CHECK de BaselineSchema compara estado con literales del enum y bloquea el cambio de tipo.
+    await q.query(`ALTER TABLE camas DROP CONSTRAINT IF EXISTS ck_camas_ocupacion_coherente`);
     await q.query(`DROP INDEX IF EXISTS idx_paciente_internacion_activa_unica`);
     await q.query(`ALTER TABLE camas ALTER COLUMN estado DROP DEFAULT`);
     await q.query(`ALTER TABLE camas ALTER COLUMN estado TYPE varchar USING estado::text`);
@@ -43,5 +54,12 @@ export class AlinearEstadosCama1793200000000 implements MigrationInterface {
     await q.query(`CREATE TYPE estado_cama AS ENUM ('DISPONIBLE', 'OCUPADA', 'RESERVADA', 'MANTENIMIENTO')`);
     await q.query(`ALTER TABLE camas ALTER COLUMN estado TYPE estado_cama USING estado::estado_cama`);
     await q.query(`ALTER TABLE camas ALTER COLUMN estado SET DEFAULT 'DISPONIBLE'`);
+    await q.query(`
+      ALTER TABLE camas ADD CONSTRAINT ck_camas_ocupacion_coherente CHECK (
+        (estado = 'OCUPADA' AND paciente_actual_id IS NOT NULL) OR
+        (estado <> 'OCUPADA' AND paciente_actual_id IS NULL) OR
+        (estado = 'OCUPADA' AND paciente_actual_id IS NULL)
+      )
+    `);
   }
 }
