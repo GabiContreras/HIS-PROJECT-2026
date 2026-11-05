@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { QueryFailedError, Repository } from 'typeorm';
 import { ProtocoloIngreso } from '../../../entities/protocolo-ingreso.entity.js';
+import { TareaProtocolo } from '../../../entities/tarea-protocolo.entity.js';
 import type {
   NuevoProtocolo,
   ProtocoloData,
@@ -9,6 +10,7 @@ import type {
 } from '../domain/ports/protocolos.repository.js';
 
 const UNIQUE_VIOLATION = '23505';
+const RELATIONS = { paciente: true, tareas: { hechaPor: true } } as const;
 
 function toData(row: ProtocoloIngreso): ProtocoloData {
   return {
@@ -20,7 +22,15 @@ function toData(row: ProtocoloIngreso): ProtocoloData {
     generadoEn: new Date(row.generadoEn),
     tareas: [...row.tareas]
       .sort((a, b) => a.orden - b.orden)
-      .map((t) => ({ orden: t.orden, descripcion: t.descripcion, frecuenciaHoras: t.frecuenciaHoras })),
+      .map((t) => ({
+        id: t.id,
+        orden: t.orden,
+        descripcion: t.descripcion,
+        frecuenciaHoras: t.frecuenciaHoras,
+        hecha: t.hecha,
+        hechaEn: t.hechaEn ? new Date(t.hechaEn) : null,
+        hechaPor: t.hechaPor ? `${t.hechaPor.apellido}, ${t.hechaPor.nombre}` : null,
+      })),
   };
 }
 
@@ -29,6 +39,8 @@ export class ProtocolosTypeOrmRepository implements ProtocolosRepository {
   constructor(
     @InjectRepository(ProtocoloIngreso)
     private readonly protocolos: Repository<ProtocoloIngreso>,
+    @InjectRepository(TareaProtocolo)
+    private readonly tareas: Repository<TareaProtocolo>,
   ) {}
 
   async crearSiNoExiste(data: NuevoProtocolo): Promise<{ protocolo: ProtocoloData; creado: boolean }> {
@@ -51,7 +63,7 @@ export class ProtocolosTypeOrmRepository implements ProtocolosRepository {
       );
       const row = await this.protocolos.findOneOrFail({
         where: { id: saved.id },
-        relations: { paciente: true, tareas: true },
+        relations: RELATIONS,
       });
       return { protocolo: toData(row), creado: true };
     } catch (error) {
@@ -67,16 +79,34 @@ export class ProtocolosTypeOrmRepository implements ProtocolosRepository {
   async listarPorPaciente(pacienteId: string): Promise<ProtocoloData[]> {
     const rows = await this.protocolos.find({
       where: { paciente: { id: pacienteId } },
-      relations: { paciente: true, tareas: true },
+      relations: RELATIONS,
       order: { generadoEn: 'DESC' },
     });
     return rows.map(toData);
   }
 
+  async marcarTarea(
+    protocoloId: string,
+    tareaId: string,
+    hecha: boolean,
+    usuarioId: string,
+  ): Promise<ProtocoloData | null> {
+    // El filtro por protocolo evita tocar una tarea ajena; marcar dos veces re-escribe el mismo estado.
+    const resultado = await this.tareas.update(
+      { id: tareaId, protocolo: { id: protocoloId } },
+      hecha
+        ? { hecha: true, hechaEn: new Date(), hechaPor: { id: usuarioId } }
+        : { hecha: false, hechaEn: null, hechaPor: null },
+    );
+    if (!resultado.affected) return null;
+    const row = await this.protocolos.findOne({ where: { id: protocoloId }, relations: RELATIONS });
+    return row ? toData(row) : null;
+  }
+
   private async buscarPorIngreso(ingresoId: string): Promise<ProtocoloData | null> {
     const row = await this.protocolos.findOne({
       where: { ingresoId },
-      relations: { paciente: true, tareas: true },
+      relations: RELATIONS,
     });
     return row ? toData(row) : null;
   }

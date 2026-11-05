@@ -97,6 +97,15 @@ export const router = createRouter({
               name: 'protocols',
               meta: { title: 'Protocolos de ingreso' },
               component: () => import('../features/nursing/ProtocolsView.vue'),
+              children: [
+                {
+                  path: ':pacienteId',
+                  name: 'protocol-patient',
+                  props: true,
+                  meta: { title: 'Protocolo del paciente' },
+                  component: () => import('../features/nursing/ProtocolPatientView.vue'),
+                },
+              ],
             },
           ],
         },

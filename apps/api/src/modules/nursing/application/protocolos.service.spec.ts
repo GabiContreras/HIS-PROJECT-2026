@@ -21,7 +21,13 @@ function build(options: { patientExists?: boolean } = {}) {
         tipo: data.tipo,
         motivoIngreso: data.motivoIngreso,
         generadoEn: new Date('2030-01-01T10:00:00.000Z'),
-        tareas: [...data.tareas],
+        tareas: data.tareas.map((t, i) => ({
+          ...t,
+          id: `tarea-${guardados.size + 1}-${i + 1}`,
+          hecha: false,
+          hechaEn: null,
+          hechaPor: null,
+        })),
       };
       guardados.set(data.ingresoId, protocolo);
       return { protocolo, creado: true };
@@ -29,6 +35,15 @@ function build(options: { patientExists?: boolean } = {}) {
     listarPorPaciente: vi.fn(async (pacienteId: string) =>
       [...guardados.values()].filter((p) => p.pacienteId === pacienteId),
     ),
+    marcarTarea: vi.fn(async (protocoloId: string, tareaId: string, hecha: boolean, usuarioId: string) => {
+      const protocolo = [...guardados.values()].find((p) => p.id === protocoloId);
+      const tarea = protocolo?.tareas.find((t) => t.id === tareaId);
+      if (!protocolo || !tarea) return null;
+      tarea.hecha = hecha;
+      tarea.hechaEn = hecha ? new Date('2030-01-01T11:00:00.000Z') : null;
+      tarea.hechaPor = hecha ? `Apellido ${usuarioId}, Nombre` : null;
+      return protocolo;
+    }),
   };
   const pacientes = {
     get: vi.fn(async () => {
@@ -108,6 +123,68 @@ describe('ProtocolosService', () => {
 
     const sinPaciente = build({ patientExists: false });
     await expect(sinPaciente.service.listarPorPaciente(PACIENTE)).rejects.toBeInstanceOf(NotFoundException);
+  });
+});
+
+describe('ProtocolosService - checklist permanente', () => {
+  const identity = { accountId: 'usuario-1', sessionId: 's', rol: 'ENFERMERO', esSuperadmin: false } as never;
+
+  async function conProtocolo() {
+    const ctx = build();
+    const { protocolo } = await ctx.service.generarParaIngreso({
+      ingresoId: INGRESO,
+      pacienteId: PACIENTE,
+      motivoIngreso: 'Neumonía',
+    });
+    return { ...ctx, protocolo, tarea: protocolo.tareas[0]! };
+  }
+
+  it('las tareas nuevas vienen con id y sin marcar', async () => {
+    const { protocolo } = await conProtocolo();
+    expect(protocolo.tareas.every((t) => t.id && t.hecha === false && t.hechaEn === null && t.hechaPor === null)).toBe(true);
+  });
+
+  it('marca una tarea y devuelve quién y cuándo', async () => {
+    const { service, protocolo, tarea } = await conProtocolo();
+    const view = await service.marcarTarea(protocolo.id, tarea.id, true, identity);
+    const marcada = view.tareas.find((t) => t.id === tarea.id)!;
+    expect(marcada.hecha).toBe(true);
+    expect(marcada.hechaEn).toBe('2030-01-01T11:00:00.000Z');
+    expect(marcada.hechaPor).toContain('usuario-1');
+    expect(view.tareas.filter((t) => t.hecha)).toHaveLength(1);
+  });
+
+  it('guarda la identidad de la sesión', async () => {
+    const { service, repository, protocolo, tarea } = await conProtocolo();
+    await service.marcarTarea(protocolo.id, tarea.id, true, identity);
+    expect(repository.marcarTarea).toHaveBeenCalledWith(protocolo.id, tarea.id, true, 'usuario-1');
+  });
+
+  it('desmarca y limpia fecha y usuario', async () => {
+    const { service, protocolo, tarea } = await conProtocolo();
+    await service.marcarTarea(protocolo.id, tarea.id, true, identity);
+    const view = await service.marcarTarea(protocolo.id, tarea.id, false, identity);
+    const t = view.tareas.find((x) => x.id === tarea.id)!;
+    expect(t).toMatchObject({ hecha: false, hechaEn: null, hechaPor: null });
+  });
+
+  it('es idempotente: marcar dos veces no falla', async () => {
+    const { service, protocolo, tarea } = await conProtocolo();
+    await service.marcarTarea(protocolo.id, tarea.id, true, identity);
+    const view = await service.marcarTarea(protocolo.id, tarea.id, true, identity);
+    expect(view.tareas.find((t) => t.id === tarea.id)?.hecha).toBe(true);
+  });
+
+  it('da 404 si la tarea no pertenece a ese protocolo', async () => {
+    const { service, protocolo } = await conProtocolo();
+    const otro = await service.generarParaIngreso({
+      ingresoId: '33333333-3333-4333-8333-333333333333',
+      pacienteId: PACIENTE,
+      motivoIngreso: 'Cirugía programada',
+    });
+    const tareaAjena = otro.protocolo.tareas[0]!;
+    await expect(service.marcarTarea(protocolo.id, tareaAjena.id, true, identity)).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.marcarTarea(protocolo.id, 'inexistente', true, identity)).rejects.toBeInstanceOf(NotFoundException);
   });
 });
 

@@ -68,9 +68,15 @@ export const INGRESO_TYPE_LABELS: Record<TipoIngreso, string> = {
 export const ingresoTypeLabel = (tipo: string): string => INGRESO_TYPE_LABELS[tipo as TipoIngreso] ?? tipo;
 
 export interface ProtocolTask {
+  id: string;
   orden: number;
   descripcion: string;
   frecuenciaHoras: number | null;
+  hecha: boolean;
+  /** ISO de cuando se marcó; null si no está hecha. */
+  hechaEn: string | null;
+  /** "Apellido, Nombre" de quien la marcó. */
+  hechaPor: string | null;
 }
 
 export interface Protocol {
@@ -85,6 +91,14 @@ export interface Protocol {
 
 export function listProtocols(pacienteId: string): Promise<Protocol[]> {
   return http.get<Protocol[]>(`/protocolos?pacienteId=${encodeURIComponent(pacienteId)}`);
+}
+
+/** Marca o desmarca una tarea del checklist (PATCH; médicos y enfermeros). Devuelve el protocolo actualizado. */
+export function markProtocolTask(protocolId: string, taskId: string, hecha: boolean): Promise<Protocol> {
+  return http.patch<Protocol>(
+    `/protocolos/${encodeURIComponent(protocolId)}/tareas/${encodeURIComponent(taskId)}`,
+    { hecha },
+  );
 }
 
 /** Motivo de ingreso en texto que el backend sabe resolver a un protocolo. */
