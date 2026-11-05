@@ -41,6 +41,8 @@ export interface PublicAccount {
   /** Solo médicos: jornada de atención 'HH:MM'. */
   horaInicio?: string;
   horaFin?: string;
+  /** Solo cuentas dadas de baja (ISO). */
+  dadoDeBajaEn?: string | null;
 }
 
 export interface SessionIdentity {
@@ -293,7 +295,11 @@ export class AuthService {
       );
     }
     const user = await this.findByEmail(dto.email);
-    if (!user || user.estado === EstadoCuenta.DESHABILITADO) {
+    if (
+      !user ||
+      user.estado === EstadoCuenta.DESHABILITADO ||
+      user.estado === EstadoCuenta.BAJA
+    ) {
       throw new NotFoundException('No se encontró una cuenta habilitada.');
     }
 

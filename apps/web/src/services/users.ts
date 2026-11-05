@@ -20,8 +20,9 @@ export function crearUsuario(datos: CrearUsuarioInput): Promise<CrearUsuarioResp
   return http.post<CrearUsuarioResponse>('/usuarios', datos);
 }
 
-export function listarUsuarios(): Promise<Usuario[]> {
-  return http.get<Usuario[]>('/usuarios');
+/** Las cuentas dadas de baja solo vienen si lo pide un superadmin. */
+export function listarUsuarios(incluirBajas = false): Promise<Usuario[]> {
+  return http.get<Usuario[]>(`/usuarios${incluirBajas ? '?incluirBajas=true' : ''}`);
 }
 
 export function obtenerUsuario(id: string): Promise<Usuario> {
@@ -37,4 +38,26 @@ export interface HorarioMedico {
 /** Define la jornada del médico; la disponibilidad de turnos se calcula con ella. */
 export function actualizarHorario(id: string, horario: HorarioMedico): Promise<Usuario> {
   return http.patch<Usuario>(`/usuarios/${id}/horario`, horario);
+}
+
+export function actualizarUsuario(id: string, datos: { nombre?: string; apellido?: string }): Promise<Usuario> {
+  return http.patch<Usuario>(`/usuarios/${id}`, datos);
+}
+
+export function habilitarUsuario(id: string): Promise<Usuario> {
+  return http.patch<Usuario>(`/usuarios/${id}/habilitar`);
+}
+
+export function deshabilitarUsuario(id: string): Promise<Usuario> {
+  return http.patch<Usuario>(`/usuarios/${id}/deshabilitar`);
+}
+
+/** Solo superadmin. Archiva la cuenta sin borrar su historial. */
+export function darDeBajaUsuario(id: string): Promise<Usuario> {
+  return http.patch<Usuario>(`/usuarios/${id}/baja`);
+}
+
+/** Solo superadmin. La cuenta vuelve como deshabilitada. */
+export function restaurarUsuario(id: string): Promise<Usuario> {
+  return http.patch<Usuario>(`/usuarios/${id}/restaurar`);
 }

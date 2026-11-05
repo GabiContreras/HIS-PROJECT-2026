@@ -1,19 +1,29 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import UsuariosForm from '../../../components/UsuariosForm.vue';
 import UsersTable from '../../../components/UsersTable.vue';
 import { type CrearUsuarioInput } from '../../../services/users';
+import { useSessionStore } from '../session.store';
 import { useUsers } from '../useUsers';
 
 const formVisible = ref(false);
+const session = useSessionStore();
 const { usuarios, cargando, error, cargar, crear } = useUsers();
 
+// Solo el superadmin puede ver (y restaurar) las cuentas dadas de baja.
+const esSuperadmin = computed(() => session.account?.esSuperadmin === true);
+const verBajas = ref(false);
+const recargar = () => cargar(esSuperadmin.value && verBajas.value);
+
 async function crearUsuario(datos: CrearUsuarioInput): Promise<void> {
-  if (await crear(datos)) formVisible.value = false;
+  if (await crear(datos)) {
+    formVisible.value = false;
+    await recargar();
+  }
 }
 
-onMounted(cargar);
+onMounted(recargar);
 </script>
 
 <template>
@@ -33,9 +43,14 @@ onMounted(cargar);
       @cancel="formVisible = false"
     />
 
+    <label v-if="esSuperadmin" class="show-bajas">
+      <input v-model="verBajas" type="checkbox" @change="recargar" />
+      Ver cuentas dadas de baja
+    </label>
+
     <p v-if="error" class="error" role="alert">
       {{ error }}
-      <button type="button" :disabled="cargando" @click="cargar">Reintentar</button>
+      <button type="button" :disabled="cargando" @click="recargar">Reintentar</button>
     </p>
     <p v-else-if="cargando" role="status">Cargando usuarios...</p>
     <p v-else-if="usuarios.length === 0">Todavía no hay usuarios registrados.</p>
@@ -52,6 +67,7 @@ onMounted(cargar);
 .page-header h1, .page-header p { margin: 0; }
 .page-header p { margin-top: var(--space-1); }
 button { font: inherit; padding: 8px 12px; }
+.show-bajas { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); width: fit-content; cursor: pointer; }
 .error { color: var(--color-danger); }
 .error button { margin-left: var(--space-2); }
 @media (max-width: 640px) {

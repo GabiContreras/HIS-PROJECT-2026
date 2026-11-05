@@ -17,6 +17,8 @@ export enum EstadoCuenta {
   PENDIENTE_HABILITACION = 'PENDIENTE_HABILITACION',
   ACTIVO = 'ACTIVO',
   DESHABILITADO = 'DESHABILITADO',
+  /** Baja lógica: archivada por el superadmin. No inicia sesión ni aparece en listados; conserva su historial. */
+  BAJA = 'BAJA',
 }
 
 @Entity('usuarios')
@@ -54,6 +56,9 @@ export class Usuario {
 
   @Column({ type: 'boolean', default: false })
   esSuperadmin: boolean;
+
+  @Column({ name: 'dado_de_baja_en', type: 'timestamptz', nullable: true })
+  dadoDeBajaEn: Date | null;
 
   @Column({ type: 'integer', default: 0 })
   intentosFallidos: number;
