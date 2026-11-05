@@ -25,7 +25,11 @@ describe('Billing integration', () => {
     create: vi.fn((input: Partial<Cargo>) => input),
     save: vi.fn(async (input: Partial<Cargo>) => {
       if (charges.some((charge) => charge.turnoId === input.turnoId)) {
-        throw new QueryFailedError('INSERT INTO cargos', [], { code: '23505' });
+        throw new QueryFailedError(
+          'INSERT INTO cargos',
+          [],
+          Object.assign(new Error('duplicate key'), { code: '23505' }),
+        );
       }
       const charge = {
         ...input,

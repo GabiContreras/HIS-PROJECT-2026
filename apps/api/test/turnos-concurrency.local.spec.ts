@@ -5,6 +5,8 @@ import { Paciente } from '../src/entities/paciente.entity.js';
 import { Turno, EstadoTurno } from '../src/entities/turno.entity.js';
 import { Usuario, RolUsuario, EstadoCuenta } from '../src/entities/usuario.entity.js';
 import { TurnosService } from '../src/modules/admissions/application/turnos.service.js';
+import { SnakeNamingStrategy } from '../src/config/snake-naming.strategy.js';
+import { EventBus } from '../src/shared/events/event-bus.service.js';
 
 const enabled = process.env.RUN_LOCAL_CONCURRENCY_TEST === 'true';
 
@@ -34,6 +36,7 @@ describe.skipIf(!enabled)('Concurrencia real de turnos (solo BD local)', () => {
     db = new DataSource({
       type: 'postgres',
       url,
+      namingStrategy: new SnakeNamingStrategy(),
       entities: [Usuario, Paciente, Turno],
       synchronize: false,
       ssl: false,
@@ -45,6 +48,7 @@ describe.skipIf(!enabled)('Concurrencia real de turnos (solo BD local)', () => {
       db.getRepository(Usuario),
       db.getRepository(Paciente),
       db,
+      new EventBus(),
     );
   }, 30000);
 
@@ -87,7 +91,6 @@ describe.skipIf(!enabled)('Concurrencia real de turnos (solo BD local)', () => {
       apellido: 'PruebaConcurrencia',
       documento: `A${suffix.replaceAll('-', '').slice(0, 19)}`,
       fechaNacimiento: '1990-01-01',
-      telefono: null,
     }));
     created.pacientes.push(pacienteA.id);
 
@@ -96,34 +99,13 @@ describe.skipIf(!enabled)('Concurrencia real de turnos (solo BD local)', () => {
       apellido: 'PruebaConcurrencia',
       documento: `B${suffix.replaceAll('-', '').slice(0, 19)}`,
       fechaNacimiento: '1991-01-01',
-      telefono: null,
     }));
     created.pacientes.push(pacienteB.id);
 
-    // Dos turnos futuros que se superponen por 15 minutos.
-    const inicio = new Date(Date.now() + 4 * 60 * 60 * 1000);
-    inicio.setSeconds(0, 0);
-    const segundoInicio = new Date(inicio.getTime() + 15 * 60 * 1000);
-
-    const turnoA = await turnos.save(turnos.create({
-      medico: doctor,
-      paciente: null,
-      fechaHora: inicio,
-      duracionMinutos: 30,
-      urgente: false,
-      estado: EstadoTurno.DISPONIBLE,
-    }));
-    created.turnos.push(turnoA.id);
-
-    const turnoB = await turnos.save(turnos.create({
-      medico: doctor,
-      paciente: null,
-      fechaHora: segundoInicio,
-      duracionMinutos: 30,
-      urgente: false,
-      estado: EstadoTurno.DISPONIBLE,
-    }));
-    created.turnos.push(turnoB.id);
+    // Mañana a las 13:00 UTC (10:00 en Argentina), dentro del horario por defecto del médico.
+    const inicio = new Date();
+    inicio.setUTCDate(inicio.getUTCDate() + 1);
+    inicio.setUTCHours(13, 0, 0, 0);
 
     const identity = {
       accountId: doctor.id,
@@ -132,9 +114,16 @@ describe.skipIf(!enabled)('Concurrencia real de turnos (solo BD local)', () => {
       esSuperadmin: false,
     };
 
+    // Dos pacientes intentan reservar el mismo horario del mismo médico a la vez.
     const resultados = await Promise.allSettled([
-      service.reserve(turnoA.id, { pacienteId: pacienteA.id }, identity),
-      service.reserve(turnoB.id, { pacienteId: pacienteB.id }, identity),
+      service.reserve(
+        { medicoId: doctor.id, fechaHora: inicio.toISOString(), pacienteId: pacienteA.id },
+        identity,
+      ),
+      service.reserve(
+        { medicoId: doctor.id, fechaHora: inicio.toISOString(), pacienteId: pacienteB.id },
+        identity,
+      ),
     ]);
 
     const exitos = resultados.filter((r) => r.status === 'fulfilled');
@@ -144,11 +133,9 @@ describe.skipIf(!enabled)('Concurrencia real de turnos (solo BD local)', () => {
     expect(fallos).toHaveLength(1);
 
     const guardados = await turnos.find({
-      where: [
-        { id: turnoA.id, estado: EstadoTurno.RESERVADO },
-        { id: turnoB.id, estado: EstadoTurno.RESERVADO },
-      ],
+      where: { medico: { id: doctor.id }, estado: EstadoTurno.RESERVADO },
     });
     expect(guardados).toHaveLength(1);
+    created.turnos.push(...guardados.map((turno) => turno.id));
   }, 30000);
 });
