@@ -1,4 +1,5 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import type { SessionIdentity } from '../../iam/application/auth.service.js';
 import { PacientesService } from '../../admissions/application/pacientes.service.js';
 import {
   PROTOCOLOS_REPOSITORY,
@@ -14,9 +15,14 @@ export interface IngresoInput {
 }
 
 export interface TareaProtocoloView {
+  id: string;
   orden: number;
   descripcion: string;
   frecuenciaHoras: number | null;
+  hecha: boolean;
+  hechaEn: string | null;
+  /** "Apellido, Nombre" de quien la marcó. */
+  hechaPor: string | null;
 }
 
 export interface ProtocoloView {
@@ -71,6 +77,21 @@ export class ProtocolosService {
     return rows.map((row) => this.toView(row));
   }
 
+  /**
+   * Marca o desmarca una tarea del checklist. Idempotente. 404 si la tarea no existe en ese protocolo.
+   * Devuelve el protocolo completo actualizado.
+   */
+  async marcarTarea(
+    protocoloId: string,
+    tareaId: string,
+    hecha: boolean,
+    identity: SessionIdentity,
+  ): Promise<ProtocoloView> {
+    const protocolo = await this.repository.marcarTarea(protocoloId, tareaId, hecha, identity.accountId);
+    if (protocolo === null) throw new NotFoundException('La tarea no existe en ese protocolo');
+    return this.toView(protocolo);
+  }
+
   private toView(row: ProtocoloData): ProtocoloView {
     return {
       id: row.id,
@@ -80,9 +101,13 @@ export class ProtocolosService {
       motivoIngreso: row.motivoIngreso,
       generadoEn: row.generadoEn.toISOString(),
       tareas: row.tareas.map((t) => ({
+        id: t.id,
         orden: t.orden,
         descripcion: t.descripcion,
         frecuenciaHoras: t.frecuenciaHoras,
+        hecha: t.hecha,
+        hechaEn: t.hechaEn ? t.hechaEn.toISOString() : null,
+        hechaPor: t.hechaPor,
       })),
     };
   }
