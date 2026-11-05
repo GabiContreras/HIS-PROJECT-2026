@@ -2,6 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
+import { CoverageType } from '../../../../shared/events/coverage-type.js';
 import { CrearPacienteDto } from './crear-paciente.dto.js';
 
 describe('CrearPacienteDto', () => {
@@ -12,6 +13,7 @@ describe('CrearPacienteDto', () => {
       documento: '12345678',
       fechaNacimiento: '1990-12-10',
       telefono: '1112345678',
+      tipoCobertura: CoverageType.SELF_PAY,
     });
 
     const errores = await validate(dto);
@@ -45,17 +47,19 @@ describe('CrearPacienteDto', () => {
     expect(errores.some((error) => error.property === 'apellido')).toBe(true);
   });
 
-  it('rechaza un documento con espacios al principio o al final', async () => {
+  it('recorta los espacios del documento antes de validarlo', async () => {
     const dto = plainToInstance(CrearPacienteDto, {
       nombre: 'Ada',
       apellido: 'Lovelace',
       documento: ' 12345678 ',
       fechaNacimiento: '1990-12-10',
+      tipoCobertura: CoverageType.SELF_PAY,
     });
 
     const errores = await validate(dto);
 
-    expect(errores.some((error) => error.property === 'documento')).toBe(true);
+    expect(errores).toHaveLength(0);
+    expect(dto.documento).toBe('12345678');
   });
 
   it('rechaza un nombre de más de 100 caracteres', async () => {
