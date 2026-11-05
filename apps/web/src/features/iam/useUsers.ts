@@ -31,8 +31,8 @@ export function useUsers() {
     }
   }
 
-  async function cargar(): Promise<boolean> {
-    const result = await execute(listarUsuarios);
+  async function cargar(incluirBajas = false): Promise<boolean> {
+    const result = await execute(() => listarUsuarios(incluirBajas));
     if (result === null) return false;
     usuarios.value = result;
     return true;

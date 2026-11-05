@@ -5,12 +5,15 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { RolUsuario } from '../../../entities/usuario.entity.js';
 import { AccountAdminService } from './account-admin.service.js';
 import { AuthService } from '../application/auth.service.js';
+import type { SessionIdentity } from '../application/auth.service.js';
+import { CurrentIdentity } from './auth.decorator.js';
 import { AuthGuard } from './auth.guard.js';
 import { RolesGuard } from './roles.guard.js';
 import { SuperadminGuard } from './superadmin.guard.js';
@@ -45,8 +48,11 @@ export class UsuariosController {
   @Get()
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(RolUsuario.ADMINISTRATIVO)
-  list() {
-    return this.accounts.list();
+  list(
+    @CurrentIdentity() identity: SessionIdentity,
+    @Query('incluirBajas') incluirBajas?: string,
+  ) {
+    return this.accounts.list(identity, incluirBajas === 'true');
   }
 
   @Get(':id')
@@ -59,28 +65,57 @@ export class UsuariosController {
   @Patch(':id')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(RolUsuario.ADMINISTRATIVO)
-  updateProfile(@Param('id') id: string, @Body() dto: UpdateUserDto) {
-    return this.accounts.updateProfile(id, dto);
+  updateProfile(
+    @Param('id') id: string,
+    @Body() dto: UpdateUserDto,
+    @CurrentIdentity() identity: SessionIdentity,
+  ) {
+    return this.accounts.updateProfile(id, dto, identity);
   }
 
   @Patch(':id/horario')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(RolUsuario.ADMINISTRATIVO)
-  updateSchedule(@Param('id') id: string, @Body() dto: HorarioMedicoDto) {
-    return this.accounts.updateSchedule(id, dto);
+  updateSchedule(
+    @Param('id') id: string,
+    @Body() dto: HorarioMedicoDto,
+    @CurrentIdentity() identity: SessionIdentity,
+  ) {
+    return this.accounts.updateSchedule(id, dto, identity);
   }
 
   @Patch(':id/habilitar')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(RolUsuario.ADMINISTRATIVO)
-  enableDoctor(@Param('id') id: string) {
-    return this.accounts.enableDoctor(id);
+  enableDoctor(
+    @Param('id') id: string,
+    @CurrentIdentity() identity: SessionIdentity,
+  ) {
+    return this.accounts.enableDoctor(id, identity);
   }
 
   @Patch(':id/deshabilitar')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(RolUsuario.ADMINISTRATIVO)
-  deactivate(@Param('id') id: string) {
-    return this.accounts.deactivate(id);
+  deactivate(
+    @Param('id') id: string,
+    @CurrentIdentity() identity: SessionIdentity,
+  ) {
+    return this.accounts.deactivate(id, identity);
+  }
+
+  @Patch(':id/baja')
+  @UseGuards(AuthGuard, SuperadminGuard)
+  dispose(
+    @Param('id') id: string,
+    @CurrentIdentity() identity: SessionIdentity,
+  ) {
+    return this.accounts.dispose(id, identity);
+  }
+
+  @Patch(':id/restaurar')
+  @UseGuards(AuthGuard, SuperadminGuard)
+  restore(@Param('id') id: string) {
+    return this.accounts.restore(id);
   }
 }
