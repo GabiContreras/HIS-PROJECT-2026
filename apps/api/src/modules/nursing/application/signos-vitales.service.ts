@@ -2,6 +2,7 @@ import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { EventBus } from '../../../shared/events/event-bus.service.js';
 import { VitalSignAlert } from '../../../shared/events/vital-sign-alert.event.js';
 import { PacientesService } from '../../admissions/application/pacientes.service.js';
+import { HistoriaClinicaService } from '../../ehr/application/historia-clinica.service.js';
 import type { SessionIdentity } from '../../iam/application/auth.service.js';
 import type { RegistrarControlSignosVitalesDto } from '../api/dto/registrar-control-signos-vitales.dto.js';
 import type { RegistrarSignoVitalDto } from '../api/dto/registrar-signo-vital.dto.js';
@@ -52,6 +53,7 @@ export interface ControlSignosVitalesView {
 }
 
 const NOTA_CONTROL_EXITOSO = 'Controles de signos vitales realizados con éxito.';
+const TITULO_NOTA_CONTROL = 'Control de signos vitales';
 const LIST_LIMIT = 100;
 /** Cada control guarda una medición por campo. */
 const LECTURAS_POR_CONTROL = Object.keys(CAMPOS_CONTROL).length;
@@ -63,6 +65,7 @@ export class SignosVitalesService {
     private readonly repository: SignosVitalesRepository,
     private readonly pacientes: PacientesService,
     private readonly events: EventBus,
+    private readonly historiaClinica: HistoriaClinicaService,
   ) {}
 
   tipos() {
@@ -144,7 +147,15 @@ export class SignosVitalesService {
         }),
       );
     }
-    return this.toControlView(rows)!;
+    const control = this.toControlView(rows)!;
+    // HU 1.1: el control queda asociado a la historia clínica con una nota de enfermería automática.
+    await this.historiaClinica.registrarNotaEnfermeria(
+      dto.pacienteId,
+      TITULO_NOTA_CONTROL,
+      control.nota,
+      identity,
+    );
+    return control;
   }
 
   async listarControles(pacienteId?: string): Promise<ControlSignosVitalesView[]> {

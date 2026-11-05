@@ -17,6 +17,6 @@ import { HistoriaClinicaTypeOrmRepository } from './infrastructure/historia-clin
     HistoriaClinicaService,
     { provide: HISTORIA_CLINICA_REPOSITORY, useClass: HistoriaClinicaTypeOrmRepository },
   ],
-  exports: [TypeOrmModule],
+  exports: [TypeOrmModule, HistoriaClinicaService],
 })
 export class EhrModule {}

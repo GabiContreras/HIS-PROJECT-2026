@@ -50,6 +50,11 @@ export class HistoriaClinicaService {
     return this.registrar(pacienteId, CategoriaRegistro.ESTUDIO, tipo, resultado, identity);
   }
 
+  /** Nota de enfermería automática: la registra Enfermería (HU 1.1) y queda en la historia clínica del paciente. */
+  registrarNotaEnfermeria(pacienteId: string, titulo: string, detalle: string, identity: SessionIdentity) {
+    return this.registrar(pacienteId, CategoriaRegistro.NOTA_ENFERMERIA, titulo, detalle, identity);
+  }
+
   private async registrar(
     pacienteId: string,
     categoria: CategoriaRegistro,

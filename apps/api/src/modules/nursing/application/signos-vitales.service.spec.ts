@@ -40,8 +40,9 @@ describe('SignosVitalesService', () => {
     const events = new EventBus();
     const published: unknown[] = [];
     events.ofType(INTEGRATION_EVENTS.VITAL_SIGN_ALERT).subscribe((event) => published.push(event));
-    const service = new SignosVitalesService(repository as never, pacientes as never, events);
-    return { service, repository, published };
+    const historiaClinica = { registrarNotaEnfermeria: vi.fn(async () => ({ id: 'nota-1' })) };
+    const service = new SignosVitalesService(repository as never, pacientes as never, events, historiaClinica as never);
+    return { service, repository, published, historiaClinica };
   }
 
   it('stores a stable reading without raising an alert', async () => {
@@ -151,7 +152,7 @@ describe('SignosVitalesService', () => {
     });
 
     it('stores a stable control in a single call with the automatic nursing note', async () => {
-      const { service, repository, published } = build();
+      const { service, repository, published, historiaClinica } = build();
       repository.createControl.mockResolvedValue(filasControl(36.8));
 
       const result = await service.registrarControl(dto(36.8), identity);
@@ -178,10 +179,16 @@ describe('SignosVitalesService', () => {
         nota: 'Controles de signos vitales realizados con éxito.',
       });
       expect(published).toHaveLength(0);
+      expect(historiaClinica.registrarNotaEnfermeria).toHaveBeenCalledWith(
+        'patient-1',
+        'Control de signos vitales',
+        'Controles de signos vitales realizados con éxito.',
+        identity,
+      );
     });
 
     it('marks a temperature of 39.8 °C as critical and publishes one alert', async () => {
-      const { service, repository, published } = build();
+      const { service, repository, published, historiaClinica } = build();
       repository.createControl.mockResolvedValue(filasControl(39.8));
 
       const result = await service.registrarControl(dto(39.8), identity);
@@ -189,6 +196,7 @@ describe('SignosVitalesService', () => {
       expect(result.critico).toBe(true);
       expect(result.fueraDeRango).toContain('Temperatura');
       expect(result.nota).toContain('Temperatura');
+      expect(historiaClinica.registrarNotaEnfermeria).toHaveBeenCalledWith('patient-1', 'Control de signos vitales', result.nota, identity);
       expect(published).toHaveLength(1);
       expect(published[0]).toMatchObject({
         type: INTEGRATION_EVENTS.VITAL_SIGN_ALERT,
@@ -197,9 +205,10 @@ describe('SignosVitalesService', () => {
     });
 
     it('rejects implausible values with 400 and stores nothing', async () => {
-      const { service, repository } = build();
+      const { service, repository, historiaClinica } = build();
       await expect(service.registrarControl(dto(80), identity)).rejects.toBeInstanceOf(BadRequestException);
       expect(repository.createControl).not.toHaveBeenCalled();
+      expect(historiaClinica.registrarNotaEnfermeria).not.toHaveBeenCalled();
     });
 
     it('propagates 404 when the patient does not exist and stores nothing', async () => {
