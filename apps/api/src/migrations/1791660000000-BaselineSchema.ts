@@ -4,6 +4,15 @@ export class BaselineSchema1791660000000 implements MigrationInterface {
   name = 'BaselineSchema1791660000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    // Esta migración se renombró (antes 1791750000000). Una base que ya la ejecutó con el
+    // nombre anterior vuelve a verla como pendiente: si el esquema ya existe, no se rehace.
+    const [{ existe }] = (await queryRunner.query(
+      `SELECT to_regclass('usuarios') IS NOT NULL AS existe`,
+    )) as Array<{ existe: boolean }>;
+    if (existe) {
+      return;
+    }
+
     await queryRunner.query(`
       -- ============================================================================
 -- SECCIÓN 1: TIPOS ENUM
