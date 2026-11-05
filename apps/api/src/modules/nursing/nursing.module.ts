@@ -7,6 +7,7 @@ import { ProtocoloIngreso } from '../../entities/protocolo-ingreso.entity.js';
 import { SignoVital } from '../../entities/signo-vital.entity.js';
 import { TareaProtocolo } from '../../entities/tarea-protocolo.entity.js';
 import { AdmissionsModule } from '../admissions/admissions.module.js';
+import { EhrModule } from '../ehr/ehr.module.js';
 import { IamModule } from '../iam/iam.module.js';
 import { IndicacionesController } from './api/indicaciones.controller.js';
 import { ProtocolosController } from './api/protocolos.controller.js';
@@ -23,7 +24,7 @@ import { ProtocolosTypeOrmRepository } from './infrastructure/protocolos.typeorm
 import { SignosVitalesTypeOrmRepository } from './infrastructure/signos-vitales.typeorm.repository.js';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([AdministracionMedicacion, IndicacionMedica, Insumo, ProtocoloIngreso, SignoVital, TareaProtocolo]), IamModule, AdmissionsModule],
+  imports: [TypeOrmModule.forFeature([AdministracionMedicacion, IndicacionMedica, Insumo, ProtocoloIngreso, SignoVital, TareaProtocolo]), IamModule, AdmissionsModule, EhrModule],
   controllers: [SignosVitalesController, IndicacionesController, ProtocolosController],
   providers: [
     SignosVitalesService,
