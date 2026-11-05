@@ -91,14 +91,20 @@ export class ProtocolosTypeOrmRepository implements ProtocolosRepository {
     hecha: boolean,
     usuarioId: string,
   ): Promise<ProtocoloData | null> {
-    // El filtro por protocolo evita tocar una tarea ajena; marcar dos veces re-escribe el mismo estado.
-    const resultado = await this.tareas.update(
-      { id: tareaId, protocolo: { id: protocoloId } },
-      hecha
-        ? { hecha: true, hechaEn: new Date(), hechaPor: { id: usuarioId } }
-        : { hecha: false, hechaEn: null, hechaPor: null },
-    );
-    if (!resultado.affected) return null;
+    // El filtro por protocolo evita tocar una tarea ajena.
+    const tarea = { id: tareaId, protocolo: { id: protocoloId } };
+    if (hecha) {
+      // Solo la primera marca guarda quién y cuándo: marcar una tarea ya hecha (doble clic, pantalla
+      // desactualizada, dos enfermeros a la vez) conserva la marca original. El UPDATE condicionado
+      // a `hecha = false` lo resuelve de forma atómica, sin leer antes.
+      await this.tareas.update(
+        { ...tarea, hecha: false },
+        { hecha: true, hechaEn: new Date(), hechaPor: { id: usuarioId } },
+      );
+    } else {
+      await this.tareas.update(tarea, { hecha: false, hechaEn: null, hechaPor: null });
+    }
+    if (!(await this.tareas.exists({ where: tarea }))) return null;
     const row = await this.protocolos.findOne({ where: { id: protocoloId }, relations: RELATIONS });
     return row ? toData(row) : null;
   }
