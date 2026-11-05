@@ -14,7 +14,7 @@ export class RefreshSession {
   id: string;
 
   @ManyToOne(() => Usuario, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'usuarioId' })
+  @JoinColumn({ name: 'usuario_id' })
   usuario: Usuario;
 
   @Column({ type: 'uuid' })
