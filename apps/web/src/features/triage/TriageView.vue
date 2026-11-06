@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import BaseCard from '../../components/ui/BaseCard.vue';
 import NoticeBanner from '../../components/ui/NoticeBanner.vue';
+import { useFeedback } from '../../composables/useFeedback';
 import PageHeader from '../../components/ui/PageHeader.vue';
 import StatusChip, { type ChipTone } from '../../components/ui/StatusChip.vue';
 import { TRIAGE_LABELS, type TriageLevel } from '../../services/triage';
@@ -22,25 +23,23 @@ const TONES: Record<TriageLevel, ChipTone> = { ROJO: 'danger', AMARILLO: 'warnin
 const form = reactive<{ paciente: string; motivo: string; nivel: TriageLevel }>({ paciente: '', motivo: '', nivel: 'AMARILLO' });
 const submitted = ref(false);
 const saving = ref(false);
-const aviso = ref<string | null>(null);
-const fallo = ref<string | null>(null);
+const { toast } = useFeedback();
 
 async function register(): Promise<void> {
   submitted.value = true;
-  aviso.value = null;
-  fallo.value = null;
   if (!form.paciente.trim() || !form.motivo.trim()) return;
   saving.value = true;
   try {
     const saved = await store.register({ paciente: form.paciente.trim(), motivo: form.motivo.trim(), nivel: form.nivel });
-    aviso.value =
+    toast.success(
       saved.nivel === 'ROJO'
         ? `${saved.paciente} pasa primero en la cola. Se alertó a los médicos de guardia.`
-        : `${saved.paciente} quedó en la cola de espera.`;
+        : `${saved.paciente} quedó en la cola de espera.`,
+    );
     Object.assign(form, { paciente: '', motivo: '', nivel: 'AMARILLO' });
     submitted.value = false;
   } catch (reason) {
-    fallo.value = messageFrom(reason);
+    toast.error(messageFrom(reason));
   } finally {
     saving.value = false;
   }
@@ -56,8 +55,6 @@ onMounted(store.load);
     <NoticeBanner v-if="redCount > 0" tone="error" title="Código Rojo en la cola">
       {{ redCount }} paciente{{ redCount === 1 ? '' : 's' }} con riesgo vital. Los médicos de guardia fueron alertados.
     </NoticeBanner>
-    <NoticeBanner v-if="aviso" tone="success">{{ aviso }}</NoticeBanner>
-    <NoticeBanner v-if="fallo" tone="error">{{ fallo }}</NoticeBanner>
 
     <div class="grid-eq">
       <BaseCard v-if="canRegister">
