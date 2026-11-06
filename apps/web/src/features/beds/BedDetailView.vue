@@ -5,6 +5,7 @@ import { RouterLink } from 'vue-router';
 import PatientPicker from '../../components/PatientPicker.vue';
 import BaseCard from '../../components/ui/BaseCard.vue';
 import NoticeBanner from '../../components/ui/NoticeBanner.vue';
+import { useFeedback } from '../../composables/useFeedback';
 import PageHeader from '../../components/ui/PageHeader.vue';
 import StatusChip, { type ChipTone } from '../../components/ui/StatusChip.vue';
 import { BED_STATUS_LABELS, type BedStatus } from '../../services/beds';
@@ -22,8 +23,7 @@ const { beds, loading, error } = storeToRefs(store);
 
 const bed = computed(() => beds.value.find((b) => b.id === props.id));
 const paciente = ref<Patient | null>(null);
-const aviso = ref<string | null>(null);
-const fallo = ref<string | null>(null);
+const { toast } = useFeedback();
 const working = ref(false);
 
 // Asignar, dar de alta y bloquear: administrativo. Confirmar la limpieza: también enfermería.
@@ -34,14 +34,12 @@ const TONES: Record<BedStatus, ChipTone> = { DISPONIBLE: 'success', OCUPADA: 'in
 
 async function run(operation: () => Promise<void>, success: string): Promise<void> {
   working.value = true;
-  aviso.value = null;
-  fallo.value = null;
   try {
     await operation();
-    aviso.value = success;
+    toast.success(success);
   } catch (reason) {
     // Por ejemplo, otra persona ocupó la cama un instante antes: el mapa ya se refrescó.
-    fallo.value = messageFrom(reason);
+    toast.error(messageFrom(reason), { title: 'No se pudo completar la acción' });
   } finally {
     working.value = false;
   }
@@ -76,8 +74,6 @@ onMounted(() => {
         <StatusChip :label="BED_STATUS_LABELS[bed.estado]" :tone="TONES[bed.estado]" />
       </PageHeader>
 
-      <NoticeBanner v-if="aviso" tone="success">{{ aviso }}</NoticeBanner>
-      <NoticeBanner v-if="fallo" tone="error" title="No se pudo completar la acción">{{ fallo }}</NoticeBanner>
 
       <div class="grid-eq">
         <BaseCard>

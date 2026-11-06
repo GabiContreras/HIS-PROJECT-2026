@@ -5,9 +5,10 @@ import NoticeBanner from '../../components/ui/NoticeBanner.vue';
 import PageHeader from '../../components/ui/PageHeader.vue';
 import StatCard from '../../components/ui/StatCard.vue';
 import StatusChip from '../../components/ui/StatusChip.vue';
-import type { EstadoTurno, SlotDisponible, TurnoAgenda } from '../../services/turnos';
+import type { EsperaItem, EstadoTurno, SlotDisponible, TurnoAgenda } from '../../services/turnos';
 import { listarUsuarios } from '../../services/users';
 import { messageFrom } from '../../shared/errors';
+import { useFeedback } from '../../composables/useFeedback';
 import { useSessionStore } from '../iam/session.store';
 import { doctorName, ESTADO_LABELS, isShortened, patientName } from './appointment-ui';
 import AppointmentDetailPanel from './AppointmentDetailPanel.vue';
@@ -18,13 +19,13 @@ import NewAppointmentPanel, { type DoctorOption } from './NewAppointmentPanel.vu
 import { useAppointments } from './useAppointments';
 
 const session = useSessionStore();
-const { fecha, medicoId, turnos, libres, espera, promovido, cargando, error, actuando, errorAccion, cargar, puedePasar, transicionar, quitarEspera } =
+const { fecha, medicoId, turnos, libres, espera, promovido, cargando, error, actuando, errorAccion, cargar, puedePasar, transicionar, quitarEspera: quitarDeEspera } =
   useAppointments();
+const { toast, confirm, notify } = useFeedback();
 
 const isAdmin = computed(() => session.role === 'ADMINISTRATIVO');
 const medicos = ref<DoctorOption[]>([]);
 const medicosError = ref<string | null>(null);
-const aviso = ref<string | null>(null);
 
 // El médico solo ve y gestiona su propia agenda.
 if (!isAdmin.value && session.account) medicoId.value = session.account.id;
@@ -77,7 +78,6 @@ function estadoColumna(estado: EstadoTurno): 'valida' | 'invalida' | '' {
 
 function iniciarArrastre(event: DragEvent, turno: TurnoAgenda): void {
   arrastrando.value = turno;
-  aviso.value = null;
   event.dataTransfer?.setData('text/plain', turno.id);
   if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
 }
@@ -99,13 +99,59 @@ async function soltar(estado: EstadoTurno): Promise<void> {
  * mensaje de negocio (HU 2.1) es el que se le muestra a la persona.
  */
 async function mover(turno: TurnoAgenda, estado: EstadoTurno): Promise<void> {
-  aviso.value = null;
   if (estado === 'CANCELADO' && puedePasar(turno.estado, estado)) {
-    if (!window.confirm(`¿Cancelar el turno de ${patientName(turno)}?`)) return;
+    const hayCola = espera.value.some((e) => e.medico.id === turno.medico.id);
+    const confirmado = await confirm({
+      title: 'Cancelar turno',
+      message: `¿Cancelar el turno de ${patientName(turno)} de las ${clinicTime(turno.fechaHora)}?`,
+      consequences: [
+        'El horario queda libre.',
+        ...(hayCola ? ['El primero de la lista de espera de este médico recibe el horario.'] : []),
+      ],
+      confirmLabel: 'Cancelar turno',
+      cancelLabel: 'Volver',
+      tone: 'danger',
+    });
+    if (!confirmado) return;
   }
   if (await transicionar(turno.id, estado)) {
-    aviso.value = `Turno de ${patientName(turno)}: ${ESTADO_LABELS[estado].toLowerCase()}.`;
+    toast.success(`Turno de ${patientName(turno)}: ${ESTADO_LABELS[estado].toLowerCase()}.`);
+    avisarPromocion();
+  } else if (errorAccion.value) {
+    toast.warning(errorAccion.value, { title: 'Transición no válida', key: 'transicion-invalida' });
   }
+}
+
+/** HU 1.3: un paciente de la lista de espera tomó el horario liberado; recepción tiene que avisarle. */
+function avisarPromocion(): void {
+  const p = promovido.value;
+  if (!p) return;
+  promovido.value = null;
+  notify({
+    level: 'warning',
+    category: 'lista_espera',
+    title: 'Horario asignado desde la lista de espera',
+    detail:
+      `${p.paciente.nombre} ${p.paciente.apellido} pasó al turno de las ${clinicTime(p.turno.fechaHora)} ` +
+      `con ${p.turno.medico.nombre} ${p.turno.medico.apellido}. Avisale al paciente (llamado o altavoz).`,
+    key: `promo:${p.turno.id}`,
+    toast: true,
+  });
+}
+
+async function quitar(entry: EsperaItem): Promise<void> {
+  const nombre = `${entry.paciente.nombre} ${entry.paciente.apellido}`;
+  const confirmado = await confirm({
+    title: 'Quitar de la lista de espera',
+    message: `¿Quitar a ${nombre} de la lista de espera?`,
+    consequences: ['Si vuelve a anotarse, queda al final de la cola.'],
+    confirmLabel: 'Quitar',
+    cancelLabel: 'Volver',
+    tone: 'warning',
+  });
+  if (!confirmado) return;
+  if (await quitarDeEspera(entry.id)) toast.info(`${nombre} salió de la lista de espera.`);
+  else if (errorAccion.value) toast.error(errorAccion.value);
 }
 
 function destinosDe(turno: TurnoAgenda): EstadoTurno[] {
@@ -119,7 +165,6 @@ function irA(dias: number): void {
 }
 
 function abrirNuevoTurno(horario: SlotDisponible | null = null): void {
-  aviso.value = null;
   horarioElegido.value = horario;
   panelAbierto.value = true;
 }
@@ -135,7 +180,7 @@ function verDetalle(turno: TurnoAgenda): void {
 }
 
 function alReservar(mensaje: string): void {
-  aviso.value = mensaje;
+  toast.success(mensaje);
 }
 
 async function cargarMedicos(): Promise<void> {
@@ -209,14 +254,6 @@ onMounted(() => Promise.all([cargar(), cargarMedicos()]));
       <button class="link" type="button" @click="horariosAbierto = true">Ver todos ›</button>
     </section>
 
-    <NoticeBanner v-if="promovido" tone="success" title="Horario asignado desde la lista de espera">
-      {{ promovido.paciente.nombre }} {{ promovido.paciente.apellido }} pasó al turno de las
-      <strong>{{ clinicTime(promovido.turno.fechaHora) }}</strong> con {{ promovido.turno.medico.nombre }} {{ promovido.turno.medico.apellido }}.
-      Avisale al paciente (llamado o altavoz).
-      <button type="button" class="btn-sm" @click="promovido = null">Entendido</button>
-    </NoticeBanner>
-    <NoticeBanner v-if="aviso" tone="success">{{ aviso }}</NoticeBanner>
-    <NoticeBanner v-if="errorAccion" tone="error" title="Transición no válida">{{ errorAccion }}</NoticeBanner>
     <NoticeBanner v-if="medicosError" tone="error">{{ medicosError }}</NoticeBanner>
 
     <section class="board-section">
@@ -308,7 +345,7 @@ onMounted(() => Promise.all([cargar(), cargarMedicos()]));
           <span class="pos">{{ e.posicion }}</span>
           <span class="name"><strong>{{ e.paciente.nombre }} {{ e.paciente.apellido }}</strong>
             <small>Dr/a. {{ e.medico.apellido }}</small></span>
-          <button class="btn btn-sm btn-secondary" type="button" :disabled="actuando" @click="quitarEspera(e.id)">
+          <button class="btn btn-sm btn-secondary" type="button" :disabled="actuando" @click="quitar(e)">
             Quitar
           </button>
         </li>
