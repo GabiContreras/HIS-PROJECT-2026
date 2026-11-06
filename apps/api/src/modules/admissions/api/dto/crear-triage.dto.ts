@@ -1,12 +1,12 @@
-import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export enum NivelTriage {
-  ROJO = 'ROJO',       // Riesgo vital inmediato
-  NARANJA = 'NARANJA', // Muy urgente
-  AMARILLO = 'AMARILLO',// Urgente
-  VERDE = 'VERDE',     // Menos urgente
-  AZUL = 'AZUL',       // No urgente
+  ROJO = 'ROJO', 
+  NARANJA = 'NARANJA', 
+  AMARILLO = 'AMARILLO', 
+  VERDE = 'VERDE', 
+  AZUL = 'AZUL', 
 }
 
 export class CrearTriageDto {
@@ -23,4 +23,9 @@ export class CrearTriageDto {
   @IsString()
   @IsNotEmpty()
   motivoConsulta: string;
+
+  @ApiProperty({ example: 'uuid-del-medico', required: false })
+  @IsString()
+  @IsOptional()
+  medicoDestinoId?: string;
 }
