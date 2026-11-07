@@ -9,6 +9,7 @@ import {
 export enum TipoAtencionFacturable {
   REGULAR = 'REGULAR',
   URGENCIA = 'URGENCIA',
+  FARMACIA = 'FARMACIA',
 }
 
 @Entity('cargos')
@@ -16,8 +17,14 @@ export class Cargo {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'turno_id', type: 'uuid', unique: true })
-  turnoId: string;
+  @Column({name: 'turno_id',type: 'uuid',unique: true,nullable: true,})
+  turnoId: string | null;
+
+  @Column({name: 'administration_id',type: 'uuid',nullable: true,})
+  administrationId: string | null;
+
+  @Column({ name: 'concepto', type: 'varchar', length: 100, nullable: true })
+  concepto: string | null;
 
   @Column({ name: 'importe_pesos', type: 'integer' })
   importePesos: number;
@@ -25,18 +32,18 @@ export class Cargo {
   @Column({ name: 'tipo_atencion', type: 'varchar', length: 20 })
   tipoAtencion: TipoAtencionFacturable;
 
-  /** Cobertura del paciente al momento de facturar (queda congelada en el cargo). null: cargo anterior al registro de coberturas. */
+
   @Column({ name: 'tipo_cobertura', type: 'varchar', length: 30, nullable: true })
   tipoCobertura: CoverageType | null;
 
   @Column({ name: 'entidad_cobertura', type: 'varchar', length: 100, nullable: true })
   entidadCobertura: string | null;
 
-  /** Parte que paga el paciente (copago, o el 100% si es particular). */
+
   @Column({ name: 'importe_paciente_pesos', type: 'integer', nullable: true })
   importePacientePesos: number | null;
 
-  /** Parte a cargo de un tercero: el Estado (obra social pública) o la prepaga. */
+
   @Column({ name: 'importe_tercero_pesos', type: 'integer', nullable: true })
   importeTerceroPesos: number | null;
 
