@@ -56,8 +56,18 @@ onMounted(() => Promise.all([agenda.cargar(), triage.load(), vitals.load()]));
         :detalle="next ? patientName(next) : 'Sin turnos pendientes'"
         tone="brand"
       />
-      <StatCard titulo="En cola de triaje" :valor="queue.length" :detalle="`${redCount} con riesgo vital`" tone="warning" />
-      <StatCard titulo="Alertas críticas" :valor="critical.length" detalle="Signos vitales fuera de rango" tone="danger" />
+      <StatCard
+       titulo="En cola de triaje"
+       :valor="triage.loading ? 'Cargando...' : triage.error ? '—' : queue.length"
+       :detalle="triage.error ? 'No se pudieron cargar los datos' : `${redCount} con riesgo vital`"
+       tone="warning"
+      />
+      <StatCard
+       titulo="Alertas críticas"
+       :valor="vitals.loading ? 'Cargando...' : vitals.error ? '—' : critical.length"
+       :detalle="vitals.error ? 'No se pudieron cargar los datos' : 'Signos vitales fuera de rango'"
+       tone="danger"
+      />
     </div>
 
     <div class="grid-2">
@@ -87,14 +97,44 @@ onMounted(() => Promise.all([agenda.cargar(), triage.load(), vitals.load()]));
       <BaseCard>
         <template #header><h3>Cola de triaje</h3></template>
         <template #action><RouterLink :to="{ name: 'triage' }">Ver cola →</RouterLink></template>
-        <TriageList :entries="queue" :limit="5" />
+        <p v-if="triage.loading && queue.length === 0" role="status">
+          Cargando cola de triaje...
+        </p>
+
+        <NoticeBanner v-if="triage.error" tone="error">
+          No se pudo cargar la cola de triaje: {{ triage.error }}
+          <button type="button" class="btn-sm" @click="triage.load">
+            Reintentar
+          </button>
+        </NoticeBanner>
+
+        <TriageList
+          v-if="!triage.loading || queue.length > 0"
+          :entries="queue"
+          :limit="5"
+        />
       </BaseCard>
     </div>
 
     <BaseCard>
       <template #header><h3>Alertas de signos vitales</h3></template>
       <template #action><RouterLink :to="{ name: 'vital-signs' }">Ver registros →</RouterLink></template>
-      <VitalsList :records="critical" empty="No hay alertas críticas." />
+      <p v-if="vitals.loading && critical.length === 0" role="status">
+        Cargando alertas de signos vitales...
+      </p>
+
+      <NoticeBanner v-if="vitals.error" tone="error">
+        No se pudieron cargar los signos vitales: {{ vitals.error }}
+        <button type="button" class="btn-sm" @click="vitals.load">
+          Reintentar
+        </button>
+      </NoticeBanner>
+
+      <VitalsList
+        v-if="(!vitals.loading && !vitals.error) || critical.length > 0"
+        :records="critical"
+        empty="No hay alertas críticas."
+      />
     </BaseCard>
   </div>
 </template>
