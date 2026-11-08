@@ -57,11 +57,16 @@ onMounted(() => Promise.all([agenda.cargar(), charges.load(), beds.load(), inven
       <StatCard titulo="Insumos con stock bajo" :valor="lowStock.length" detalle="Reponer cuanto antes" tone="warning" />
       <StatCard
         titulo="Total facturado"
-        :valor="charges.error.value ? '—' : formatMoney(charges.total.value)"
+        :valor="charges.loading.value ? 'Cargando...' : charges.error.value ? '—' : formatMoney(charges.total.value)"
         :detalle="`${charges.charges.value.length} cargos emitidos`"
         tone="violet"
       />
     </div>
+
+    <NoticeBanner v-if="charges.error.value" tone="error">
+      No se pudieron cargar los cargos: {{ charges.error.value }}
+     <button type="button" class="btn-sm" @click="charges.load">Reintentar</button>
+    </NoticeBanner>
 
     <div class="grid-2">
       <BaseCard>
@@ -69,32 +74,53 @@ onMounted(() => Promise.all([agenda.cargar(), charges.load(), beds.load(), inven
         <template #action><RouterLink :to="{ name: 'appointments' }">Ver agenda completa →</RouterLink></template>
         <p v-if="agenda.cargando.value" role="status">Cargando turnos...</p>
         <p v-else-if="upcoming.length === 0" class="muted">No hay turnos para hoy.</p>
-        <div v-else class="scroll-x">
-          <table>
-            <thead><tr><th>Hora</th><th>Paciente</th><th>Médico</th><th>Estado</th></tr></thead>
-            <tbody>
-              <tr v-for="t in upcoming" :key="t.id">
-                <td><strong>{{ formatTime(t.fechaHora) }}</strong></td>
-                <td>{{ patientName(t) }}</td>
-                <td>{{ doctorName(t) }}</td>
-                <td><StatusChip :label="ESTADO_LABELS[t.estado]" :tone="ESTADO_TONES[t.estado]" /></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </BaseCard>
+         <div v-else class="scroll-x">
+           <table>
+             <thead><tr><th>Hora</th><th>Paciente</th><th>Médico</th><th>Estado</th></tr></thead>
+             <tbody>
+               <tr v-for="t in upcoming" :key="t.id">
+                 <td><strong>{{ formatTime(t.fechaHora) }}</strong></td>
+                 <td>{{ patientName(t) }}</td>
+                 <td>{{ doctorName(t) }}</td>
+                 <td><StatusChip :label="ESTADO_LABELS[t.estado]" :tone="ESTADO_TONES[t.estado]" /></td>
+               </tr>
+             </tbody>
+           </table>
+         </div>
+        </BaseCard>
 
-      <BaseCard>
-        <template #header><h3>Stock de insumos</h3></template>
-        <template #action><RouterLink :to="{ name: 'inventory' }">Ver insumos →</RouterLink></template>
-        <StockList :items="items" :limit="5" />
-      </BaseCard>
+       <BaseCard>
+         <template #header><h3>Stock de insumos</h3></template>
+         <template #action><RouterLink :to="{ name: 'inventory' }">Ver insumos →</RouterLink></template>
+         <p v-if="inventory.loading && items.length === 0" role="status">
+            Cargando insumos...
+         </p>
+
+         <NoticeBanner v-if="inventory.error" tone="error">
+            No se pudo cargar el inventario: {{ inventory.error }}
+            <button type="button" class="btn-sm" @click="inventory.load">
+              Reintentar
+            </button>
+         </NoticeBanner>
+
+         <StockList v-if="!inventory.loading || items.length > 0" :items="items" :limit="5" />
+        </BaseCard>
     </div>
 
     <BaseCard>
       <template #header><h3>Mapa de camas</h3></template>
-      <template #action><RouterLink :to="{ name: 'beds' }">Gestionar camas →</RouterLink></template>
+      <template #action>
+        <RouterLink :to="{ name: 'beds' }">Gestionar camas →</RouterLink>
+      </template>
+
+      <NoticeBanner v-if="beds.error" tone="error">
+        No se pudieron cargar las camas: {{ beds.error }}
+        <button type="button" class="btn-sm" @click="beds.load">
+          Reintentar
+        </button>
+      </NoticeBanner>
+
       <BedsOverview @select="openBed" />
-    </BaseCard>
+   </BaseCard>
   </div>
 </template>
