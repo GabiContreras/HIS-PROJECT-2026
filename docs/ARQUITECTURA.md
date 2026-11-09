@@ -4,6 +4,16 @@
 
 Adaptar el monorepo existente a la arquitectura de referencia UTN sin cambiar Vue 3, Vite, NestJS, TypeORM ni PostgreSQL. La organización objetivo es un **monolito modular** con límites de dominio, capas hexagonales y eventos internos para reducir acoplamiento.
 
+## Diagrama general de arquitectura
+
+El sistema utiliza una arquitectura de monolito modular. El frontend está desarrollado con Vue 3 y Vite, y se comunica mediante HTTP/JSON con una API REST desarrollada en NestJS.
+
+El backend organiza sus funcionalidades en módulos de dominio. La persistencia se realiza mediante TypeORM y PostgreSQL.
+
+![Arquitectura general](diagramas/arquitectura-general.png)
+
+El archivo editable se encuentra en `docs/diagramas/arquitectura-general.drawio`.
+
 ## Módulos de dominio
 
 - `iam`: usuarios, autenticación, roles y permisos.
@@ -51,6 +61,29 @@ Ejemplo de contrato:
 
 Convención: nombres de eventos en pasado, nombres estables y payloads versionables. Los eventos no deben transportar datos clínicos innecesarios.
 
+## Gestión de camas y estados
+
+El módulo `resources` implementa la gestión de estados de las camas mediante el patrón de diseño State.
+
+Los estados contemplados son:
+
+- `LIBRE`: cama disponible para asignar un paciente o bloquear.
+- `OCUPADA`: cama asignada a un paciente.
+- `EN_LIMPIEZA`: cama pendiente de limpieza luego del alta médica.
+- `BLOQUEADA`: cama que no puede utilizarse hasta ser desbloqueada.
+
+Las transiciones permitidas son:
+
+- `LIBRE -> OCUPADA`: asignar un paciente.
+- `LIBRE -> BLOQUEADA`: bloquear la cama.
+- `OCUPADA -> EN_LIMPIEZA`: dar el alta médica.
+- `EN_LIMPIEZA -> LIBRE`: confirmar la limpieza.
+- `BLOQUEADA -> LIBRE`: desbloquear la cama.
+
+Las operaciones no permitidas para el estado actual generan un error de transición inválida.
+
+El diagrama correspondiente se encuentra en `docs/diagramas/camas-estados.drawio`.
+
 ## Persistencia
 
 - PostgreSQL alojado en Supabase; no se adopta SQLite de la referencia.
@@ -93,13 +126,20 @@ Convención: nombres de eventos en pasado, nombres estables y payloads versionab
 - La agenda utiliza turnos regulares de 30 minutos y turnos urgentes de 15. La
   urgencia solo puede insertarse 15 minutos después del inicio de un turno libre
   de 30 minutos; ese turno se reduce a 15 minutos en la misma transacción.
-- Reserva, creación de agenda y cambios de estado bloquean la fila del médico y
-  la fila del turno en una transacción. Las transiciones válidas son
-  `DISPONIBLE -> RESERVADO -> CONFIRMADO -> ATENDIDO`, con cancelación desde
-  `RESERVADO` o `CONFIRMADO`; cancelar conserva el registro y libera otro turno
-  disponible para ese horario.
-- Las rutas clínicas/operativas de EHR, Nursing, Resources y Billing no forman
-  parte de esta implementación.
+- Reserva, creación de agenda y cambios de estado bloquean la fila del médico y la fila del turno en una transacción.
+Las transiciones válidas de los turnos son:
+
+- `RESERVADO -> CONFIRMADO`.
+- `RESERVADO -> CANCELADO`.
+- `CONFIRMADO -> EN_SALA_DE_ESPERA`.
+- `CONFIRMADO -> CANCELADO`.
+- `EN_SALA_DE_ESPERA -> ATENDIDO`.
+
+Los estados `ATENDIDO` y `CANCELADO` son terminales. No admiten nuevas transiciones. El estado `DISPONIBLE` se conserva para registros históricos o heredados, pero no forma parte del flujo actual de la máquina de estados.
+
+El detalle se encuentra en `docs/diagramas/turnos-estados.drawio`.
+
+- Las rutas clínicas/operativas de EHR, Nursing, Resources y Billing no forman parte de esta implementación.
 
 ## Estrategia de migración
 
