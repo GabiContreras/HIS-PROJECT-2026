@@ -1,10 +1,10 @@
-
 <script setup lang="ts">
-import UsuariosForm from './components/UsuariosForm.vue';
-import PacientesForm from './components/PacientesForm.vue';
+import ConfirmHost from './components/feedback/ConfirmHost.vue';
+import ToastHost from './components/feedback/ToastHost.vue';
 </script>
 
 <template>
-  
-  <RouterView/>
+  <RouterView />
+  <ToastHost />
+  <ConfirmHost />
 </template>
