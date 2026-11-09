@@ -23,7 +23,42 @@ let previouslyFocused: HTMLElement | null = null;
 const layer = computed(() => 40 + Math.max(openStack.indexOf(id), 0) * 2);
 
 function onKeydown(event: KeyboardEvent): void {
-  if (event.key === 'Escape' && openStack[openStack.length - 1] === id) emit('close');
+  if (openStack[openStack.length - 1] !== id) return;
+
+  if (event.key === 'Escape') {
+    emit('close');
+    return;
+  }
+
+  if (event.key !== 'Tab') return;
+
+  const focusable = panel.value?.querySelectorAll<HTMLElement>(
+    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+  );
+
+  const elements = Array.from(focusable ?? []).filter(
+    (element) => element.getClientRects().length > 0,
+  );
+
+  if (elements.length === 0) {
+    event.preventDefault();
+    panel.value?.focus();
+    return;
+  }
+
+  const first = elements.at(0);
+  const last = elements.at(-1);
+
+  if (!first || !last) return;
+  const active = document.activeElement;
+
+  if (event.shiftKey && (active === first || active === panel.value)) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && (active === last || active === panel.value)) {
+    event.preventDefault();
+    first.focus();
+  }
 }
 
 function release(): void {
@@ -45,7 +80,12 @@ watch(
       panel.value?.focus();
     } else {
       release();
-      previouslyFocused?.focus?.();
+      if (
+        previouslyFocused?.isConnected &&
+        (openStack.length === 0 || previouslyFocused.closest('.drawer-root'))
+      ) {
+        previouslyFocused.focus();
+      }
       previouslyFocused = null;
     }
   },
