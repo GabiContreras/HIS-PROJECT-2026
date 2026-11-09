@@ -16,6 +16,8 @@ import { BillingService } from '../application/billing.service.js';
 import { ConsultaRegularStrategy } from '../domain/consulta-regular.strategy.js';
 import { ConsultaUrgenciaStrategy } from '../domain/consulta-urgencia.strategy.js';
 import { CargosController } from './cargos.controller.js';
+import { Insumo } from '../../../entities/insumo.entity.js';
+import { AdministracionMedicacion } from '../../../entities/administracion-medicacion.entity.js';
 
 describe('Billing integration', () => {
   let app: INestApplication;
@@ -71,6 +73,8 @@ describe('Billing integration', () => {
         AppointmentAttendedSubscriber,
         { provide: getRepositoryToken(Cargo), useValue: repository },
         { provide: getRepositoryToken(Turno), useValue: turnosRepository },
+        {provide: getRepositoryToken(Insumo),useValue: {findOneByOrFail: vi.fn(),},},
+        {provide: getRepositoryToken(AdministracionMedicacion),useValue: {findOne: vi.fn(),}},
       ],
     })
       .overrideGuard(AuthGuard)
