@@ -2,10 +2,10 @@ import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { addTriage, listTriage, sortQueue, TRIAGE_LABELS, type TriageEntry, type TriageInput } from '../services/triage';
 import { messageFrom } from '../shared/errors';
-import { useNotificationsStore } from './notifications.store';
+import { useNotificationStore } from './notification.store';
 
 export const useTriageStore = defineStore('triage', () => {
-  const notifications = useNotificationsStore();
+  const notifications = useNotificationStore();
 
   const entries = ref<TriageEntry[]>([]);
   const loading = ref(false);
@@ -29,8 +29,9 @@ export const useTriageStore = defineStore('triage', () => {
   async function register(input: TriageInput): Promise<TriageEntry> {
     const saved = await addTriage(input);
     if (saved.nivel === 'ROJO') {
-      notifications.push({
+      notifications.notify({
         level: 'critical',
+        category: 'triaje',
         title: `${TRIAGE_LABELS.ROJO}`,
         detail: `${saved.paciente}: ${saved.motivo}. Pasa primero en la cola.`,
         roles: ['MEDICO'],

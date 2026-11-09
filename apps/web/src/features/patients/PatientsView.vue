@@ -6,6 +6,7 @@ import AppIcon from '../../components/ui/AppIcon.vue';
 import NoticeBanner from '../../components/ui/NoticeBanner.vue';
 import PageHeader from '../../components/ui/PageHeader.vue';
 import StatusChip from '../../components/ui/StatusChip.vue';
+import { useFeedback } from '../../composables/useFeedback';
 import { usePatients } from '../../composables/usePatients';
 import type { Patient } from '../../services/patients';
 import { formatDocument } from '../../shared/format';
@@ -17,13 +18,13 @@ import PatientDetailDrawer from './PatientDetailDrawer.vue';
 const route = useRoute();
 const session = useSessionStore();
 const { patients, loading, error, load } = usePatients();
+const { toast } = useFeedback();
 
 const canCreate = computed(() => session.role === 'ADMINISTRATIVO');
 const query = ref(String(route.query.q ?? ''));
 const newOpen = ref(canCreate.value && route.query.nuevo === '1');
 const detailOpen = ref(false);
 const selected = ref<Patient | null>(null);
-const notice = ref<string | null>(null);
 
 function age(birth: string): number {
   const b = new Date(`${birth.slice(0, 10)}T00:00:00`);
@@ -41,13 +42,14 @@ function open(patient: Patient): void {
 
 function openNew(): void {
   detailOpen.value = false;
-  notice.value = null;
   newOpen.value = true;
 }
 
 async function onSaved(patient: Patient): Promise<void> {
   newOpen.value = false;
-  notice.value = `${patient.apellido}, ${patient.nombre} (DNI ${formatDocument(patient.documento)}) se registró correctamente.`;
+  toast.success(`${patient.apellido}, ${patient.nombre} (DNI ${formatDocument(patient.documento)}) se registró correctamente.`, {
+    title: 'Registro exitoso',
+  });
   query.value = '';
   await load('');
 }
@@ -72,8 +74,6 @@ onMounted(() => load(query.value));
     <PageHeader title="Pacientes" subtitle="Registrá nuevos pacientes y consultá la información de los existentes.">
       <input v-model="query" class="search" type="search" placeholder="Buscar paciente..." aria-label="Buscar paciente" />
     </PageHeader>
-
-    <NoticeBanner v-if="notice" tone="success" title="Registro exitoso">{{ notice }}</NoticeBanner>
 
     <BaseCard>
       <template #header>

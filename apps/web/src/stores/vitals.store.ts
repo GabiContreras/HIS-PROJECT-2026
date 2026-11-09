@@ -3,11 +3,11 @@ import { defineStore } from 'pinia';
 import { useSessionStore } from '../features/iam/session.store';
 import { addVitalSign, listVitalSigns, type VitalSign, type VitalSignInput } from '../services/vitalSigns';
 import { messageFrom } from '../shared/errors';
-import { useNotificationsStore } from './notifications.store';
+import { useNotificationStore } from './notification.store';
 
 export const useVitalsStore = defineStore('vitals', () => {
   const session = useSessionStore();
-  const notifications = useNotificationsStore();
+  const notifications = useNotificationStore();
 
   const records = ref<VitalSign[]>([]);
   const loading = ref(false);
@@ -33,8 +33,9 @@ export const useVitalsStore = defineStore('vitals', () => {
   async function record(input: VitalSignInput): Promise<VitalSign> {
     const saved = await addVitalSign(input, session.fullName);
     if (saved.critico) {
-      notifications.push({
+      notifications.notify({
         level: 'critical',
+        category: 'clinico',
         title: 'Temperatura crítica',
         detail: `${saved.paciente}: ${saved.temperatura} °C. Requiere atención del médico de guardia.`,
         roles: ['MEDICO', 'ENFERMERO'],
