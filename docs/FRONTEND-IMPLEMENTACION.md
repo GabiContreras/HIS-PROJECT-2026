@@ -82,3 +82,32 @@ La interfaz muestra estados de carga, vacío, error y reintento.
 - Conexión a API con estados de carga, vacío, error y reintento.
 - Uso de `v-model`, `v-for`, `v-if` y `v-show`.
 - Panel por rol y flujos de negocio respaldados por endpoints existentes.
+
+## Pruebas automatizadas del frontend
+
+Se incorporaron pruebas unitarias con Vitest para verificar el comportamiento de los stores de Pinia y los composables del frontend.
+
+### Archivos de prueba
+
+| Archivo | Cobertura |
+|---|---|
+| `src/features/iam/__tests__/session.store.spec.ts` | Estado de sesión, inicio y cierre de sesión, restauración y actualización de sesión. |
+| `src/stores/__tests__/dashboard.store.spec.ts` | Estado del panel, cálculo de camas y permisos según el rol. |
+| `src/composables/__tests__/useBeds.spec.ts` | Estado inicial, cálculo de camas ocupadas, carga y manejo de errores. |
+| `src/composables/__tests__/useInventory.spec.ts` | Estado inicial, carga de inventario, identificación de stock bajo y manejo de errores. |
+
+### Ejecución de las pruebas
+
+Desde el directorio `apps/web`, ejecutar:
+
+```bash
+npm run test
+```
+
+### Resultado de validación
+
+La ejecución de las pruebas finalizó correctamente:
+
+- Archivos de prueba aprobados: 4 de 4.
+- Pruebas aprobadas: 24 de 24.
+- Pruebas fallidas: 0.
