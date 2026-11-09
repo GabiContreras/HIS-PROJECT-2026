@@ -7,6 +7,7 @@ export interface MedicationAdministeredPayload {
   quantity: number;
   administeredBy: string;
   administeredAt: string;
+  administrationId: string;
 }
 
 export class MedicationAdministered extends IntegrationEvent<MedicationAdministeredPayload> {
