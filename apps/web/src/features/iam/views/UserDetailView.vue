@@ -12,6 +12,7 @@ import {
   type Usuario,
 } from '../../../services/users';
 import { formatDateTime } from '../../../shared/format';
+import { useFeedback } from '../../../composables/useFeedback';
 import { useSessionStore } from '../session.store';
 import { messageFrom } from '../../../shared/errors';
 import { useUsers } from '../useUsers';
@@ -19,6 +20,7 @@ import { useUsers } from '../useUsers';
 const route = useRoute();
 const userId = computed(() => String(route.params.id));
 const session = useSessionStore();
+const { toast, confirm } = useFeedback();
 const { usuario, cargando, error, cargarPorId } = useUsers();
 
 // --- Permisos: el superadmin gestiona a todos; un administrativo común no toca a otros administrativos. ---
@@ -41,8 +43,6 @@ const puedeDarDeBaja = computed(
 );
 
 const accionando = ref(false);
-const errorCuenta = ref<string | null>(null);
-const avisoCuenta = ref<string | null>(null);
 const editando = ref(false);
 const nombre = ref('');
 const apellido = ref('');
@@ -51,20 +51,17 @@ function empezarEdicion(): void {
   if (!usuario.value) return;
   nombre.value = usuario.value.nombre;
   apellido.value = usuario.value.apellido;
-  errorCuenta.value = null;
   editando.value = true;
 }
 
 async function ejecutar(operation: () => Promise<Usuario>, aviso: string): Promise<void> {
   accionando.value = true;
-  errorCuenta.value = null;
-  avisoCuenta.value = null;
   try {
     usuario.value = await operation();
-    avisoCuenta.value = aviso;
+    toast.success(aviso);
     editando.value = false;
   } catch (reason) {
-    errorCuenta.value = messageFrom(reason, 'No se pudo completar la operación.');
+    toast.error(messageFrom(reason, 'No se pudo completar la operación.'));
   } finally {
     accionando.value = false;
   }
@@ -77,21 +74,42 @@ const restaurar = () =>
   usuario.value &&
   ejecutar(() => restaurarUsuario(usuario.value!.id), 'Cuenta restaurada. Quedó deshabilitada: habilitala para que pueda ingresar.');
 
-function deshabilitar(): void {
-  if (!usuario.value) return;
-  if (!window.confirm(`¿Deshabilitar a ${usuario.value.nombre} ${usuario.value.apellido}? No podrá iniciar sesión hasta que se la habilite de nuevo.`)) return;
-  void ejecutar(() => deshabilitarUsuario(usuario.value!.id), 'La cuenta quedó deshabilitada.');
+// En los modales, `run` mantiene la ventana abierta: si el servidor rechaza la operación
+// (por ejemplo, un médico con turnos pendientes), el motivo se ve adentro del modal.
+async function deshabilitar(): Promise<void> {
+  const u = usuario.value;
+  if (!u) return;
+  const ok = await confirm({
+    title: 'Deshabilitar cuenta',
+    message: `¿Deshabilitar a ${u.nombre} ${u.apellido}?`,
+    consequences: ['No podrá iniciar sesión hasta que se la habilite de nuevo.', 'Sus sesiones abiertas se cierran.'],
+    confirmLabel: 'Deshabilitar',
+    tone: 'warning',
+    run: async () => {
+      usuario.value = await deshabilitarUsuario(u.id);
+    },
+  });
+  if (ok) toast.success('La cuenta quedó deshabilitada.');
 }
 
-function darDeBaja(): void {
-  if (!usuario.value) return;
+async function darDeBaja(): Promise<void> {
   const u = usuario.value;
-  const mensaje =
-    `¿Dar de baja a ${u.nombre} ${u.apellido}?\n\n` +
-    'La cuenta se archiva: no podrá iniciar sesión y dejará de aparecer en listados. ' +
-    'Su historial (turnos, cargos) se conserva y un superadmin puede restaurarla.';
-  if (!window.confirm(mensaje)) return;
-  void ejecutar(() => darDeBajaUsuario(u.id), 'La cuenta se dio de baja.');
+  if (!u) return;
+  const ok = await confirm({
+    title: 'Dar de baja la cuenta',
+    message: `¿Dar de baja a ${u.nombre} ${u.apellido}?`,
+    consequences: [
+      'La cuenta se archiva: no podrá iniciar sesión y deja de aparecer en listados.',
+      'Su historial (turnos, cargos) se conserva.',
+      'Un superadmin puede restaurarla más adelante.',
+    ],
+    confirmLabel: 'Dar de baja',
+    tone: 'danger',
+    run: async () => {
+      usuario.value = await darDeBajaUsuario(u.id);
+    },
+  });
+  if (ok) toast.success('La cuenta se dio de baja.');
 }
 
 // Horario de atención: de 08:00 a 20:00 (horario de la clínica), en bloques de 30 minutos.
@@ -103,7 +121,6 @@ const horaInicio = ref('08:00');
 const horaFin = ref('20:00');
 const guardando = ref(false);
 const errorHorario = ref<string | null>(null);
-const guardado = ref(false);
 
 const horarioValido = computed(() => horaInicio.value < horaFin.value);
 const turnosPorDia = computed(() => {
@@ -112,10 +129,7 @@ const turnosPorDia = computed(() => {
 });
 
 watch(userId, async (id) => {
-  errorCuenta.value = null;
-  avisoCuenta.value = null;
   editando.value = false;
-  guardado.value = false;
   errorHorario.value = null;
   if (await cargarPorId(id) && usuario.value) {
     horaInicio.value = usuario.value.horaInicio ?? '08:00';
@@ -126,14 +140,13 @@ watch(userId, async (id) => {
 async function guardarHorario(): Promise<void> {
   if (!usuario.value || !horarioValido.value) return;
   guardando.value = true;
-  guardado.value = false;
   errorHorario.value = null;
   try {
     usuario.value = await actualizarHorario(usuario.value.id, {
       horaInicio: horaInicio.value,
       horaFin: horaFin.value,
     });
-    guardado.value = true;
+    toast.success('Horario guardado.');
   } catch (reason) {
     errorHorario.value = messageFrom(reason, 'No se pudo guardar el horario.');
   } finally {
@@ -183,8 +196,6 @@ async function guardarHorario(): Promise<void> {
           <button v-if="puedeDarDeBaja" class="btn btn-danger" type="button" :disabled="accionando" @click="darDeBaja">Dar de baja</button>
         </div>
 
-        <p v-if="errorCuenta" class="error" role="alert">{{ errorCuenta }}</p>
-        <p v-if="avisoCuenta" class="ok" role="status">{{ avisoCuenta }}</p>
       </section>
 
       <form v-if="usuario.rol === 'MEDICO'" class="schedule" @submit.prevent="guardarHorario">
@@ -195,12 +206,12 @@ async function guardarHorario(): Promise<void> {
         </p>
         <div class="row">
           <label>Desde
-            <select v-model="horaInicio" @change="guardado = false">
+            <select v-model="horaInicio">
               <option v-for="h in OPCIONES.slice(0, -1)" :key="h" :value="h">{{ h }}</option>
             </select>
           </label>
           <label>Hasta
-            <select v-model="horaFin" @change="guardado = false">
+            <select v-model="horaFin">
               <option v-for="h in OPCIONES.slice(1)" :key="h" :value="h">{{ h }}</option>
             </select>
           </label>
@@ -211,7 +222,6 @@ async function guardarHorario(): Promise<void> {
         <p v-if="!horarioValido" class="error" role="alert">La hora de inicio debe ser anterior a la de fin.</p>
         <p v-else class="hint">{{ turnosPorDia }} turnos por día.</p>
         <p v-if="errorHorario" class="error" role="alert">{{ errorHorario }}</p>
-        <p v-if="guardado" class="ok" role="status">Horario guardado.</p>
       </form>
     </article>
   </section>
