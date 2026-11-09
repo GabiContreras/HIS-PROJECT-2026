@@ -6,7 +6,7 @@ import RoleChip from '../components/ui/RoleChip.vue';
 import { useSessionStore } from '../features/iam/session.store';
 import type { Role } from '../features/iam/types';
 import { BRAND } from '../shared/brand';
-import { useNotificationsStore } from '../stores/notifications.store';
+import NotificationBell from '../components/feedback/NotificationBell.vue';
 
 interface MenuItem {
   to: string;
@@ -28,12 +28,10 @@ const allItems: MenuItem[] = [
 ];
 
 const session = useSessionStore();
-const notifications = useNotificationsStore();
 const router = useRouter();
 const route = useRoute();
 
 const menuOpen = ref(false);
-const bellOpen = ref(false);
 const query = ref('');
 
 const menu = computed(() =>
@@ -46,16 +44,10 @@ const title = computed(() => String(route.meta.title ?? BRAND.name));
 
 watch(() => route.fullPath, () => {
   menuOpen.value = false;
-  bellOpen.value = false;
 });
 
 function search(): void {
   void router.push({ name: 'patients', query: query.value.trim() ? { q: query.value.trim() } : {} });
-}
-
-function toggleBell(): void {
-  bellOpen.value = !bellOpen.value;
-  if (!bellOpen.value) notifications.markAllRead();
 }
 
 async function logout(): Promise<void> {
@@ -98,20 +90,7 @@ async function logout(): Promise<void> {
           <input v-model="query" type="search" placeholder="Buscar paciente..." aria-label="Buscar paciente" />
         </form>
 
-        <div class="bell-wrap">
-          <button class="bell" type="button" aria-label="Notificaciones" @click="toggleBell">
-            🔔<span v-if="notifications.unread > 0" class="count">{{ notifications.unread }}</span>
-          </button>
-          <div v-if="bellOpen" class="bell-panel" role="region" aria-label="Notificaciones">
-            <p v-if="notifications.visible.length === 0" class="muted empty">Sin notificaciones.</p>
-            <ul v-else>
-              <li v-for="n in notifications.visible" :key="n.id" :class="`lv-${n.level}`">
-                <strong>{{ n.title }}</strong>
-                <span>{{ n.detail }}</span>
-              </li>
-            </ul>
-          </div>
-        </div>
+        <NotificationBell />
 
         <div class="user">
           <span class="avatar" aria-hidden="true">{{ initials }}</span>
@@ -154,18 +133,6 @@ nav { display: grid; gap: 4px; overflow-y: auto; }
 .heading h1 { font-size: 1.3rem; }
 .search { flex: 1; max-width: 380px; margin-left: auto; }
 .search input { background: var(--color-bg); }
-.bell-wrap { position: relative; }
-.bell { position: relative; padding: 7px 10px; background: #fff; }
-.count { position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px;
-  background: var(--color-danger); color: #fff; font-size: 0.65rem; line-height: 18px; text-align: center; }
-.bell-panel { position: absolute; right: 0; top: calc(100% + 8px); width: 320px; max-height: 360px; overflow-y: auto; z-index: 10;
-  background: #fff; border: 1px solid var(--color-line); border-radius: 10px; box-shadow: 0 10px 30px rgba(14, 45, 38, 0.15); }
-.bell-panel ul { list-style: none; margin: 0; padding: 0; }
-.bell-panel li { display: grid; gap: 2px; padding: 12px 14px; border-bottom: 1px solid var(--color-line); font-size: 0.82rem; border-left: 4px solid var(--color-info); }
-.bell-panel li:last-child { border-bottom: 0; }
-.lv-critical { border-left-color: var(--color-danger) !important; background: var(--color-danger-soft); }
-.lv-warning { border-left-color: #d49a2e !important; }
-.empty { padding: 16px; }
 .user { display: flex; align-items: center; gap: 10px; }
 .avatar { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; font-size: 0.75rem; font-weight: 700;
   color: var(--color-brand); background: var(--color-brand-soft); }

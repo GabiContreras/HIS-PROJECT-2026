@@ -1,5 +1,5 @@
 <script setup lang="ts">
-export type IconName = 'calendar' | 'search' | 'check' | 'x' | 'plus' | 'chevron-down' | 'stethoscope' | 'alert' | 'clock' | 'chevron-left' | 'chevron-right' | 'grip';
+export type IconName = 'calendar' | 'search' | 'check' | 'x' | 'plus' | 'chevron-down' | 'stethoscope' | 'alert' | 'clock' | 'chevron-left' | 'chevron-right' | 'grip' | 'info' | 'triangle-alert' | 'bell';
 
 withDefaults(defineProps<{ name: IconName; size?: number }>(), { size: 18 });
 
@@ -16,6 +16,9 @@ const PATHS: Record<IconName, string> = {
   alert: '<circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>',
   'chevron-left': '<path d="m15 18-6-6 6-6"/>',
   'chevron-right': '<path d="m9 18 6-6-6-6"/>',
+  info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
+  'triangle-alert': '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4M12 17h.01"/>',
+  bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
   grip: '<circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/>',
   clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
 };

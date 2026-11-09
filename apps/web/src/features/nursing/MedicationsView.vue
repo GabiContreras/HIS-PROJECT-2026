@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import BaseCard from '../../components/ui/BaseCard.vue';
 import NoticeBanner from '../../components/ui/NoticeBanner.vue';
+import { useFeedback } from '../../composables/useFeedback';
 import StatusChip from '../../components/ui/StatusChip.vue';
 import { ADMIN_WINDOW_MIN, minutesToSchedule, withinWindow, type Medication } from '../../services/medications';
 import { messageFrom } from '../../shared/errors';
@@ -17,8 +18,7 @@ const inventory = useInventoryStore();
 const { medications, pending, loading, error } = storeToRefs(store);
 
 const canAdminister = computed(() => session.role === 'ENFERMERO');
-const aviso = ref<string | null>(null);
-const fallo = ref<string | null>(null);
+const { toast } = useFeedback();
 const working = ref(false);
 
 function windowText(m: Medication): string {
@@ -29,16 +29,16 @@ function windowText(m: Medication): string {
 
 async function administer(m: Medication): Promise<void> {
   working.value = true;
-  aviso.value = null;
-  fallo.value = null;
   try {
     await store.administer(m.id);
     const supply = m.insumoId ? inventory.items.find((i) => i.id === m.insumoId) : undefined;
-    aviso.value = supply
-      ? `Dosis registrada a nombre de ${session.fullName}. Stock de ${supply.nombre}: ${supply.cantidadDisponible} ${supply.unidadMedida}.`
-      : `Dosis registrada a nombre de ${session.fullName}.`;
+    toast.success(
+      supply
+        ? `Dosis registrada a nombre de ${session.fullName}. Stock de ${supply.nombre}: ${supply.cantidadDisponible} ${supply.unidadMedida}.`
+        : `Dosis registrada a nombre de ${session.fullName}.`,
+    );
   } catch (reason) {
-    fallo.value = messageFrom(reason);
+    toast.error(messageFrom(reason));
   } finally {
     working.value = false;
   }
@@ -53,8 +53,6 @@ onMounted(() => Promise.all([store.load(), inventory.load()]));
       {{ pending.length }} pendientes de {{ medications.length }}. Se puede administrar con un margen de ±{{ ADMIN_WINDOW_MIN }} minutos
       sobre el horario indicado; el insumo se descuenta del inventario.
     </p>
-    <NoticeBanner v-if="aviso" tone="success">{{ aviso }}</NoticeBanner>
-    <NoticeBanner v-if="fallo" tone="error">{{ fallo }}</NoticeBanner>
     <NoticeBanner v-if="!canAdminister" tone="info">Solo enfermería registra la administración. Vos podés consultar el estado.</NoticeBanner>
 
     <BaseCard>
