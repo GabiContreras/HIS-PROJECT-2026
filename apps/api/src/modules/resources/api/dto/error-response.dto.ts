@@ -2,18 +2,33 @@ import { ApiProperty } from '@nestjs/swagger';
 
 /** Forma que produce AllExceptionsFilter para todos los errores. */
 export class ErrorResponseDto {
-  @ApiProperty({ example: 409 })
+  @ApiProperty({
+    description: 'Código HTTP de la respuesta.',
+    example: 400,
+  })
   statusCode: number;
 
-  @ApiProperty({ example: 'CONFLICT' })
+  @ApiProperty({
+    description: 'Código identificador del error.',
+    example: 'BAD_REQUEST',
+  })
   code: string;
 
-  @ApiProperty({ example: 'La cama A-12 ya fue ocupada por otro operador.' })
-  message: string;
+  @ApiProperty({
+    description: 'Descripción del error.',
+    example: 'Los datos enviados no son válidos.',
+  })
+  message: string | string[];
 
-  @ApiProperty({ example: '/camas/9b1d4c7e-2f3a-4e8b-8c55-1a2b3c4d5e6f/asignar' })
+  @ApiProperty({
+    description: 'Ruta donde ocurrió el error.',
+    example: '/camas',
+  })
   path: string;
 
-  @ApiProperty({ example: '2026-10-28T22:10:00.000Z' })
+  @ApiProperty({
+    description: 'Fecha y hora en que ocurrió el error.',
+    example: '2026-11-07T13:30:00.000Z',
+  })
   timestamp: string;
 }
