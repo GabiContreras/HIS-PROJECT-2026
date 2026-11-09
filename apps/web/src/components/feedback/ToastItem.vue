@@ -58,6 +58,13 @@ const onVisibility = (): void => {
   tabHidden.value = document.visibilityState === 'hidden';
 };
 
+function onFocusOut(event: FocusEvent): void {
+  const article = event.currentTarget as HTMLElement;
+  const nextTarget = event.relatedTarget as Node | null;
+
+  focused.value = nextTarget !== null && article.contains(nextTarget);
+}
+
 watch(paused, (isPaused) => (isPaused ? pause() : start()));
 // Llegó un duplicado: vuelve a empezar con el tiempo completo.
 watch(
@@ -90,7 +97,7 @@ const live = computed(() => (props.toast.severity === 'error' || props.toast.sev
     @mouseenter="hovered = true"
     @mouseleave="hovered = false"
     @focusin="focused = true"
-    @focusout="focused = false"
+    @focusout="onFocusOut"
     @keydown.esc.stop="close"
   >
     <span class="icon" aria-hidden="true"><AppIcon :name="ICONS[toast.severity]" :size="20" /></span>
