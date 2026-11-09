@@ -2,7 +2,7 @@ import {
   EstadoCuenta,
   RolUsuario,
   Usuario,
-} from '../entities/usuario.entity.js';
+} from '../modules/iam/infrastructure/persistence/entities/usuario.entity.js';
 import dataSource from '../data-source.js';
 import { PasswordHasher } from '../modules/iam/application/password-hasher.js';
 import { PasswordPolicyValidator } from '../modules/iam/application/password-policy.validator.js';

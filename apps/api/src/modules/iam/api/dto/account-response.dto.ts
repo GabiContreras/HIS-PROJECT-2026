@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { EstadoCuenta, RolUsuario } from '../../../../entities/usuario.entity.js';
+import { EstadoCuenta, RolUsuario } from '../../infrastructure/persistence/entities/usuario.entity.js';
 
 export class AccountResponseDto {
   @ApiProperty({

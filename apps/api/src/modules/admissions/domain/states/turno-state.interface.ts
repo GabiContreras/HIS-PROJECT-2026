@@ -1,4 +1,4 @@
-import { EstadoTurno } from '../../../../entities/turno.entity.js';
+import { EstadoTurno } from '../../infrastructure/persistence/entities/turno.entity.js';
 
 /** Error de regla de negocio: la transición pedida no es válida para el estado actual. */
 export class TransicionTurnoInvalidaError extends Error {

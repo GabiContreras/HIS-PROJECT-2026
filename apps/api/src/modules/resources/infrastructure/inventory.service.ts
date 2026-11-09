@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Insumo } from '../../../entities/insumo.entity.js';
+import { Insumo } from './persistence/entities/insumo.entity.js';
 import {
   DescontarStockInput,
   DescontarStockResult,

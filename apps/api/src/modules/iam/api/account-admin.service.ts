@@ -7,10 +7,10 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, IsNull, Not, Repository } from 'typeorm';
-import { EstadoCuenta, RolUsuario, Usuario } from '../../../entities/usuario.entity.js';
-import { EntreturnoStandby, EstadoStandby } from '../../../entities/entreturno-standby.entity.js';
-import { RefreshSession } from '../../../entities/refresh-session.entity.js';
-import { EstadoTurno, Turno } from '../../../entities/turno.entity.js';
+import { EstadoCuenta, RolUsuario, Usuario } from '../infrastructure/persistence/entities/usuario.entity.js';
+import { EntreturnoStandby, EstadoStandby } from '../../admissions/infrastructure/persistence/entities/entreturno-standby.entity.js';
+import { RefreshSession } from '../infrastructure/persistence/entities/refresh-session.entity.js';
+import { EstadoTurno, Turno } from '../../admissions/infrastructure/persistence/entities/turno.entity.js';
 import {
   AuthService,
   PublicAccount,

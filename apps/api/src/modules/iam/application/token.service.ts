@@ -1,6 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
-import { RolUsuario, Usuario } from '../../../entities/usuario.entity.js';
+import { RolUsuario, Usuario } from '../infrastructure/persistence/entities/usuario.entity.js';
 
 export interface AccessTokenClaims {
   sub: string;

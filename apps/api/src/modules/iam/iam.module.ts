@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Reflector } from '@nestjs/core';
-import { Usuario } from '../../entities/usuario.entity.js';
-import { EntreturnoStandby } from '../../entities/entreturno-standby.entity.js';
-import { Turno } from '../../entities/turno.entity.js';
-import { RefreshSession } from '../../entities/refresh-session.entity.js';
+import { Usuario } from './infrastructure/persistence/entities/usuario.entity.js';
+import { EntreturnoStandby } from '../admissions/infrastructure/persistence/entities/entreturno-standby.entity.js';
+import { Turno } from '../admissions/infrastructure/persistence/entities/turno.entity.js';
+import { RefreshSession } from './infrastructure/persistence/entities/refresh-session.entity.js';
 import { AuthController } from './api/auth.controller.js';
 import { UsuariosController } from './api/usuarios.controller.js';
 import { AccountAdminService } from './api/account-admin.service.js';

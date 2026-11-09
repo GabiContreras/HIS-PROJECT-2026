@@ -2,18 +2,18 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, QueryFailedError, Repository } from 'typeorm';
 
-import {Cargo,TipoAtencionFacturable,} from '../../../entities/cargo.entity.js';
-import { Turno } from '../../../entities/turno.entity.js';
+import {Cargo,TipoAtencionFacturable,} from '../infrastructure/persistence/entities/cargo.entity.js';
+import { Turno } from '../../admissions/infrastructure/persistence/entities/turno.entity.js';
 import { CoverageType } from '../../../shared/events/coverage-type.js';
 
 import { coverageStrategyFor } from '../domain/coverage.strategy.js';
 import { ConsultaRegularStrategy } from '../domain/consulta-regular.strategy.js';
 import { ConsultaUrgenciaStrategy } from '../domain/consulta-urgencia.strategy.js';
 
-import { Insumo } from '../../../entities/insumo.entity.js';
+import { Insumo } from '../../resources/infrastructure/persistence/entities/insumo.entity.js';
 import { MedicationAdministeredPayload } from '../../../shared/events/medication-administered.event.js';
 
-import { AdministracionMedicacion } from '../../../entities/administracion-medicacion.entity.js';
+import { AdministracionMedicacion } from '../../nursing/infrastructure/persistence/entities/administracion-medicacion.entity.js';
 export interface CargoDetalle {
   id: string;
   turnoId: string | null;

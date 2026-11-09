@@ -2,7 +2,7 @@ import {
   EstadoCuenta,
   RolUsuario,
   Usuario,
-} from '../../../entities/usuario.entity.js';
+} from '../infrastructure/persistence/entities/usuario.entity.js';
 import { AuthService } from './auth.service.js';
 
 describe('AuthService development account flows', () => {

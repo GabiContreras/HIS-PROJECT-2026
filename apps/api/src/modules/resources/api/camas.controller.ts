@@ -25,7 +25,7 @@ import {
   ApiExtraModels,
   getSchemaPath,
 } from '@nestjs/swagger';
-import { RolUsuario } from '../../../entities/usuario.entity.js';
+import { RolUsuario } from '../../iam/infrastructure/persistence/entities/usuario.entity.js';
 import { CurrentIdentity } from '../../iam/api/auth.decorator.js';
 import { AuthGuard } from '../../iam/api/auth.guard.js';
 import { Roles } from '../../iam/api/roles.decorator.js';

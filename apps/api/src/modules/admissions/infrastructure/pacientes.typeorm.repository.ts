@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, QueryFailedError, Repository } from 'typeorm';
-import { Paciente } from '../../../entities/paciente.entity.js';
+import { Paciente } from './persistence/entities/paciente.entity.js';
 import { CoverageType } from '../../../shared/events/coverage-type.js';
 import {
   DocumentoDuplicadoError,

@@ -1,6 +1,6 @@
 import { ConflictException, ForbiddenException } from '@nestjs/common';
-import { EntreturnoStandby } from '../../../entities/entreturno-standby.entity.js';
-import { RolUsuario, Usuario } from '../../../entities/usuario.entity.js';
+import { EntreturnoStandby } from '../infrastructure/persistence/entities/entreturno-standby.entity.js';
+import { RolUsuario, Usuario } from '../../iam/infrastructure/persistence/entities/usuario.entity.js';
 import { EntreturnoStandbyService } from './entreturno-standby.service.js';
 
 const medico = { id: 'doctor-1', nombre: 'Ada', apellido: 'Lovelace' } as Usuario;

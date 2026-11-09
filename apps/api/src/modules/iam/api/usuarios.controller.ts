@@ -23,7 +23,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { RolUsuario } from '../../../entities/usuario.entity.js';
+import { RolUsuario } from '../infrastructure/persistence/entities/usuario.entity.js';
 import { AccountAdminService } from './account-admin.service.js';
 import { AuthService } from '../application/auth.service.js';
 import type { SessionIdentity } from '../application/auth.service.js';

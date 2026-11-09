@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Cama } from '../../entities/cama.entity.js';
-import { Insumo } from '../../entities/insumo.entity.js';
-import { Internacion } from '../../entities/internacion.entity.js';
-import { Paciente } from '../../entities/paciente.entity.js';
-import { Usuario } from '../../entities/usuario.entity.js';
+import { Cama } from './infrastructure/persistence/entities/cama.entity.js';
+import { Insumo } from './infrastructure/persistence/entities/insumo.entity.js';
+import { Internacion } from './infrastructure/persistence/entities/internacion.entity.js';
+import { Paciente } from '../admissions/infrastructure/persistence/entities/paciente.entity.js';
+import { Usuario } from '../iam/infrastructure/persistence/entities/usuario.entity.js';
 import { IamModule } from '../iam/iam.module.js';
 import { CamasController } from './api/camas.controller.js';
 import { InventoryController } from './api/inventory.controller.js';

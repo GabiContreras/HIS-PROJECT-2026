@@ -1,11 +1,11 @@
 import { ConflictException, ForbiddenException } from '@nestjs/common';
-import { RefreshSession } from '../../../entities/refresh-session.entity.js';
-import { Turno } from '../../../entities/turno.entity.js';
+import { RefreshSession } from '../infrastructure/persistence/entities/refresh-session.entity.js';
+import { Turno } from '../../admissions/infrastructure/persistence/entities/turno.entity.js';
 import {
   EstadoCuenta,
   RolUsuario,
   Usuario,
-} from '../../../entities/usuario.entity.js';
+} from '../infrastructure/persistence/entities/usuario.entity.js';
 import type { SessionIdentity } from '../application/auth.service.js';
 import { AccountAdminService } from './account-admin.service.js';
 

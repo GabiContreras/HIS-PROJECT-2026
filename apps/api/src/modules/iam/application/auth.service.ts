@@ -13,8 +13,8 @@ import {
   EstadoCuenta,
   RolUsuario,
   Usuario,
-} from '../../../entities/usuario.entity.js';
-import { RefreshSession } from '../../../entities/refresh-session.entity.js';
+} from '../infrastructure/persistence/entities/usuario.entity.js';
+import { RefreshSession } from '../infrastructure/persistence/entities/refresh-session.entity.js';
 import { CreateAdminDto } from '../api/dto/create-admin.dto.js';
 import { RegistroDto } from '../api/dto/registro.dto.js';
 import { ResetPasswordDto } from '../api/dto/reset-password.dto.js';

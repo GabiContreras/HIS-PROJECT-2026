@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { TipoAtencionFacturable } from '../../../entities/cargo.entity.js';
+import { TipoAtencionFacturable } from '../infrastructure/persistence/entities/cargo.entity.js';
 import { BillingStrategy } from './billing.strategy.js';
 
 @Injectable()

@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { NotificacionEntity } from '../../../entities/notificacion.entity.js';
+import { NotificacionEntity } from '../infrastructure/persistence/entities/notificacion.entity.js';
 
 @Injectable()
 export class NotificacionesService {

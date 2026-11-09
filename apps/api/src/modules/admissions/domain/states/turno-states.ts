@@ -1,4 +1,4 @@
-import { EstadoTurno } from '../../../../entities/turno.entity.js';
+import { EstadoTurno } from '../../infrastructure/persistence/entities/turno.entity.js';
 import {
   ITurnoState,
   TransicionTurnoInvalidaError,

@@ -10,9 +10,9 @@ import { DataSource, Repository } from 'typeorm';
 import {
   EntreturnoStandby,
   EstadoStandby,
-} from '../../../entities/entreturno-standby.entity.js';
-import { Paciente } from '../../../entities/paciente.entity.js';
-import { RolUsuario } from '../../../entities/usuario.entity.js';
+} from '../infrastructure/persistence/entities/entreturno-standby.entity.js';
+import { Paciente } from '../infrastructure/persistence/entities/paciente.entity.js';
+import { RolUsuario } from '../../iam/infrastructure/persistence/entities/usuario.entity.js';
 import { SessionIdentity } from '../../iam/application/auth.service.js';
 import { AgregarEsperaDto } from '../api/dto/espera.dto.js';
 import { clinicDateOf, clinicDayBounds } from './clinic-time.js';

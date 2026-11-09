@@ -3,12 +3,12 @@ import {  ExecutionContext,INestApplication, ValidationPipe } from '@nestjs/comm
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import { Insumo } from '../../../entities/insumo.entity.js';
+import { Insumo } from '../infrastructure/persistence/entities/insumo.entity.js';
 import { AuthGuard } from '../../iam/api/auth.guard.js';
 import { RolesGuard } from '../../iam/api/roles.guard.js';
 import { InventoryController } from './inventory.controller.js';
 import { InventoryService } from '../infrastructure/inventory.service.js';
-import { RolUsuario } from '../../../entities/usuario.entity.js';
+import { RolUsuario } from '../../iam/infrastructure/persistence/entities/usuario.entity.js';
 
 describe('InventoryController integration', () => {
   let app: INestApplication;

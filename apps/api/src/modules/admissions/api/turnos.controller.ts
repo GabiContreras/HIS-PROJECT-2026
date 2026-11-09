@@ -14,7 +14,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { RolUsuario } from '../../../entities/usuario.entity.js';
+import { RolUsuario } from '../../iam/infrastructure/persistence/entities/usuario.entity.js';
 import { AuthGuard } from '../../iam/api/auth.guard.js';
 import { CurrentIdentity } from '../../iam/api/auth.decorator.js';
 import { RolesGuard } from '../../iam/api/roles.guard.js';

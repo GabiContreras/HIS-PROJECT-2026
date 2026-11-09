@@ -7,14 +7,14 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
-import { EntreturnoStandby, EstadoStandby } from '../../../entities/entreturno-standby.entity.js';
-import { Paciente } from '../../../entities/paciente.entity.js';
+import { EntreturnoStandby, EstadoStandby } from '../infrastructure/persistence/entities/entreturno-standby.entity.js';
+import { Paciente } from '../infrastructure/persistence/entities/paciente.entity.js';
 import {
   EstadoCuenta,
   RolUsuario,
   Usuario,
-} from '../../../entities/usuario.entity.js';
-import { EstadoTurno, Turno } from '../../../entities/turno.entity.js';
+} from '../../iam/infrastructure/persistence/entities/usuario.entity.js';
+import { EstadoTurno, Turno } from '../infrastructure/persistence/entities/turno.entity.js';
 import { SessionIdentity } from '../../iam/application/auth.service.js';
 import { ReservarTurnoDto } from '../api/dto/reservar-turno.dto.js';
 import { clinicDateOf } from './clinic-time.js';

@@ -20,7 +20,7 @@ import { RolesGuard } from '../../iam/api/roles.guard.js';
 import { DescontarStockDto } from './dto/descontar-stock.dto.js';
 import { InventoryService } from '../infrastructure/inventory.service.js';
 import { Roles } from '../../iam/api/roles.decorator.js';
-import { RolUsuario } from '../../../entities/usuario.entity.js';
+import { RolUsuario } from '../../iam/infrastructure/persistence/entities/usuario.entity.js';
 
 @Controller('resources/inventory')
 @UseGuards(AuthGuard, RolesGuard)

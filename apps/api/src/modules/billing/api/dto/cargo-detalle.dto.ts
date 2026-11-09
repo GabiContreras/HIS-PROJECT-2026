@@ -1,6 +1,6 @@
 
 import { ApiProperty } from '@nestjs/swagger';
-import type { Cargo } from '../../../../entities/cargo.entity.js';
+import type { Cargo } from '../../infrastructure/persistence/entities/cargo.entity.js';
 import type { CoverageType } from '../../../../shared/events/coverage-type.js';
 
 export class CoberturaCargoDto {

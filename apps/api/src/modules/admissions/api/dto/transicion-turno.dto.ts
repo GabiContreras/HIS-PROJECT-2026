@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum } from 'class-validator';
-import { EstadoTurno } from '../../../../entities/turno.entity.js';
+import { EstadoTurno } from '../../infrastructure/persistence/entities/turno.entity.js';
 
 export class TransicionTurnoDto {
   @ApiProperty({

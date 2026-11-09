@@ -3,10 +3,10 @@ import {
   EstadoCuenta,
   RolUsuario,
   Usuario,
-} from '../../../entities/usuario.entity.js';
-import { EstadoTurno, Turno } from '../../../entities/turno.entity.js';
-import { EntreturnoStandby } from '../../../entities/entreturno-standby.entity.js';
-import { Paciente } from '../../../entities/paciente.entity.js';
+} from '../../iam/infrastructure/persistence/entities/usuario.entity.js';
+import { EstadoTurno, Turno } from '../infrastructure/persistence/entities/turno.entity.js';
+import { EntreturnoStandby } from '../infrastructure/persistence/entities/entreturno-standby.entity.js';
+import { Paciente } from '../infrastructure/persistence/entities/paciente.entity.js';
 import { TurnosService } from './turnos.service.js';
 
 // 2030-01-01 es martes. Argentina = UTC-3, así que 12:00Z = 09:00 locales.

@@ -3,8 +3,8 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { QueryFailedError } from 'typeorm';
-import { Cargo, TipoAtencionFacturable } from '../../../entities/cargo.entity.js';
-import { Turno } from '../../../entities/turno.entity.js';
+import { Cargo, TipoAtencionFacturable } from '../infrastructure/persistence/entities/cargo.entity.js';
+import { Turno } from '../../admissions/infrastructure/persistence/entities/turno.entity.js';
 import { AuthGuard } from '../../iam/api/auth.guard.js';
 import { RolesGuard } from '../../iam/api/roles.guard.js';
 import { EventBus } from '../../../shared/events/event-bus.service.js';
@@ -16,8 +16,8 @@ import { BillingService } from '../application/billing.service.js';
 import { ConsultaRegularStrategy } from '../domain/consulta-regular.strategy.js';
 import { ConsultaUrgenciaStrategy } from '../domain/consulta-urgencia.strategy.js';
 import { CargosController } from './cargos.controller.js';
-import { Insumo } from '../../../entities/insumo.entity.js';
-import { AdministracionMedicacion } from '../../../entities/administracion-medicacion.entity.js';
+import { Insumo } from '../../resources/infrastructure/persistence/entities/insumo.entity.js';
+import { AdministracionMedicacion } from '../../nursing/infrastructure/persistence/entities/administracion-medicacion.entity.js';
 
 describe('Billing integration', () => {
   let app: INestApplication;

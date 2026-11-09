@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { EstadoTurno } from '../../../../entities/turno.entity.js';
+import { EstadoTurno } from '../../infrastructure/persistence/entities/turno.entity.js';
 import { MedicoTurnoResponseDto } from './medico-turno-response.dto.js';
 
 export class TurnoSummaryResponseDto {

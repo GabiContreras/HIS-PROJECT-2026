@@ -1,4 +1,4 @@
-import { RolUsuario, Usuario } from '../../../entities/usuario.entity.js';
+import { RolUsuario, Usuario } from '../infrastructure/persistence/entities/usuario.entity.js';
 import { TokenService } from './token.service.js';
 
 describe('TokenService', () => {

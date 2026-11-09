@@ -14,14 +14,14 @@ import {
   QueryFailedError,
   Repository,
 } from 'typeorm';
-import { Cama } from '../../../entities/cama.entity.js';
-import { Internacion } from '../../../entities/internacion.entity.js';
-import { Paciente } from '../../../entities/paciente.entity.js';
+import { Cama } from '../infrastructure/persistence/entities/cama.entity.js';
+import { Internacion } from '../infrastructure/persistence/entities/internacion.entity.js';
+import { Paciente } from '../../admissions/infrastructure/persistence/entities/paciente.entity.js';
 import {
   EstadoCuenta,
   RolUsuario,
   Usuario,
-} from '../../../entities/usuario.entity.js';
+} from '../../iam/infrastructure/persistence/entities/usuario.entity.js';
 import { BedAssigned } from '../../../shared/events/bed-assigned.event.js';
 import { BedCleaned } from '../../../shared/events/bed-cleaned.event.js';
 import { BedReleased } from '../../../shared/events/bed-released.event.js';

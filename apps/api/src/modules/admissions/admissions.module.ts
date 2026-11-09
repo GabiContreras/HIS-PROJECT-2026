@@ -1,11 +1,11 @@
 
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { EntreturnoStandby } from '../../entities/entreturno-standby.entity.js';
-import { Paciente } from '../../entities/paciente.entity.js';
-import { Turno } from '../../entities/turno.entity.js';
-import { Usuario } from '../../entities/usuario.entity.js';
-import { NotificacionEntity } from '../../entities/notificacion.entity.js';
+import { EntreturnoStandby } from './infrastructure/persistence/entities/entreturno-standby.entity.js';
+import { Paciente } from './infrastructure/persistence/entities/paciente.entity.js';
+import { Turno } from './infrastructure/persistence/entities/turno.entity.js';
+import { Usuario } from '../iam/infrastructure/persistence/entities/usuario.entity.js';
+import { NotificacionEntity } from './infrastructure/persistence/entities/notificacion.entity.js';
 import { IamModule } from '../iam/iam.module.js';
 import { PacientesController } from './api/pacientes.controller.js';
 import { TurnosController } from './api/turnos.controller.js';

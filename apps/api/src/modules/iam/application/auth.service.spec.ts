@@ -2,8 +2,8 @@ import {
   EstadoCuenta,
   RolUsuario,
   Usuario,
-} from '../../../entities/usuario.entity.js';
-import { RefreshSession } from '../../../entities/refresh-session.entity.js';
+} from '../infrastructure/persistence/entities/usuario.entity.js';
+import { RefreshSession } from '../infrastructure/persistence/entities/refresh-session.entity.js';
 import { AuthService } from './auth.service.js';
 
 describe('AuthService refresh sessions', () => {

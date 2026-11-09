@@ -7,7 +7,7 @@ import {
   MinLength,
   Validate,
 } from 'class-validator';
-import { RolUsuario } from '../../../../entities/usuario.entity.js';
+import { RolUsuario } from '../../infrastructure/persistence/entities/usuario.entity.js';
 import { PasswordPolicyValidator } from '../../application/password-policy.validator.js';
 
 export class RegistroDto {
