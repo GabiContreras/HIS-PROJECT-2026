@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { useSessionStore } from '../features/iam/session.store';
+import { listMyNotifications, markNotificationRead, type RemoteNotification } from '../services/notifications';
 import { DEDUPE_WINDOW_MS, MAX_VISIBLE_TOASTS, toastDuration } from '../features/feedback/toast-rules';
 import type {
   ConfirmOptions,
@@ -148,6 +149,45 @@ export const useNotificationStore = defineStore('notification', () => {
     if (n && !n.read) {
       n.read = true;
       n.readAt = new Date().toISOString();
+      // Las del servidor se marcan también allá; si falla, vuelven a quedar sin leer.
+      if (n.source === 'server') {
+        void markNotificationRead(id).catch(() => {
+          n.read = false;
+          n.readAt = null;
+        });
+      }
+    }
+  }
+
+  const SERVER_CATEGORY: Record<string, SystemNotification['category']> = {
+    SIGNOS_VITALES_ALERTA: 'clinico',
+    TRIAGE_RIESGO_VITAL: 'triaje',
+  };
+
+  function fromServer(row: RemoteNotification): SystemNotification {
+    return {
+      id: row.id,
+      level: row.prioridad === 'ALTA' ? 'critical' : row.prioridad === 'MEDIA' ? 'warning' : 'info',
+      category: SERVER_CATEGORY[row.tipo] ?? 'sistema',
+      title: row.prioridad === 'ALTA' ? 'Alta prioridad' : 'Aviso',
+      detail: row.mensaje,
+      createdAt: row.createdAt,
+      read: row.leida,
+      readAt: row.leida ? row.createdAt : null,
+      source: 'server',
+    };
+  }
+
+  /**
+   * Trae las notificaciones del usuario desde GET /notificaciones y reemplaza las del servidor que había.
+   * Las locales no se tocan. Un fallo de red no interrumpe la app: se reintenta en el próximo ciclo.
+   */
+  async function syncFromServer(): Promise<void> {
+    try {
+      const rows = await listMyNotifications();
+      items.value = [...items.value.filter((n) => n.source !== 'server'), ...rows.map(fromServer)];
+    } catch {
+      /* se reintenta en el próximo ciclo */
     }
   }
 
@@ -189,6 +229,7 @@ export const useNotificationStore = defineStore('notification', () => {
     notify,
     markRead,
     markAllRead,
+    syncFromServer,
     removeNotification,
     currentConfirm,
     confirm,
