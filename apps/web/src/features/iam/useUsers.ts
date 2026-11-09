@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import { ApiError } from '../../shared/http';
+import { messageFrom } from '../../shared/errors';
 import {
   crearUsuario,
   listarUsuarios,
@@ -7,10 +7,6 @@ import {
   type CrearUsuarioInput,
   type Usuario,
 } from '../../services/users';
-
-function messageFrom(error: unknown): string {
-  return error instanceof ApiError ? error.message : 'No se pudo completar la operación.';
-}
 
 export function useUsers() {
   const usuarios = ref<Usuario[]>([]);
@@ -48,7 +44,7 @@ export function useUsers() {
 
   async function crear(datos: CrearUsuarioInput): Promise<boolean> {
     const result = await execute(() => crearUsuario(datos));
-    return result !== null && cargar();
+    return result !== null;
   }
 
   return { usuarios, usuario, cargando, error, cargar, cargarPorId, crear };
