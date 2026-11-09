@@ -525,7 +525,6 @@ Ubicación en el código de cada criterio de la rúbrica.
 - El bus de eventos es en memoria. Para garantizar la entrega se debería usar el patrón Outbox con idempotencia.
 - La entidad `Notificacion` no figura en la lista de entidades de `data-source.ts`, y ninguna migración crea su tabla. Debe revisarse antes de ejecutar las migraciones sobre una base vacía.
 - Dos migraciones comparten el mismo timestamp (`1793370400000`) y el conjunto no fue verificado sobre una base vacía.
-- `vitest.config.ts` solo incluye archivos `*.spec.ts`; las pruebas con sufijo `.test.ts` (estados de cama) no se ejecutan con `npm run api:test`.
 - `main.ts` llama dos veces a `enableCors`; debe quedar una sola configuración basada en `FRONTEND_ORIGINS`.
 - `packages/contracts` no tiene `package.json` en su raíz (existe uno dentro de `src/` con el nombre `src`) y no contiene contratos compartidos.
 - Reglas de tarifas y umbrales clínicos pendientes de definición del docente; el copago de prepaga es un valor único provisorio.
