@@ -51,15 +51,20 @@ watch(
   <section v-show="visible" class="modal" aria-labelledby="create-user-title">
     <h2 id="create-user-title">Nuevo usuario</h2>
     <form @submit.prevent="onSubmit">
-      <input v-model="form.nombre" placeholder="Nombre" required />
-      <input v-model="form.apellido" placeholder="Apellido" required />
-      <input v-model="form.email" type="email" placeholder="Email" required />
-      <input v-model="form.password" type="password" placeholder="Contraseña" required minlength="8" />
-      <select v-model="form.rol">
+      <label for="user-name">Nombre</label>
+      <input id="user-name" v-model="form.nombre" placeholder="Nombre" required />
+      <label for="user-lastname">Apellido</label>
+      <input id="user-lastname" v-model="form.apellido" placeholder="Apellido" required />
+      <label for="user-email">Correo electrónico</label>
+      <input id="user-email" v-model="form.email" type="email" placeholder="Email" required />
+      <label for="user-password">Contraseña</label>
+      <input id="user-password" v-model="form.password" type="password" placeholder="Contraseña" required minlength="8" />
+      <label for="user-role">Rol</label>
+      <select id="user-role" v-model="form.rol">
         <option value="MEDICO">Médico</option>
         <option value="ENFERMERO">Enfermero</option>
       </select>
-      <p class="hint">La contraseña requiere 8 caracteres, una mayúscula y un número.</p>
+      <p class="hint">La contraseña requiere al menos 8 caracteres, una mayúscula y un número, y no debe contener números consecutivos.</p>
       <div class="actions">
         <button type="button" :disabled="submitting" @click="cancel">Cancelar</button>
         <button type="submit" :disabled="submitting">

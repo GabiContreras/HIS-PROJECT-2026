@@ -6,7 +6,7 @@ defineProps<{ usuarios: Usuario[] }>();
 </script>
 
 <template>
-  <table>
+  <table aria-label="Listado de usuarios">
     <thead>
       <tr>
         <th>Nombre</th>
