@@ -1,8 +1,6 @@
-import { Injectable } from '@nestjs/common';
-import { TipoAtencionFacturable } from '../../../entities/cargo.entity.js';
+import { TipoAtencionFacturable } from './tipo-atencion-facturable.js';
 import { BillingStrategy } from './billing.strategy.js';
 
-@Injectable()
 export class ConsultaUrgenciaStrategy implements BillingStrategy {
   readonly tipoAtencion = TipoAtencionFacturable.URGENCIA;
 
