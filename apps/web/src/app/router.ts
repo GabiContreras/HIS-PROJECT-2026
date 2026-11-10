@@ -97,6 +97,15 @@ export const router = createRouter({
               name: 'protocols',
               meta: { title: 'Protocolos de ingreso' },
               component: () => import('../features/nursing/ProtocolsView.vue'),
+              children: [
+                {
+                  path: ':pacienteId',
+                  name: 'protocol-patient',
+                  props: true,
+                  meta: { title: 'Protocolo del paciente' },
+                  component: () => import('../features/nursing/ProtocolPatientView.vue'),
+                },
+              ],
             },
           ],
         },
@@ -105,6 +114,12 @@ export const router = createRouter({
           name: 'inventory',
           meta: { roles: ['ENFERMERO', 'ADMINISTRATIVO'], title: 'Insumos' },
           component: () => import('../features/inventory/InventoryView.vue'),
+        },
+        {
+          path: 'historia-clinica',
+          name: 'clinical-history',
+          meta: { roles: ['MEDICO', 'ENFERMERO'], title: 'Historia clínica' },
+          component: () => import('../features/ehr/ClinicalHistoryView.vue'),
         },
         {
           path: 'facturacion',

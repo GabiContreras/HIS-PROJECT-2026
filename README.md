@@ -518,18 +518,19 @@ Ubicación en el código de cada criterio de la rúbrica.
 
 ## 19. Limitaciones conocidas y mejoras futuras
 
-- Triaje, signos vitales, medicaciones, protocolos de ingreso y listado de insumos del frontend usan datos locales en memoria. Faltan los endpoints correspondientes en el backend.
-- Los módulos `nursing` y `ehr` del backend son solo esqueleto, aunque existen las entidades `SignoVital`, `IndicacionMedica` y `AdministracionMedicacion`.
-- El patrón Builder para protocolos de enfermería no está implementado.
+- Los módulos `nursing` y `ehr` del backend ya no son esqueleto: hoy exponen endpoints implementados (signos vitales, indicaciones, protocolos e historia clínica) con controllers, services y repositories.
+- El patrón Builder para protocolos de enfermería está implementado, y el checklist se persiste (PATCH /protocolos/:protocoloId/tareas/:tareaId guarda hecha/hechaEn/hechaPor).
+- El frontend consume la API real para signos vitales, medicamentos, protocolos de ingreso, insumos e historia clínica (services + `fetch` con `VITE_API_URL`); el módulo de triaje del frontend sigue usando datos locales en memoria porque el backend todavía no tiene el endpoint.
 - Las entidades TypeORM siguen en `src/entities/` en lugar de la infraestructura de cada módulo.
 - El bus de eventos es en memoria. Para garantizar la entrega se debería usar el patrón Outbox con idempotencia.
-- La entidad `Notificacion` no figura en la lista de entidades de `data-source.ts`, y ninguna migración crea su tabla. Debe revisarse antes de ejecutar las migraciones sobre una base vacía.
+- La entidad `Notificacion` figura en `data-source.ts` y existe la migración `CreateNotificaciones`.
 - Dos migraciones comparten el mismo timestamp (`1793370400000`) y el conjunto no fue verificado sobre una base vacía.
 - `main.ts` llama dos veces a `enableCors`; debe quedar una sola configuración basada en `FRONTEND_ORIGINS`.
 - `packages/contracts` no tiene `package.json` en su raíz (existe uno dentro de `src/` con el nombre `src`) y no contiene contratos compartidos.
 - Reglas de tarifas y umbrales clínicos pendientes de definición del docente; el copago de prepaga es un valor único provisorio.
 - Sin verificación por correo electrónico ni recuperación de contraseña por correo.
 - Sin pruebas automatizadas del frontend.
+- Los eventos entre módulos son en memoria (sin tiempo real ni entrega durable) y nadie publica `patient.admitted`, por lo que el protocolo se genera a mano desde `POST /protocolos/ingresos
 
 ## 20. Documentación complementaria
 

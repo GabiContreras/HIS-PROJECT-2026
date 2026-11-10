@@ -17,6 +17,9 @@ const root = ref<HTMLElement | null>(null);
 // Reloj para que "hace 5 minutos" se actualice con el panel abierto.
 const now = ref(Date.now());
 let clock: ReturnType<typeof setInterval> | undefined;
+// Sondeo de las notificaciones del servidor (la API no tiene tiempo real).
+const SERVER_POLL_MS = 30_000;
+let serverPoll: ReturnType<typeof setInterval> | undefined;
 
 const ICONS: Record<NotificationLevel, IconName> = { critical: 'alert', warning: 'triangle-alert', info: 'info' };
 const list = computed(() => (tab.value === 'sin-leer' ? store.sorted.filter((n) => !n.read) : store.sorted));
@@ -47,11 +50,14 @@ onMounted(() => {
   document.addEventListener('click', onDocumentClick);
   document.addEventListener('keydown', onKeydown);
   clock = setInterval(() => (now.value = Date.now()), 30_000);
+  void store.syncFromServer();
+  serverPoll = setInterval(() => void store.syncFromServer(), SERVER_POLL_MS);
 });
 onBeforeUnmount(() => {
   document.removeEventListener('click', onDocumentClick);
   document.removeEventListener('keydown', onKeydown);
   if (clock) clearInterval(clock);
+  if (serverPoll) clearInterval(serverPoll);
 });
 </script>
 
