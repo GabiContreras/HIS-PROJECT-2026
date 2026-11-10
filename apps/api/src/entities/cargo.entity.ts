@@ -6,11 +6,9 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
-export enum TipoAtencionFacturable {
-  REGULAR = 'REGULAR',
-  URGENCIA = 'URGENCIA',
-  FARMACIA = 'FARMACIA',
-}
+import { TipoAtencionFacturable } from '../modules/billing/domain/tipo-atencion-facturable.js';
+
+export { TipoAtencionFacturable };
 
 @Entity('cargos')
 export class Cargo {
