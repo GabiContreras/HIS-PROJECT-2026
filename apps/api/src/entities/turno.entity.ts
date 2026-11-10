@@ -9,14 +9,9 @@ import {
 import { Paciente } from './paciente.entity.js';
 import { Usuario } from './usuario.entity.js';
 
-export enum EstadoTurno {
-  DISPONIBLE = 'DISPONIBLE',
-  RESERVADO = 'RESERVADO',
-  CONFIRMADO = 'CONFIRMADO',
-  EN_SALA_DE_ESPERA = 'EN_SALA_DE_ESPERA',
-  ATENDIDO = 'ATENDIDO',
-  CANCELADO = 'CANCELADO',
-}
+import { EstadoTurno } from '../modules/admissions/domain/states/estado-turno.js';
+
+export { EstadoTurno };
 
 @Entity('turnos')
 export class Turno {
