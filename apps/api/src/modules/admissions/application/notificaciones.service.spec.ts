@@ -96,3 +96,19 @@ describe('NotificacionesService.notificarPorRol', () => {
     expect(repo.save).toHaveBeenCalledTimes(2);
   });
 });
+
+describe('NotificacionesService.obtenerPorUsuario', () => {
+  it('sin el filtro devuelve todas las notificaciones del usuario', async () => {
+    const repo = { find: vi.fn().mockResolvedValue([]) };
+    const service = new NotificacionesService(repo as never, {} as never);
+    await service.obtenerPorUsuario('u1');
+    expect(repo.find).toHaveBeenCalledWith({ where: { destinatarioId: 'u1' }, order: { createdAt: 'DESC' } });
+  });
+
+  it('con soloNoLeidas filtra por leida = false', async () => {
+    const repo = { find: vi.fn().mockResolvedValue([]) };
+    const service = new NotificacionesService(repo as never, {} as never);
+    await service.obtenerPorUsuario('u1', true);
+    expect(repo.find).toHaveBeenCalledWith({ where: { destinatarioId: 'u1', leida: false }, order: { createdAt: 'DESC' } });
+  });
+});
