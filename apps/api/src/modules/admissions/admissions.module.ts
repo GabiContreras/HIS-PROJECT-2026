@@ -15,6 +15,8 @@ import { EntreturnoStandbyService } from './application/entreturno-standby.servi
 import { TurnosService } from './application/turnos.service.js';
 import { NotificacionesService } from './application/notificaciones.service.js';
 import { VitalSignAlertSubscriber } from './application/vital-sign-alert.subscriber.js';
+import { PatientWaitingSubscriber } from './application/patient-waiting.subscriber.js';
+import { StandbyPromotedSubscriber } from './application/standby-promoted.subscriber.js';
 import { PACIENTES_REPOSITORY } from './domain/ports/pacientes.repository.js';
 import { PacientesTypeOrmRepository } from './infrastructure/pacientes.typeorm.repository.js';
 
@@ -27,6 +29,8 @@ import { PacientesTypeOrmRepository } from './infrastructure/pacientes.typeorm.r
     PacientesService,
     NotificacionesService,
     VitalSignAlertSubscriber,
+    PatientWaitingSubscriber,
+    StandbyPromotedSubscriber,
     { provide: PACIENTES_REPOSITORY, useClass: PacientesTypeOrmRepository },
   ],
   exports: [TurnosService, PacientesService, NotificacionesService],
