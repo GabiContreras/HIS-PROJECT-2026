@@ -9,4 +9,7 @@ export const INTEGRATION_EVENTS = {
   PATIENT_ADMITTED: 'patient.admitted',
   MEDICATION_ADMINISTERED: 'medication.administered',
   VITAL_SIGN_ALERT: 'vital-sign.alert-raised',
+  ADMISSIONS_APPOINTMENT_ATTENDED: 'admissions.appointment-attended',
+  PATIENT_WAITING: 'admissions.patient-waiting',
+  STANDBY_PROMOTED: 'admissions.standby-promoted',
 } as const;

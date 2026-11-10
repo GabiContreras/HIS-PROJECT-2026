@@ -1,4 +1,4 @@
-const CLINIC_TIME_ZONE = 'America/Argentina/Buenos_Aires';
+export const CLINIC_TIME_ZONE = 'America/Argentina/Buenos_Aires';
 // Argentina no tiene horario de verano: el desfase es fijo.
 const CLINIC_OFFSET = '-03:00';
 const DAY_MS = 24 * 60 * 60_000;
