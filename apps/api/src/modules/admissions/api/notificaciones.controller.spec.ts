@@ -9,7 +9,16 @@ describe('NotificacionesController', () => {
     const req = { user: { accountId: 'cuenta-1', sessionId: 's', rol: 'MEDICO', esSuperadmin: false } } as unknown as AuthenticatedRequest;
 
     await expect(controller.listarMisNotificaciones(req)).resolves.toEqual([{ id: 'n1' }]);
-    expect(service.obtenerPorUsuario).toHaveBeenCalledWith('cuenta-1');
+    expect(service.obtenerPorUsuario).toHaveBeenCalledWith('cuenta-1', false);
+  });
+
+  it('con ?soloNoLeidas=true pide solo las no leídas', async () => {
+    const service = { obtenerPorUsuario: vi.fn().mockResolvedValue([]), marcarComoLeida: vi.fn() };
+    const controller = new NotificacionesController(service as never);
+    const req = { user: { accountId: 'cuenta-1' } } as unknown as AuthenticatedRequest;
+
+    await controller.listarMisNotificaciones(req, 'true');
+    expect(service.obtenerPorUsuario).toHaveBeenCalledWith('cuenta-1', true);
   });
 
   it('marca como leída pasando el id de la notificación y la cuenta autenticada', async () => {
