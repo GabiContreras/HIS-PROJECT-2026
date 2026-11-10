@@ -1,12 +1,10 @@
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
-import { useSessionStore } from '../features/iam/session.store';
 import { administerMedication, listMedications, type Medication } from '../services/medications';
 import { messageFrom } from '../shared/errors';
 import { useInventoryStore } from './inventory.store';
 
 export const useMedicationsStore = defineStore('medications', () => {
-  const session = useSessionStore();
   const inventory = useInventoryStore();
 
   const medications = ref<Medication[]>([]);
@@ -27,11 +25,10 @@ export const useMedicationsStore = defineStore('medications', () => {
     }
   }
 
-  /** Registra la administración con el usuario que la aplicó y descuenta el insumo del inventario. */
+  /** Registra la administración; el backend toma al enfermero de la sesión y descuenta el insumo. */
   async function administer(id: string): Promise<void> {
-    const done = await administerMedication(id, session.fullName);
-    if (done.insumoId) await inventory.consume(done.insumoId, 1);
-    await load();
+    await administerMedication(id);
+    await Promise.all([load(), inventory.load()]);
   }
 
   return { medications, loading, error, pending, load, administer };

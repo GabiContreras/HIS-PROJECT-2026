@@ -23,6 +23,10 @@ paciente: Paciente;
   @Column()
   frecuencia: string;
 
+  /** Frecuencia estructurada en horas. NULL en filas anteriores a la migración AddFrecuenciaHoras. */
+  @Column({ type: 'int', nullable: true })
+  frecuenciaHoras: number | null;
+
   @CreateDateColumn({ type: 'timestamptz' })
   fechaInicio: Date;
 

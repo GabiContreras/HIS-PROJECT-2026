@@ -27,8 +27,9 @@ export class NotificacionesService {
     });
   }
 
-  async marcarComoLeida(id: string): Promise<NotificacionEntity> {
-    const notif = await this.notificacionRepo.findOne({ where: { id } });
+  /** Solo el destinatario puede marcarla: si es de otro usuario responde 404, igual que si no existe. */
+  async marcarComoLeida(id: string, destinatarioId: string): Promise<NotificacionEntity> {
+    const notif = await this.notificacionRepo.findOne({ where: { id, destinatarioId } });
     if (!notif) {
       throw new NotFoundException(`Notificación con ID ${id} no encontrada`);
     }
