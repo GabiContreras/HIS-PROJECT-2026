@@ -7,6 +7,7 @@ import {
 import { Subscription } from 'rxjs';
 import { EventBus } from '../../../shared/events/event-bus.service.js';
 import { DomainEvent } from '../../../shared/events/domain-event.js';
+import { INTEGRATION_EVENTS } from '../../../shared/events/integration-event-names.js';
 import { BillingService } from './billing.service.js';
 
 export interface AppointmentAttendedPayload {
@@ -14,7 +15,8 @@ export interface AppointmentAttendedPayload {
   urgente: boolean;
 }
 
-export const APPOINTMENT_ATTENDED_EVENT = 'admissions.appointment-attended';
+export const APPOINTMENT_ATTENDED_EVENT =
+  INTEGRATION_EVENTS.ADMISSIONS_APPOINTMENT_ATTENDED;
 
 @Injectable()
 export class AppointmentAttendedSubscriber
