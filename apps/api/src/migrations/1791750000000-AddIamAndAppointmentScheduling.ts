@@ -7,7 +7,7 @@ export class AddIamAndAppointmentScheduling1791750000000 implements MigrationInt
     // Esta migración se renombró (antes 1791660000000). Una base que ya la ejecutó con el
     // nombre anterior vuelve a verla como pendiente: si ya existe, no se rehace.
     // La restricción EXCLUDE que se agregó después de esa ejecución la asegura
-    // 1793370400000-NormalizeAndReconcileSchema.
+    // 1793370400001-NormalizeAndReconcileSchema.
     const [{ existe }] = (await queryRunner.query(
       `SELECT to_regclass('refresh_sessions') IS NOT NULL AS existe`,
     )) as Array<{ existe: boolean }>;

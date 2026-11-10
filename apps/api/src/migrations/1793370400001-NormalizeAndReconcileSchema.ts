@@ -56,10 +56,10 @@ async function renameIfNeeded(
   }
 }
 
-export class NormalizeAndReconcileSchema1793370400000
+export class NormalizeAndReconcileSchema1793370400001
   implements MigrationInterface
 {
-  name = 'NormalizeAndReconcileSchema1793370400000';
+  name = 'NormalizeAndReconcileSchema1793370400001';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     for (const [table, from, to] of RENAMES) {
