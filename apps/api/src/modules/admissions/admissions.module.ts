@@ -25,10 +25,8 @@ import { PACIENTES_REPOSITORY } from './domain/ports/pacientes.repository.js';
 import { PacientesTypeOrmRepository } from './infrastructure/pacientes.typeorm.repository.js';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Paciente, Turno, Usuario, EntreturnoStandby, NotificacionEntity, TriajeRegistro]), IamModule],
+  imports: [TypeOrmModule.forFeature([Paciente, Turno, Usuario, EntreturnoStandby, NotificacionEntity, TriajeRegistro, Internacion]), IamModule],
   controllers: [TurnosController, PacientesController, NotificacionesController, TriajeController],
-  imports: [TypeOrmModule.forFeature([Paciente, Turno, Usuario, EntreturnoStandby, NotificacionEntity, Internacion]), IamModule],
-  controllers: [TurnosController, PacientesController, NotificacionesController],
   providers: [
     TurnosService,
     EntreturnoStandbyService,
