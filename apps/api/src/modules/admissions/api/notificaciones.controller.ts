@@ -1,9 +1,10 @@
-import { Controller, Get, Patch, Param, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Param, Query, Req, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { NotificacionesService } from '../application/notificaciones.service.js';
@@ -20,10 +21,11 @@ export class NotificacionesController {
 
   @Get()
   @ApiOperation({ summary: 'Listar las notificaciones del usuario autenticado, de la más reciente a la más antigua' })
+  @ApiQuery({ name: 'soloNoLeidas', required: false, type: Boolean, description: 'Si es true, devuelve solo las notificaciones no leídas' })
   @ApiOkResponse({ type: NotificacionResponseDto, isArray: true })
-  async listarMisNotificaciones(@Req() req: AuthenticatedRequest) {
+  async listarMisNotificaciones(@Req() req: AuthenticatedRequest, @Query('soloNoLeidas') soloNoLeidas?: string) {
     // El AuthGuard deja la identidad en req.user con el id de la cuenta en `accountId`.
-    return await this.notificacionesService.obtenerPorUsuario(req.user.accountId);
+    return await this.notificacionesService.obtenerPorUsuario(req.user.accountId, soloNoLeidas === 'true');
   }
 
   @Patch(':id/leer')

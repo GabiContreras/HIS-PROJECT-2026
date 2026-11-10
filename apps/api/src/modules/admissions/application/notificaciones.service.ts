@@ -60,9 +60,9 @@ export class NotificacionesService {
     }
   }
 
-  async obtenerPorUsuario(destinatarioId: string): Promise<NotificacionEntity[]> {
+  async obtenerPorUsuario(destinatarioId: string, soloNoLeidas = false): Promise<NotificacionEntity[]> {
     return await this.notificacionRepo.find({
-      where: { destinatarioId },
+      where: soloNoLeidas ? { destinatarioId, leida: false } : { destinatarioId },
       order: { createdAt: 'DESC' },
     });
   }
