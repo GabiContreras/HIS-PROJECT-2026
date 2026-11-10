@@ -2,6 +2,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { EntreturnoStandby } from '../../entities/entreturno-standby.entity.js';
+import { Internacion } from '../../entities/internacion.entity.js';
 import { Paciente } from '../../entities/paciente.entity.js';
 import { Turno } from '../../entities/turno.entity.js';
 import { Usuario } from '../../entities/usuario.entity.js';
@@ -24,6 +25,8 @@ import { PacientesTypeOrmRepository } from './infrastructure/pacientes.typeorm.r
 @Module({
   imports: [TypeOrmModule.forFeature([Paciente, Turno, Usuario, EntreturnoStandby, NotificacionEntity, TriajeRegistro]), IamModule],
   controllers: [TurnosController, PacientesController, NotificacionesController, TriajeController],
+  imports: [TypeOrmModule.forFeature([Paciente, Turno, Usuario, EntreturnoStandby, NotificacionEntity, Internacion]), IamModule],
+  controllers: [TurnosController, PacientesController, NotificacionesController],
   providers: [
     TurnosService,
     EntreturnoStandbyService,
