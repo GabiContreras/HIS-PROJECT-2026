@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { RolUsuario } from '../../../entities/usuario.entity.js';
 import { VitalSignAlert, type VitalSignAlertPayload } from '../../../shared/events/vital-sign-alert.event.js';
 import { EventBus } from '../../../shared/events/event-bus.service.js';
 import { VitalSignAlertSubscriber } from './vital-sign-alert.subscriber.js';
@@ -14,40 +15,73 @@ const payload = (over: Partial<VitalSignAlertPayload> = {}): VitalSignAlertPaylo
   ...over,
 });
 
-function build(medicos = [{ id: 'm1' }, { id: 'm2' }]) {
+function build(opts: { internacion?: { medicoId: string } | null; medicoActivo?: boolean } = {}) {
+  const { internacion = null, medicoActivo = true } = opts;
   const bus = new EventBus();
-  const notificaciones = { crearNotificacion: vi.fn().mockResolvedValue({}) };
+  const notificaciones = {
+    notificarUsuarios: vi.fn().mockResolvedValue(undefined),
+    notificarPorRol: vi.fn().mockResolvedValue(undefined),
+  };
   const pacientes = { get: vi.fn().mockResolvedValue({ nombre: 'Carlos', apellido: 'López' }) };
-  const usuarios = { find: vi.fn().mockResolvedValue(medicos) };
-  const subscriber = new VitalSignAlertSubscriber(bus, notificaciones as never, pacientes as never, usuarios as never);
+  const usuarios = { findOne: vi.fn().mockResolvedValue(medicoActivo && internacion ? { id: internacion.medicoId } : null) };
+  const internaciones = { findOne: vi.fn().mockResolvedValue(internacion) };
+  const subscriber = new VitalSignAlertSubscriber(
+    bus,
+    notificaciones as never,
+    pacientes as never,
+    usuarios as never,
+    internaciones as never,
+  );
   subscriber.onModuleInit();
-  return { bus, notificaciones, usuarios, subscriber };
+  return { bus, notificaciones, internaciones, subscriber };
 }
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
 describe('VitalSignAlertSubscriber', () => {
-  it('notifica con prioridad ALTA a cada médico activo cuando la temperatura supera 39 °C', async () => {
+  it('con internación activa notifica con prioridad ALTA solo al médico responsable', async () => {
+    const { bus, notificaciones } = build({ internacion: { medicoId: 'm1' } });
+    bus.publish(new VitalSignAlert(payload()));
+    await flush();
+    expect(notificaciones.notificarPorRol).not.toHaveBeenCalled();
+    expect(notificaciones.notificarUsuarios).toHaveBeenCalledTimes(1);
+    const [ids, contenido] = notificaciones.notificarUsuarios.mock.calls[0];
+    expect(ids).toEqual(['m1']);
+    expect(contenido).toMatchObject({ prioridad: 'ALTA', tipo: 'SIGNOS_VITALES_ALERTA' });
+    expect(contenido.mensaje).toContain('Carlos López');
+  });
+
+  it('sin internación activa notifica a todos los médicos activos', async () => {
     const { bus, notificaciones } = build();
     bus.publish(new VitalSignAlert(payload()));
     await flush();
-    expect(notificaciones.crearNotificacion).toHaveBeenCalledTimes(2);
-    expect(notificaciones.crearNotificacion).toHaveBeenCalledWith(
-      expect.objectContaining({ destinatarioId: 'm1', prioridad: 'ALTA', tipo: 'SIGNOS_VITALES_ALERTA' }),
+    expect(notificaciones.notificarUsuarios).not.toHaveBeenCalled();
+    expect(notificaciones.notificarPorRol).toHaveBeenCalledWith(
+      RolUsuario.MEDICO,
+      expect.objectContaining({ prioridad: 'ALTA', tipo: 'SIGNOS_VITALES_ALERTA' }),
     );
-    expect(notificaciones.crearNotificacion.mock.calls[0][0].mensaje).toContain('Carlos López');
+  });
+
+  it('con internación activa cuyo médico no está activo cae al respaldo de todos los médicos activos', async () => {
+    const { bus, notificaciones } = build({ internacion: { medicoId: 'm1' }, medicoActivo: false });
+    bus.publish(new VitalSignAlert(payload()));
+    await flush();
+    expect(notificaciones.notificarUsuarios).not.toHaveBeenCalled();
+    expect(notificaciones.notificarPorRol).toHaveBeenCalledWith(RolUsuario.MEDICO, expect.anything());
   });
 
   it('ignora alertas que no son de temperatura crítica', async () => {
     const { bus, notificaciones } = build();
     bus.publish(new VitalSignAlert(payload({ tipo: 'FRECUENCIA_CARDIACA', valor: 180, unidad: 'lpm' })));
     bus.publish(new VitalSignAlert(payload({ valor: 39 })));
+    bus.publish(new VitalSignAlert(payload({ valor: 38.5 })));
     await flush();
-    expect(notificaciones.crearNotificacion).not.toHaveBeenCalled();
+    expect(notificaciones.notificarUsuarios).not.toHaveBeenCalled();
+    expect(notificaciones.notificarPorRol).not.toHaveBeenCalled();
   });
 
   it('no propaga errores al bus si falla la base', async () => {
-    const { subscriber, usuarios } = build();
-    usuarios.find.mockRejectedValue(new Error('db caída'));
+    const { subscriber, internaciones } = build();
+    internaciones.findOne.mockRejectedValue(new Error('db caída'));
     await expect(subscriber.handle(new VitalSignAlert(payload()))).resolves.toBeUndefined();
   });
 });
