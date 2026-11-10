@@ -8,7 +8,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * - Base vacía (BaselineSchema todavía no corrió, corre después por timestamp): no hace nada.
  * - Base ya en snake_case: no hace nada.
  * Las columnas camelCase que agregan migraciones posteriores las renombra
- * 1793370400000-NormalizeAndReconcileSchema.
+ * 1793370400001-NormalizeAndReconcileSchema.
  */
 const RENAMES: Array<[table: string, from: string, to: string]> = [
   ['usuarios', 'passwordHash', 'password_hash'],
