@@ -13,6 +13,7 @@ import type { NuevoProtocolo, ProtocoloData } from '../../nursing/domain/ports/p
 import { PatientAdmittedSubscriber } from '../../nursing/application/patient-admitted.subscriber.js';
 import { ProtocolosService } from '../../nursing/application/protocolos.service.js';
 import { AsignarCamaDto } from '../api/dto/asignar-cama.dto.js';
+import { BED_BLOCKED, BED_UNBLOCKED } from '../domain/bed-events.js';
 import { EstadoCama } from '../domain/estado-cama.enum.js';
 import { CamasService } from './camas.service.js';
 
@@ -63,6 +64,8 @@ function build(options: Options = {}) {
   const published: DomainEvent[] = [];
   events.ofType(BedAssigned.EVENT_TYPE).subscribe((event) => published.push(event));
   events.ofType(PatientAdmitted.EVENT_TYPE).subscribe((event) => published.push(event));
+  events.ofType(BED_BLOCKED).subscribe((event) => published.push(event));
+  events.ofType(BED_UNBLOCKED).subscribe((event) => published.push(event));
 
   const service = new CamasService({} as never, dataSource as never, events);
   return { service, events, published, internacionesGuardadas, manager };
@@ -128,6 +131,37 @@ describe('CamasService.asignar', () => {
     await expect(
       service.asignar(CAMA, { pacienteId: PACIENTE, medicoId: MEDICO, motivoIngreso: 'Neumonía' }, admin),
     ).rejects.toBeInstanceOf(NotFoundException);
+    expect(published).toHaveLength(0);
+  });
+});
+
+describe('CamasService.bloquear / desbloquear', () => {
+  it('bloquear una cama libre la deja BLOQUEADA y publica bed.blocked', async () => {
+    const { service, published } = build({ estado: EstadoCama.LIBRE });
+
+    const cama = await service.bloquear(CAMA);
+
+    expect(cama.estado).toBe(EstadoCama.BLOQUEADA);
+    expect(published).toHaveLength(1);
+    expect(published[0].type).toBe(BED_BLOCKED);
+    expect(published[0].payload).toEqual({ bedId: CAMA, bedNumber: '101', blockedAt: expect.any(String) });
+  });
+
+  it('desbloquear una cama bloqueada la deja LIBRE y publica bed.unblocked', async () => {
+    const { service, published } = build({ estado: EstadoCama.BLOQUEADA });
+
+    const cama = await service.desbloquear(CAMA);
+
+    expect(cama.estado).toBe(EstadoCama.LIBRE);
+    expect(published).toHaveLength(1);
+    expect(published[0].type).toBe(BED_UNBLOCKED);
+    expect(published[0].payload).toEqual({ bedId: CAMA, bedNumber: '101', unblockedAt: expect.any(String) });
+  });
+
+  it('una transición inválida responde 409 y no publica nada', async () => {
+    const { service, published } = build({ estado: EstadoCama.OCUPADA });
+
+    await expect(service.bloquear(CAMA)).rejects.toBeInstanceOf(ConflictException);
     expect(published).toHaveLength(0);
   });
 });
