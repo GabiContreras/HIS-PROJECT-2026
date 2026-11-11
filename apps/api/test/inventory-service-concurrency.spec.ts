@@ -5,7 +5,6 @@ import { SnakeNamingStrategy } from '../src/config/snake-naming.strategy.js';
 import { Insumo } from '../src/entities/insumo.entity.js';
 import { InventoryService } from '../src/modules/resources/infrastructure/inventory.service.js';
 
-// Requiere un Postgres local con la base his_test; sin PGLOCAL_PASSWORD se omite.
 describe.skipIf(!process.env.PGLOCAL_PASSWORD)(
   'InventoryService - concurrencia real en PostgreSQL local',
   () => {

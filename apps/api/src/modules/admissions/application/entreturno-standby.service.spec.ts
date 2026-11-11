@@ -46,7 +46,6 @@ describe('EntreturnoStandbyService (HU 1.3)', () => {
     const entry = await service.join(dto, admin);
     expect(entry).toMatchObject({ posicion: 2, fecha: '2030-01-01' });
     expect(entry.paciente.apellido).toBe('Medina');
-    // Chequea disponibilidad del día completo de la clínica (00:00–24:00 -03:00).
     expect(turnos.listAvailable).toHaveBeenCalledWith(
       'doctor-1',
       '2030-01-01T03:00:00.000Z',

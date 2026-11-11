@@ -21,14 +21,12 @@ import { TurnosService } from './turnos.service.js';
 export interface EsperaSummary {
   id: string;
   fecha: string;
-  /** Posición en la cola de ese médico y día (1 = el próximo en recibir un horario). */
   posicion: number;
   creadoEn: Date;
   medico: { id: string; nombre: string; apellido: string };
   paciente: { id: string; nombre: string; apellido: string };
 }
 
-/** HU 1.3: lista de espera de entreturnos. La promoción automática vive en TurnosService. */
 @Injectable()
 export class EntreturnoStandbyService {
   constructor(
@@ -51,7 +49,6 @@ export class EntreturnoStandbyService {
     }
     this.turnos.assertCanManageDoctor(identity, dto.medicoId);
     return this.dataSource.transaction(async (manager) => {
-      // Mismo lock que usan la reserva y la cancelación: la cola y la agenda no se pisan.
       const doctor = await this.turnos.lockDoctor(manager, dto.medicoId);
       const patient = await this.pacientes.findOne({ where: { id: dto.pacienteId } });
       if (!patient) throw new NotFoundException('No se encontró el paciente.');
@@ -95,7 +92,6 @@ export class EntreturnoStandbyService {
     });
   }
 
-  /** Cola del día (por defecto, hoy), ordenada por médico y por orden de llegada. */
   async list(
     filters: { medicoId?: string; fecha?: string },
     identity: SessionIdentity,

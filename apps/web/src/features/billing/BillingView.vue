@@ -35,7 +35,6 @@ const pagina = ref(1);
 const seleccionado = ref<Charge | null>(null);
 const detalleAbierto = ref(false);
 
-// Las tarjetas resumen siguen el período; la tabla, además, el tipo y la búsqueda.
 const delPeriodo = computed(() => charges.value.filter((c) => inPeriod(c.createdAt, periodo.value)));
 const importeTotal = computed(() => delPeriodo.value.reduce((sum, c) => sum + c.importePesos, 0));
 const conCobertura = computed(() => delPeriodo.value.filter(hasCoverage).length);

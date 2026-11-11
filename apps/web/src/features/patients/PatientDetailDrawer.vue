@@ -26,7 +26,6 @@ function startEditing(): void {
   editing.value = true;
 }
 
-// Al abrir otro paciente, se sale del modo edición.
 watch(() => [props.open, props.patient?.id], () => (editing.value = false));
 
 async function save(): Promise<void> {

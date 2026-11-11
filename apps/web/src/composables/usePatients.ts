@@ -16,7 +16,6 @@ export function usePatients() {
   const saving = ref(false);
   const saveError = ref<string | null>(null);
 
-  // Descarta respuestas viejas: una respuesta lenta no pisa a una más reciente.
   let latest = 0;
 
   async function load(query = ''): Promise<void> {
@@ -46,7 +45,6 @@ export function usePatients() {
     }
   }
 
-  /** Cambia la cobertura y refleja el cambio en la lista sin recargarla. */
   async function updateCoverage(id: string, input: CoberturaInput): Promise<Patient | null> {
     saving.value = true;
     saveError.value = null;

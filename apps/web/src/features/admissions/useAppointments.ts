@@ -22,19 +22,16 @@ import {
 import { dayRange, todayInClinic } from './clinic-hours';
 
 export function useAppointments() {
-  /** Día y médico que se están viendo (la agenda es siempre de un día). */
   const fecha = ref(todayInClinic());
   const medicoId = ref('');
 
   const turnos = ref<TurnoAgenda[]>([]);
   const libres = ref<SlotDisponible[]>([]);
   const espera = ref<EsperaItem[]>([]);
-  /** Última promoción automática desde la lista de espera: la recepción tiene que avisarle al paciente. */
   const promovido = ref<PromocionStandby | null>(null);
   const transiciones = ref<TablaTransiciones | null>(null);
   const cargando = ref(false);
   const error = ref<string | null>(null);
-  // Los errores de una acción no reemplazan el tablero: se muestran aparte.
   const actuando = ref(false);
   const errorAccion = ref<string | null>(null);
 
@@ -61,12 +58,10 @@ export function useAppointments() {
     }
   }
 
-  /** El backend es la autoridad; esto solo evita ofrecer movimientos que va a rechazar. */
   function puedePasar(desde: EstadoTurno, hacia: EstadoTurno): boolean {
     return transiciones.value?.[desde]?.includes(hacia) ?? false;
   }
 
-  /** Ejecuta una acción y, haya salido bien o mal, vuelve a leer la agenda. */
   async function accion(operation: () => Promise<unknown>): Promise<boolean> {
     actuando.value = true;
     errorAccion.value = null;

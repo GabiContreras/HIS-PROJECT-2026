@@ -37,7 +37,6 @@ export const useBedsStore = defineStore('beds', () => {
     }
   }
 
-  /** Ejecuta un cambio y refresca el mapa aunque falle (por ejemplo, por un conflicto de concurrencia). */
   async function mutate(operation: () => Promise<unknown>): Promise<void> {
     try {
       await operation();

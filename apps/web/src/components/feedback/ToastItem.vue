@@ -14,7 +14,6 @@ const ICONS: Record<ToastSeverity, IconName> = {
   error: 'alert',
 };
 
-// La cuenta regresiva se pausa al pasar el mouse, al enfocar y con la pestaña oculta.
 const hovered = ref(false);
 const focused = ref(false);
 const tabHidden = ref(document.visibilityState === 'hidden');
@@ -40,7 +39,6 @@ function start(): void {
 function pause(): void {
   if (timer === undefined) return;
   stop();
-  // Retoma con el tiempo que quedaba, no desde cero.
   remaining.value -= Date.now() - startedAt;
 }
 
@@ -59,7 +57,6 @@ const onVisibility = (): void => {
 };
 
 watch(paused, (isPaused) => (isPaused ? pause() : start()));
-// Llegó un duplicado: vuelve a empezar con el tiempo completo.
 watch(
   () => props.toast.touchedAt,
   () => {

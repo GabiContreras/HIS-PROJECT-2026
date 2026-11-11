@@ -9,7 +9,6 @@ const opcion = computed(() => opcionDe(model.value.tipo));
 const idBase = `cobertura-${Math.random().toString(36).slice(2, 8)}`;
 
 function elegir(tipo: CoberturaForm['tipo']): void {
-  // Al pasar a particular no queda una entidad vieja escondida.
   model.value = { tipo, entidad: opcionDe(tipo)?.entidadLabel ? model.value.entidad : '' };
 }
 </script>

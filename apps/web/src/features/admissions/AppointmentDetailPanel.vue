@@ -12,7 +12,6 @@ import { clinicDateOf, clinicEndTime, clinicTime, longDateLabel } from './clinic
 const props = defineProps<{ open: boolean; turno: TurnoAgenda | null }>();
 const emit = defineEmits<{ close: [] }>();
 
-// Los datos de contacto no vienen con el turno: se piden aparte cuando hay paciente.
 const patient = ref<Patient | null>(null);
 const loading = ref(false);
 const failed = ref(false);

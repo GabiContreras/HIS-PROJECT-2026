@@ -102,7 +102,6 @@ describe.skipIf(!enabled)('Concurrencia real de turnos (solo BD local)', () => {
     }));
     created.pacientes.push(pacienteB.id);
 
-    // Mañana a las 13:00 UTC (10:00 en Argentina), dentro del horario por defecto del médico.
     const inicio = new Date();
     inicio.setUTCDate(inicio.getUTCDate() + 1);
     inicio.setUTCHours(13, 0, 0, 0);
@@ -114,7 +113,6 @@ describe.skipIf(!enabled)('Concurrencia real de turnos (solo BD local)', () => {
       esSuperadmin: false,
     };
 
-    // Dos pacientes intentan reservar el mismo horario del mismo médico a la vez.
     const resultados = await Promise.allSettled([
       service.reserve(
         { medicoId: doctor.id, fechaHora: inicio.toISOString(), pacienteId: pacienteA.id },

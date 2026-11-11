@@ -10,14 +10,9 @@ import { VitalSignAlert, type VitalSignAlertPayload } from '../../../shared/even
 import { NotificacionesService } from './notificaciones.service.js';
 import { PacientesService } from './pacientes.service.js';
 
-/** HU 1.1 (Enfermería), escenario 2: la temperatura supera los 39 °C. */
 const TIPO_TEMPERATURA = 'TEMPERATURA';
 const TEMPERATURA_ALERTA_C = 39;
 
-/**
- * Convierte la alerta de signos vitales de Enfermería en una notificación de alta prioridad para los médicos
- * (HU 1.1: "emitir una notificación de alta prioridad al médico de guardia"). Nunca lanza hacia el EventBus.
- */
 @Injectable()
 export class VitalSignAlertSubscriber implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(VitalSignAlertSubscriber.name);

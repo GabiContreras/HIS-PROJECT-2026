@@ -13,7 +13,6 @@ import {
 
 const inicio = new Date('2030-01-01T06:00:00.000Z');
 const plan8h: IndicacionPlan = { fechaInicio: inicio, fechaFin: null, frecuenciaHoras: 8 };
-// Dosis: 06:00, 14:00, 22:00, 06:00 (+1d)...
 const en = (iso: string) => new Date(iso);
 
 describe('medication-schedule', () => {

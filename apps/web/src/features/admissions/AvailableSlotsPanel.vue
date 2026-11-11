@@ -14,24 +14,20 @@ import type { DoctorOption } from './NewAppointmentPanel.vue';
 const props = defineProps<{
   open: boolean;
   medicos: DoctorOption[];
-  /** Si la persona es médico, solo ve su propia agenda. */
   lockedMedicoId: string | null;
 }>();
 
 const emit = defineEmits<{
   close: [];
-  /** Se tocó un horario libre: la pantalla abre "Nuevo turno" con ese horario cargado. */
   book: [horario: SlotDisponible];
 }>();
 
-/** Una celda es un horario libre (calculado) o un turno ocupado (entreturnos incluidos). */
 interface Cell {
   key: string;
   fechaHora: string;
   kind: 'free' | 'busy';
   slot?: SlotDisponible;
   turno?: TurnoAgenda;
-  /** Entreturno o duración reducida. */
   flagged: boolean;
 }
 
@@ -44,14 +40,12 @@ interface Group {
 
 const today = todayInClinic();
 const fecha = ref(today);
-// '' significa "Todos los médicos".
 const medicoId = ref('');
 const agenda = ref<TurnoAgenda[]>([]);
 const disponibles = ref<SlotDisponible[]>([]);
 const loading = ref(false);
 const error = ref<string | null>(null);
 
-// Detalle de un turno ocupado: se abre encima de este panel sin cerrarlo.
 const detalleAbierto = ref(false);
 const detalleTurno = ref<TurnoAgenda | null>(null);
 
@@ -79,7 +73,6 @@ const groups = computed<Group[]>(() => {
     group.libres += 1;
   }
   for (const turno of agenda.value) {
-    // Un turno cancelado libera su horario: ya aparece como libre.
     if (turno.estado === 'CANCELADO') continue;
     const group = groupOf(turno.medico);
     group.celdas.push({
@@ -129,7 +122,6 @@ async function load(): Promise<void> {
 watch(
   () => props.open,
   (isOpen) => {
-    // Al abrir o cerrar, el detalle queda cerrado: no tiene que reaparecer la próxima vez.
     detalleAbierto.value = false;
     if (!isOpen) return;
     fecha.value = todayInClinic();

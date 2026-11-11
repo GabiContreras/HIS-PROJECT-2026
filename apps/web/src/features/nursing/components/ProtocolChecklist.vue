@@ -5,9 +5,7 @@ import { displayName, formatDateTime } from '../../../shared/format';
 
 const props = defineProps<{
   protocol: Protocol;
-  /** Ids de tareas con un guardado en curso (casilla deshabilitada). */
   pending?: ReadonlySet<string>;
-  /** Solo lectura (no se puede marcar). */
   readonly?: boolean;
 }>();
 

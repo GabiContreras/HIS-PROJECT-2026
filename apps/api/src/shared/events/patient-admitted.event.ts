@@ -2,10 +2,8 @@ import { IntegrationEvent } from './integration-event.base.js';
 import { INTEGRATION_EVENTS } from './integration-event-names.js';
 
 export interface PatientAdmittedPayload {
-  /** Identificador del ingreso/internación; Enfermería lo usa como clave de idempotencia. */
   admissionId: string;
   patientId: string;
-  /** Motivo o diagnóstico inicial en texto libre (p. ej. "Cirugía programada", "Neumonía"). */
   reason: string;
   admittedAt: string;
 }

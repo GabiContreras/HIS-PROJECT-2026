@@ -12,31 +12,20 @@ import {
 } from '../domain/bed-events.js';
 import { EstadoCama } from '../domain/estado-cama.enum.js';
 
-/** Cada cuánto se envía el latido para que proxies y navegadores no cierren la conexión. */
 export const BED_STREAM_HEARTBEAT_MS = 25_000;
 
-/** Cuerpo de cada mensaje del stream de camas. */
 export interface BedStreamData {
-  /** Tipo del evento de origen: bed.assigned, bed.released, bed.cleaned, bed.blocked o bed.unblocked. */
   tipo: string;
   camaId: string;
   numero: string;
-  /** Estado en el que queda la cama después del evento. */
   estado: EstadoCama;
-  /** Momento del cambio (ISO 8601). */
   at: string;
 }
 
-/**
- * Recursos 2.1: expone en tiempo real los cambios de estado de las camas para los monitores.
- * Solo traduce los eventos del EventBus (en memoria) a mensajes SSE; no consulta la base.
- * Un cliente que se conecta recibe los cambios desde ese momento: el estado inicial se pide a GET /camas.
- */
 @Injectable()
 export class BedEventsStreamService {
   constructor(private readonly events: EventBus) {}
 
-  /** Cambios de cama más un latido periódico (evento `ping`). Al desuscribirse se libera todo. */
   stream(heartbeatMs: number = BED_STREAM_HEARTBEAT_MS): Observable<MessageEvent> {
     const latido = interval(heartbeatMs).pipe(
       map((): MessageEvent => ({ type: 'ping', data: { at: new Date().toISOString() } })),
@@ -44,7 +33,6 @@ export class BedEventsStreamService {
     return merge(this.cambios(), latido);
   }
 
-  /** Solo los cambios de cama, ya traducidos. */
   cambios(): Observable<MessageEvent> {
     const mensaje = (data: BedStreamData): MessageEvent => ({ data });
     return merge(

@@ -4,15 +4,12 @@ import AppIcon from '../../components/ui/AppIcon.vue';
 import { longDateLabel } from './clinic-hours';
 
 const props = defineProps<{
-  /** Fecha elegida (AAAA-MM-DD). */
   modelValue: string;
-  /** Primer día que se puede elegir (AAAA-MM-DD). */
   min?: string;
   label?: string;
 }>();
 const emit = defineEmits<{
   'update:modelValue': [date: string];
-  /** Después de que la persona eligió otro día. */
   change: [];
 }>();
 
@@ -22,14 +19,12 @@ function openPicker(): void {
   try {
     input.value?.showPicker?.();
   } catch {
-    // Si el navegador no permite abrir el calendario por código, queda el campo nativo.
   }
 }
 
 function onChange(event: Event): void {
   const field = event.target as HTMLInputElement;
   if (!field.value) {
-    // Si borran la fecha, se conserva la anterior.
     field.value = props.modelValue;
     return;
   }

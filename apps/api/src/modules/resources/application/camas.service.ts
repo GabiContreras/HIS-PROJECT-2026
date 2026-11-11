@@ -80,7 +80,6 @@ export class CamasService {
     const medicoId = this.resolverMedico(dto, identity);
 
     const { cama, internacion } = await this.enTransaccion(async (manager) => {
-      // 1) Candado de fila: el segundo operador espera acá hasta que el primero termine.
       const cama = await this.bloquearCama(manager, camaId);
 
 
@@ -145,8 +144,6 @@ export class CamasService {
       ),
     );
 
-    // HU 2.1 de Enfermería: el ingreso dispara el protocolo de atención. Se publica después del commit
-    // y solo si se informó el motivo; sin motivo no hay protocolo que elegir.
     if (internacion.motivoIngreso) {
       this.events.publish(
         new PatientAdmitted(
@@ -167,7 +164,7 @@ export class CamasService {
   async darAlta(camaId: string): Promise<CamaResponseDto> {
     const { cama, internacion } = await this.enTransaccion(async (manager) => {
       const cama = await this.bloquearCama(manager, camaId);
-      const siguiente = this.transicionar((s) => s.darAlta(), cama); // OCUPADA -> EN_LIMPIEZA
+      const siguiente = this.transicionar((s) => s.darAlta(), cama);
 
       const activa = await manager
         .createQueryBuilder(Internacion, 'i')
@@ -277,7 +274,6 @@ export class CamasService {
     return cama;
   }
 
-  /** Aplica la máquina de estados y traduce el error de dominio a 409. */
   private transicionar(
     accion: (s: BedState) => EstadoCama,
     cama: Cama,

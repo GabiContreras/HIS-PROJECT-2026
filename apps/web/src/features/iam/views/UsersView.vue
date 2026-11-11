@@ -11,7 +11,6 @@ const formVisible = ref(false);
 const session = useSessionStore();
 const { usuarios, cargando, error, cargar, crear } = useUsers();
 
-// Solo el superadmin puede ver (y restaurar) las cuentas dadas de baja.
 const esSuperadmin = computed(() => session.account?.esSuperadmin === true);
 const verBajas = ref(false);
 const recargar = () => cargar(esSuperadmin.value && verBajas.value);

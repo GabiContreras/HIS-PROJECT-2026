@@ -83,7 +83,7 @@ describe('AccountAdminService — permisos del superadmin y baja lógica', () =>
       const { service, usuarios } = setup(account());
       await service.list(actor(), true);
       const where = usuarios.find.mock.calls[0][0].where;
-      expect(where.estado).toBeDefined(); // Not(BAJA)
+      expect(where.estado).toBeDefined();
     });
 
     it('el superadmin ve todo cuando pide incluir bajas', async () => {

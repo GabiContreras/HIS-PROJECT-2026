@@ -27,7 +27,6 @@ const isAdmin = computed(() => session.role === 'ADMINISTRATIVO');
 const medicos = ref<DoctorOption[]>([]);
 const medicosError = ref<string | null>(null);
 
-// El médico solo ve y gestiona su propia agenda.
 if (!isAdmin.value && session.account) medicoId.value = session.account.id;
 const medicoFijo = computed(() => (isAdmin.value ? null : (session.account?.id ?? null)));
 const medicosPanel = computed<DoctorOption[]>(() => {
@@ -36,14 +35,12 @@ const medicosPanel = computed<DoctorOption[]>(() => {
   return cuenta ? [{ id: cuenta.id, nombre: cuenta.nombre, apellido: cuenta.apellido }] : [];
 });
 
-// Paneles laterales.
 const panelAbierto = ref(false);
 const horarioElegido = ref<SlotDisponible | null>(null);
 const horariosAbierto = ref(false);
 const detalleAbierto = ref(false);
 const detalleTurno = ref<TurnoAgenda | null>(null);
 
-// Columnas del tablero. "Programado" es el nombre de las HU para RESERVADO.
 const COLUMNAS: { estado: EstadoTurno; tono: string }[] = [
   { estado: 'RESERVADO', tono: 'info' },
   { estado: 'CONFIRMADO', tono: 'success' },
@@ -54,7 +51,6 @@ const COLUMNAS: { estado: EstadoTurno; tono: string }[] = [
 const porEstado = (estado: EstadoTurno) =>
   turnos.value.filter((t) => t.estado === estado).sort((a, b) => a.fechaHora.localeCompare(b.fechaHora));
 
-// Tarjetas de resumen (solo lo que se puede calcular con datos reales).
 const activos = computed(() => turnos.value.filter((t) => t.estado !== 'CANCELADO').length);
 const enSala = computed(() => porEstado('EN_SALA_DE_ESPERA').length);
 const atendidos = computed(() => porEstado('ATENDIDO').length);
@@ -65,11 +61,9 @@ const esHoy = computed(() => fecha.value === todayInClinic());
 const VISIBLES = 8;
 const libresVisibles = computed(() => libres.value.slice(0, VISIBLES));
 
-// --- Drag & drop (nativo; en pantallas táctiles quedan los botones de cada tarjeta) ---
 const arrastrando = ref<TurnoAgenda | null>(null);
 const sobre = ref<EstadoTurno | null>(null);
 
-/** Resaltado durante el arrastre: a qué columnas puede ir la tarjeta según el backend. */
 function estadoColumna(estado: EstadoTurno): 'valida' | 'invalida' | '' {
   const t = arrastrando.value;
   if (!t || t.estado === estado) return '';
@@ -94,10 +88,6 @@ async function soltar(estado: EstadoTurno): Promise<void> {
   await mover(turno, estado);
 }
 
-/**
- * Se pide la transición aunque el destino parezca inválido: la regla vive en el backend y su
- * mensaje de negocio (HU 2.1) es el que se le muestra a la persona.
- */
 async function mover(turno: TurnoAgenda, estado: EstadoTurno): Promise<void> {
   if (estado === 'CANCELADO' && puedePasar(turno.estado, estado)) {
     const hayCola = espera.value.some((e) => e.medico.id === turno.medico.id);
@@ -122,7 +112,6 @@ async function mover(turno: TurnoAgenda, estado: EstadoTurno): Promise<void> {
   }
 }
 
-/** HU 1.3: un paciente de la lista de espera tomó el horario liberado; recepción tiene que avisarle. */
 function avisarPromocion(): void {
   const p = promovido.value;
   if (!p) return;
@@ -158,7 +147,6 @@ function destinosDe(turno: TurnoAgenda): EstadoTurno[] {
   return COLUMNAS.map((c) => c.estado).filter((estado) => puedePasar(turno.estado, estado));
 }
 
-// --- Navegación ---
 function irA(dias: number): void {
   fecha.value = addDays(fecha.value, dias);
   void cargar();
@@ -187,7 +175,6 @@ async function cargarMedicos(): Promise<void> {
   if (!isAdmin.value) return;
   medicosError.value = null;
   try {
-    // El back solo acepta médicos activos: no mostramos los pendientes ni deshabilitados.
     medicos.value = (await listarUsuarios()).filter((u) => u.rol === 'MEDICO' && u.estado === 'ACTIVO');
   } catch (reason) {
     medicosError.value = messageFrom(reason, 'No se pudo cargar la lista de médicos.');

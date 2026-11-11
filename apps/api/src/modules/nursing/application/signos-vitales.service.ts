@@ -34,7 +34,6 @@ export interface SignoVitalView {
 }
 
 export interface ControlSignosVitalesView {
-  /** Identificador del control (agrupa las cuatro mediciones). */
   id: string;
   pacienteId: string;
   paciente: string;
@@ -44,18 +43,14 @@ export interface ControlSignosVitalesView {
   temperatura: number;
   fechaHora: string;
   registradoPor: string;
-  /** Temperatura mayor a 39 °C (HU 1.1): se destaca en rojo y se alerta al médico. */
   critico: boolean;
-  /** Etiquetas de los valores fuera de su rango normal. */
   fueraDeRango: string[];
-  /** Nota de enfermería automática del control. */
   nota: string;
 }
 
 const NOTA_CONTROL_EXITOSO = 'Controles de signos vitales realizados con éxito.';
 const TITULO_NOTA_CONTROL = 'Control de signos vitales';
 const LIST_LIMIT = 100;
-/** Cada control guarda una medición por campo. */
 const LECTURAS_POR_CONTROL = Object.keys(CAMPOS_CONTROL).length;
 
 @Injectable()
@@ -79,7 +74,6 @@ export class SignosVitalesService {
         `El valor ${dto.valor} no es plausible para ${dto.tipo} (esperado entre ${minPlausible} y ${maxPlausible} ${unidad}).`,
       );
     }
-    // Admisión es dueño de pacientes: se consulta por su caso de uso (404 si no existe).
     await this.pacientes.get(dto.pacienteId);
 
     const saved = await this.repository.create({
@@ -111,7 +105,6 @@ export class SignosVitalesService {
     return rows.map((row) => this.toView(row));
   }
 
-  /** HU 1.1: guarda presión, frecuencia cardíaca y temperatura como un solo control, todo o nada. */
   async registrarControl(dto: RegistrarControlSignosVitalesDto, identity: SessionIdentity): Promise<ControlSignosVitalesView> {
     const lecturas = (Object.entries(CAMPOS_CONTROL) as [keyof typeof CAMPOS_CONTROL, TipoSignoVital][]).map(
       ([campo, tipo]) => ({ tipo, valor: dto[campo] }),
@@ -131,7 +124,6 @@ export class SignosVitalesService {
       lecturas,
     });
 
-    // Las alertas se publican recién cuando el control quedó guardado completo.
     for (const row of rows) {
       const view = this.toView(row);
       if (!view.fueraDeRango) continue;
@@ -148,7 +140,6 @@ export class SignosVitalesService {
       );
     }
     const control = this.toControlView(rows)!;
-    // HU 1.1: el control queda asociado a la historia clínica con una nota de enfermería automática.
     await this.historiaClinica.registrarNotaEnfermeria(
       dto.pacienteId,
       TITULO_NOTA_CONTROL,

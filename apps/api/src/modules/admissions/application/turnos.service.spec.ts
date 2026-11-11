@@ -9,7 +9,6 @@ import { EntreturnoStandby } from '../../../entities/entreturno-standby.entity.j
 import { Paciente } from '../../../entities/paciente.entity.js';
 import { TurnosService } from './turnos.service.js';
 
-// 2030-01-01 es martes. Argentina = UTC-3, así que 12:00Z = 09:00 locales.
 const at = (utcTime: string) => new Date(`2030-01-01T${utcTime}:00.000Z`);
 
 const medico = {
@@ -29,7 +28,6 @@ const admin = {
   esSuperadmin: false,
 };
 
-/** Arma un servicio con `overlapCounts` = resultados sucesivos de getCount(). */
 function setup(overlapCounts: number[] = [], opts: { doctor?: Usuario } = {}) {
   const counts = [...overlapCounts];
   const query = {
@@ -126,7 +124,6 @@ describe('TurnosService', () => {
 
     it('rechaza horarios fuera de la jornada del médico (08–16)', async () => {
       const { service } = setup();
-      // 19:00Z = 16:00 locales: el turno terminaría a las 16:30.
       await expect(
         service.reserve(
           { medicoId: 'doctor-1', fechaHora: at('19:00').toISOString(), pacienteId: 'patient-1' },
@@ -213,8 +210,8 @@ describe('TurnosService', () => {
       });
       const slots = await service.listAvailable(
         'doctor-1',
-        at('11:00').toISOString(), // 08:00 locales
-        at('23:00').toISOString(), // 20:00 locales
+        at('11:00').toISOString(),
+        at('23:00').toISOString(),
       );
       expect(slots).toHaveLength(16);
       expect(slots[0].fechaHora).toEqual(at('11:00'));
@@ -229,9 +226,7 @@ describe('TurnosService', () => {
         where: vi.fn().mockReturnThis(),
         andWhere: vi.fn().mockReturnThis(),
         getMany: vi.fn().mockResolvedValue([
-          // turno reservado 08:00 locales (30 min)
           { fechaHora: at('11:00'), duracionMinutos: 30, medico: { id: 'doctor-1' } },
-          // entreturno 09:15 locales (15 min)
           { fechaHora: at('12:15'), duracionMinutos: 15, medico: { id: 'doctor-1' } },
         ]),
       });
@@ -240,7 +235,6 @@ describe('TurnosService', () => {
         at('11:00').toISOString(),
         at('13:00').toISOString(),
       );
-      // 08:00 ocupado; 08:30 libre 30; 09:00 libre pero acortado a 15
       expect(slots.map((s) => [s.fechaHora.toISOString(), s.duracionMinutos])).toEqual([
         [at('11:30').toISOString(), 30],
         [at('12:00').toISOString(), 15],
@@ -317,7 +311,7 @@ describe('TurnosService', () => {
           id: 'turno-1',
           estado: EstadoTurno.RESERVADO,
           urgente: false,
-          fechaHora: at('14:00'), // 11:00 locales
+          fechaHora: at('14:00'),
           duracionMinutos: 30,
           medico,
           paciente: { id: 'patient-1' },

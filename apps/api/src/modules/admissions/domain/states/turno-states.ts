@@ -11,7 +11,6 @@ const invalida = (mensaje: string): never => {
 abstract class TurnoState implements ITurnoState {
   abstract readonly estado: EstadoTurno;
 
-  /** Mensaje por defecto para toda transición no habilitada explícitamente. */
   protected get bloqueo(): string {
     return `No se permite modificar un turno en estado ${this.estado}.`;
   }
@@ -61,7 +60,6 @@ abstract class TurnoState implements ITurnoState {
   }
 }
 
-/** Reservado = "Programado" en las HU. */
 export class TurnoReservadoState extends TurnoState {
   readonly estado = EstadoTurno.RESERVADO;
   override confirmar() {
@@ -129,7 +127,6 @@ export class TurnoCanceladoState extends TurnoState {
   }
 }
 
-/** Filas heredadas del modelo anterior de franjas; ya no se crean. */
 export class TurnoDisponibleState extends TurnoState {
   readonly estado = EstadoTurno.DISPONIBLE;
   protected override get bloqueo(): string {
@@ -154,7 +151,6 @@ export function turnoStateFor(estado: EstadoTurno): ITurnoState {
   }
 }
 
-/** Mapa estado → destinos válidos. Única fuente de verdad para API y front. */
 export function tablaTransiciones(): Record<string, EstadoTurno[]> {
   return Object.fromEntries(
     Object.values(EstadoTurno).map((estado) => [

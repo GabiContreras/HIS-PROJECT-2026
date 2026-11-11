@@ -15,7 +15,6 @@ import {
 } from '../domain/registro-clinico.js';
 
 export interface HistoriaClinicaView extends Historia {
-  /** Ficha demográfica, tomada de Admisión. */
   paciente: PacienteData;
 }
 
@@ -28,7 +27,6 @@ export class HistoriaClinicaService {
   ) {}
 
   async obtener(pacienteId: string): Promise<HistoriaClinicaView> {
-    // Admisión es dueño de pacientes: se consulta por su caso de uso (404 si no existe).
     const paciente = await this.pacientes.get(pacienteId);
     const rows = await this.repository.listByPaciente(pacienteId);
     return { paciente, ...armarHistoria(rows.map((row) => this.toView(row))) };
@@ -50,7 +48,6 @@ export class HistoriaClinicaService {
     return this.registrar(pacienteId, CategoriaRegistro.ESTUDIO, tipo, resultado, identity);
   }
 
-  /** Nota de enfermería automática: la registra Enfermería (HU 1.1) y queda en la historia clínica del paciente. */
   registrarNotaEnfermeria(pacienteId: string, titulo: string, detalle: string, identity: SessionIdentity) {
     return this.registrar(pacienteId, CategoriaRegistro.NOTA_ENFERMERIA, titulo, detalle, identity);
   }

@@ -17,18 +17,15 @@ export const COBERTURA_LABEL: Record<TipoCobertura, string> = {
   PARTICULAR: 'Particular',
 };
 
-/** "Medicina Prepaga Premium", "Obra social pública", "Particular" o "No registrada" en cargos viejos. */
 export function coverageLabel(charge: Charge): string {
   const c = charge.cobertura;
   if (!c) return 'No registrada';
   return c.entidad ?? COBERTURA_LABEL[c.tipo];
 }
 
-/** Cargos con obra social pública o prepaga: los que no pagan el 100% a cargo del paciente. */
 export const hasCoverage = (charge: Charge): boolean =>
   charge.cobertura?.tipo === 'OBRA_SOCIAL_PUBLICA' || charge.cobertura?.tipo === 'MEDICINA_PREPAGA';
 
-/** Nombre de quien recibe el reclamo por la parte que no paga el paciente. */
 export function thirdPartyLabel(charge: Charge): string {
   const c = charge.cobertura;
   if (!c) return 'Tercero';
@@ -50,7 +47,6 @@ export function initials(charge: Charge): string {
   return p ? `${p.nombre[0] ?? ''}${p.apellido[0] ?? ''}`.toUpperCase() : '?';
 }
 
-/** Id corto para mostrar en tablas (los uuid completos se ven en el detalle). */
 export const shortId = (id: string): string => id.slice(0, 8);
 
 export type Periodo = 'TODO' | 'HOY' | 'SEMANA' | 'MES';
@@ -78,7 +74,6 @@ export function inPeriod(iso: string, periodo: Periodo, now = new Date()): boole
 
 const csvCell = (value: string | number): string => `"${String(value).replace(/"/g, '""')}"`;
 
-/** CSV para Excel en español: separador ';' y BOM para que respete los acentos. */
 export function buildChargesCsv(charges: Charge[]): string {
   const header = [
     'Fecha del cargo', 'Paciente', 'Documento', 'Médico', 'Concepto', 'Tipo de cargo',

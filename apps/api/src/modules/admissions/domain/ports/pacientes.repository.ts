@@ -8,7 +8,6 @@ export interface PacienteData {
   fechaNacimiento: string;
   telefono: string | null;
   tipoCobertura: CoverageType;
-  /** Prepaga u obra social; null si es particular. */
   entidadCobertura: string | null;
 }
 
@@ -24,9 +23,7 @@ export interface PacientesRepository {
   search(term: string | undefined, limit: number): Promise<PacienteData[]>;
   findById(id: string): Promise<PacienteData | null>;
   findByDocumento(documento: string): Promise<PacienteData | null>;
-  /** Lanza DocumentoDuplicadoError si el documento ya existe. */
   create(data: NuevoPaciente): Promise<PacienteData>;
-  /** null si el paciente no existe. */
   updateCoverage(
     id: string,
     tipoCobertura: CoverageType,

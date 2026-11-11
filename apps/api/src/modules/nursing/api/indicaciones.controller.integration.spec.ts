@@ -17,15 +17,12 @@ const INDICACION = { pacienteId: PACIENTE_ID, insumoId: INSUMO_ID, dosis: '400 m
 describe('IndicacionesController: autorización por rol y validación de entrada', () => {
   let app: INestApplication;
 
-  // El caso de uso se simula: acá se prueba la capa HTTP (guards, pipes y delegación), no la base de datos.
   const service = {
     crear: vi.fn(async () => ({ id: INDICACION_ID })),
     listar: vi.fn(async () => []),
     administrar: vi.fn(async () => ({ id: 'administracion-1' })),
   };
 
-  // Reemplaza solo la autenticación: sin header no hay sesión (401); con header el usuario tiene ese rol.
-  // El RolesGuard es el real, por eso los 403 que se verifican son los del controlador.
   const authGuardFalso = {
     canActivate: (context: ExecutionContext) => {
       const req = context.switchToHttp().getRequest<{ headers: Record<string, string | undefined>; user?: unknown }>();
@@ -36,7 +33,6 @@ describe('IndicacionesController: autorización por rol y validación de entrada
     },
   };
 
-  // HU 1.2: el médico prescribe, enfermería consulta y confirma la dosis. Cada rol tiene su acción.
   const endpoints = [
     {
       nombre: 'POST /indicaciones (crear)',
@@ -82,7 +78,6 @@ describe('IndicacionesController: autorización por rol y validación de entrada
       .useValue(authGuardFalso)
       .compile();
     app = module.createNestApplication();
-    // Misma configuración que app.module.ts.
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
     await app.init();
   });

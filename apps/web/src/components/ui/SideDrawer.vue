@@ -1,8 +1,6 @@
 <script lang="ts">
 import { reactive } from 'vue';
 
-// Pila de paneles abiertos. Sirve para que un panel se abra encima de otro: solo el de arriba
-// reacciona a Esc y el scroll de la página recién se libera cuando se cierra el último.
 const openStack = reactive<number[]>([]);
 let lastId = 0;
 </script>
@@ -19,7 +17,6 @@ const titleId = `drawer-title-${id}`;
 const panel = ref<HTMLElement | null>(null);
 let previouslyFocused: HTMLElement | null = null;
 
-// Cada panel abierto queda un escalón por encima del anterior.
 const layer = computed(() => 40 + Math.max(openStack.indexOf(id), 0) * 2);
 
 function onKeydown(event: KeyboardEvent): void {

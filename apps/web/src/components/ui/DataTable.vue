@@ -1,5 +1,4 @@
 <script setup lang="ts">
-// Definimos un tipo genérico o básico para los datos y columnas
 defineProps<{
   data: Array<any>;
   columns: Array<{ key: string; label: string }>;

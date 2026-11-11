@@ -19,17 +19,13 @@ export interface DoctorOption {
 const props = defineProps<{
   open: boolean;
   medicos: DoctorOption[];
-  /** Horario elegido en la pantalla (chip de "Horarios libres" o panel de horarios): abre con fecha, médico y hora ya cargados. */
   prefill: SlotDisponible | null;
-  /** Si la persona es médico, solo puede sacar turnos en su propia agenda. */
   lockedMedicoId: string | null;
 }>();
 
 const emit = defineEmits<{
   close: [];
-  /** La reserva salió bien; trae el mensaje para mostrar en la pantalla. */
   reserved: [mensaje: string];
-  /** Cambió la agenda (salió bien o hubo un conflicto): la pantalla de fondo tiene que refrescarse. */
   changed: [];
 }>();
 
@@ -38,7 +34,6 @@ const QUARTER_MS = 15 * 60_000;
 const fecha = ref(todayInClinic());
 const medicoId = ref('');
 const paciente = ref<Patient | null>(null);
-/** Inicio (ISO) del horario elegido. */
 const selectedStart = ref<string | null>(null);
 const esEntreturno = ref(false);
 const slots = ref<SlotDisponible[]>([]);
@@ -52,10 +47,6 @@ let slotsRequest = 0;
 const today = todayInClinic();
 const medicoActual = computed(() => props.medicos.find((m) => m.id === medicoId.value) ?? null);
 
-/**
- * Turno regular: los horarios libres tal cual. Entreturno: se inserta a los :15/:45 dentro de un
- * horario libre de 30 minutos, así que cada horario de 30 min ofrece su segunda mitad.
- */
 const opciones = computed<SlotDisponible[]>(() => {
   if (!esEntreturno.value) return slots.value;
   return slots.value
@@ -115,7 +106,6 @@ watch(
   },
 );
 
-// La lista de médicos puede terminar de cargar con el panel ya abierto.
 watch(
   () => props.medicos,
   (list) => {
@@ -143,7 +133,6 @@ function pickSlot(slot: SlotDisponible): void {
   errorReserva.value = null;
 }
 
-/** HU 1.3: sin horarios libres ese día, el paciente queda en la cola y recibe el primer horario que se libere. */
 async function anotarEnEspera(): Promise<void> {
   const patient = paciente.value;
   if (!patient || !medicoId.value || reservando.value) return;
@@ -185,7 +174,6 @@ async function submit(): Promise<void> {
     );
     emit('close');
   } catch (reason) {
-    // Por ejemplo, otra recepcionista tomó el mismo horario: se avisa y se recarga la grilla.
     errorReserva.value = messageFrom(reason, 'No se pudo reservar el turno.');
     selectedStart.value = null;
     emit('changed');
@@ -310,7 +298,6 @@ async function submit(): Promise<void> {
 <style scoped>
 .form { display: grid; gap: 22px; }
 .group { display: grid; gap: 8px; }
-/* display: block anula el "grid" global de los <label>, que mandaba el asterisco a otra línea. */
 .label { display: block; font-family: var(--font); font-size: 0.88rem; font-weight: 700; letter-spacing: 0; }
 .req { color: var(--color-danger); }
 

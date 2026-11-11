@@ -4,13 +4,11 @@ export const formatTime = (iso: string): string =>
 export const formatDateTime = (iso: string): string =>
   new Date(iso).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' });
 
-/** La API devuelve "Apellido, Nombre"; las pantallas muestran "Nombre Apellido". */
 export function displayName(apiName: string): string {
   const at = apiName.indexOf(', ');
   return at === -1 ? apiName : `${apiName.slice(at + 2)} ${apiName.slice(0, at)}`;
 }
 
-/** Fecha calendario (aaaa-mm-dd) como dd/mm/aaaa, sin el desfase de zona horaria de `new Date('aaaa-mm-dd')`. */
 export const formatDate = (isoDate: string): string =>
   new Date(`${isoDate.slice(0, 10)}T12:00:00`).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
@@ -31,6 +29,5 @@ export function longDate(): string {
   return new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
-/** DNI con puntos de miles (28456921 pasa a 28.456.921); si trae letras se deja tal cual. */
 export const formatDocument = (documento: string): string =>
   /^\d+$/.test(documento) ? Number(documento).toLocaleString('es-AR') : documento;

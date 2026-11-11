@@ -25,7 +25,6 @@ export function useClinicalHistory() {
     }
   }
 
-  /** Agrega un registro y recarga la historia; lanza ApiError (400, 403, 404) para que el formulario lo muestre. */
   async function add(pacienteId: string, section: ClinicalSection, titulo: string, detalle: string): Promise<void> {
     await addClinicalRecord(pacienteId, section, titulo, detalle);
     history.value = await getClinicalHistory(pacienteId);

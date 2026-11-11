@@ -25,7 +25,6 @@ import {
 export interface DosisView {
   programadaPara: string;
   estado: 'ADMINISTRADA' | 'PENDIENTE';
-  /** True si la hora actual está dentro de la ventana de ±30 min de la dosis. */
   enVentana: boolean;
   administradaPor?: string;
   administradaEn?: string;
@@ -83,7 +82,6 @@ export class IndicacionesService {
     if (fechaFin && fechaFin <= ahora) {
       throw new BadRequestException('La fecha de fin debe ser posterior al momento actual.');
     }
-    // Admisión es dueño de pacientes: se consulta por su caso de uso (404 si no existe).
     await this.pacientes.get(dto.pacienteId);
     if (!(await this.repository.insumoExiste(dto.insumoId))) {
       throw new NotFoundException('No se encontró el insumo.');
@@ -138,7 +136,6 @@ export class IndicacionesService {
       };
     });
 
-    // El evento se publica recién cuando la transacción ya está confirmada.
     this.events.publish(
       new MedicationAdministered({
         patientId: indicacion.pacienteId,

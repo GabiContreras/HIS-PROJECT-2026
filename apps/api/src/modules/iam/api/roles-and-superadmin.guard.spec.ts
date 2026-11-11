@@ -14,7 +14,6 @@ const identity = (over: Partial<SessionIdentity> = {}): SessionIdentity => ({
   ...over,
 });
 
-/** Contexto mínimo: la identidad que dejó el AuthGuard y el handler/clase donde se leen los metadatos. */
 function contexto(user: SessionIdentity, handler: object, clase: object): ExecutionContext {
   return {
     switchToHttp: () => ({ getRequest: () => ({ user }) }),

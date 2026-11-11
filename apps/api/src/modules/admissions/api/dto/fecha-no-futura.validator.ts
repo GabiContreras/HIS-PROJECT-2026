@@ -19,7 +19,6 @@ export class FechaNoFuturaConstraint
       return false;
     }
 
-    // Verifica el formato YYYY-MM-DD.
     const coincidencia = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
 
     if (!coincidencia) {
@@ -30,7 +29,6 @@ export class FechaNoFuturaConstraint
     const mes = Number(coincidencia[2]);
     const dia = Number(coincidencia[3]);
 
-    // Comprueba que el día exista realmente en ese mes.
     const fecha = new Date(Date.UTC(anio, mes - 1, dia));
 
     if (
@@ -41,7 +39,6 @@ export class FechaNoFuturaConstraint
       return false;
     }
 
-    // Compara fechas sin depender de la hora ni de la zona horaria.
     const hoy = new Date();
     const hoyISO = [
       hoy.getFullYear(),

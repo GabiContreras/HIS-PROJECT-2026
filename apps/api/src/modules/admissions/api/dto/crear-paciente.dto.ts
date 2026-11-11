@@ -56,7 +56,6 @@ export class CrearPacienteDto {
   })
   tipoCobertura: CoverageType;
 
-  /** Prepaga u obra social. Obligatoria en prepaga; se ignora en particular. */
   @ApiPropertyOptional({ description: 'Prepaga u obra social. Obligatoria en prepaga.' })
   @IsOptional()
   @Transform(trim)

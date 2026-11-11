@@ -1,6 +1,5 @@
 import { http } from '../shared/http';
 
-/** Notificación persistida por la API (GET /notificaciones): alertas de triaje y de signos vitales. */
 export interface RemoteNotification {
   id: string;
   tipo: string;

@@ -19,7 +19,6 @@ export interface CareProtocol {
   tareas: CareTask[];
 }
 
-/** Patrón Builder: arma el plan de cuidados paso a paso según el motivo de ingreso. */
 class ProtocolBuilder {
   private readonly tasks: string[] = [];
 
@@ -56,10 +55,8 @@ export function buildProtocol(reason: AdmissionReason): CareProtocol {
     .build();
 }
 
-// --- API de protocolos generados por el backend al admitir al paciente ---
 export type TipoIngreso = 'PRE_QUIRURGICO' | 'RESPIRATORIO';
 
-/** Etiquetas de pantalla para cada tipo de ingreso de la API. */
 export const INGRESO_TYPE_LABELS: Record<TipoIngreso, string> = {
   PRE_QUIRURGICO: 'Ingreso pre-quirúrgico',
   RESPIRATORIO: 'Ingreso por infección respiratoria',
@@ -73,9 +70,7 @@ export interface ProtocolTask {
   descripcion: string;
   frecuenciaHoras: number | null;
   hecha: boolean;
-  /** ISO de cuando se marcó; null si no está hecha. */
   hechaEn: string | null;
-  /** "Apellido, Nombre" de quien la marcó. */
   hechaPor: string | null;
 }
 
@@ -85,7 +80,7 @@ export interface Protocol {
   pacienteId: string;
   tipo: TipoIngreso;
   motivoIngreso: string;
-  generadoEn: string; // ISO
+  generadoEn: string;
   tareas: ProtocolTask[];
 }
 
@@ -93,7 +88,6 @@ export function listProtocols(pacienteId: string): Promise<Protocol[]> {
   return http.get<Protocol[]>(`/protocolos?pacienteId=${encodeURIComponent(pacienteId)}`);
 }
 
-/** Marca o desmarca una tarea del checklist (PATCH; médicos y enfermeros). Devuelve el protocolo actualizado. */
 export function markProtocolTask(protocolId: string, taskId: string, hecha: boolean): Promise<Protocol> {
   return http.patch<Protocol>(
     `/protocolos/${encodeURIComponent(protocolId)}/tareas/${encodeURIComponent(taskId)}`,
@@ -101,13 +95,11 @@ export function markProtocolTask(protocolId: string, taskId: string, hecha: bool
   );
 }
 
-/** Motivo de ingreso en texto que el backend sabe resolver a un protocolo. */
 const BACKEND_MOTIVOS: Record<AdmissionReason, string> = {
   PRE_QUIRURGICO: 'Cirugía programada',
   INFECCION_RESPIRATORIA: 'Infección respiratoria',
 };
 
-/** Guarda en el backend el protocolo del ingreso (POST /protocolos/ingresos; solo médicos y administrativos). */
 export function saveAdmissionProtocol(pacienteId: string, reason: AdmissionReason): Promise<Protocol> {
   return http.post<Protocol>('/protocolos/ingresos', {
     ingresoId: crypto.randomUUID(),

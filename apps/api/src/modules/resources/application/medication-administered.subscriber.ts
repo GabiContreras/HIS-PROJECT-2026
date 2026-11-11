@@ -8,18 +8,8 @@ import {
 } from '../../../shared/events/medication-administered.event.js';
 import { InventoryService } from '../infrastructure/inventory.service.js';
 
-/** Máximo de ids de administración recordados para la idempotencia en memoria. */
 const MAX_IDS_RECORDADOS = 10_000;
 
-/**
- * Descuenta del inventario el insumo de cada medicación administrada (HU 1.2, escenario 1).
- *
- * - Nunca lanza hacia el EventBus: cualquier fallo (stock insuficiente, insumo inexistente,
- *   error de base) se registra con log y la administración ya confirmada no se revierte.
- * - Idempotencia: si el payload trae `administrationId`, un mismo id no se descuenta dos veces
- *   mientras el proceso siga vivo. Límite conocido: la memoria no sobrevive a un reinicio y el bus
- *   no es durable (mejora posible: Outbox / tabla de movimientos con clave única).
- */
 @Injectable()
 export class MedicationAdministeredSubscriber implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(MedicationAdministeredSubscriber.name);
@@ -43,7 +33,6 @@ export class MedicationAdministeredSubscriber implements OnModuleInit, OnModuleD
     this.subscription?.unsubscribe();
   }
 
-  /** Nunca rechaza: los errores se registran y se descartan. */
   async handle(event: DomainEvent<MedicationAdministeredPayload>): Promise<void> {
     const { supplyId, quantity, administrationId } = event.payload;
     if (administrationId) {
@@ -56,7 +45,6 @@ export class MedicationAdministeredSubscriber implements OnModuleInit, OnModuleD
     try {
       await this.inventory.descontarStock({ insumoId: supplyId, cantidad: quantity });
     } catch (error) {
-      // Si falló, el descuento no se aplicó: se permite reintentar con el mismo id.
       if (administrationId) this.procesadas.delete(administrationId);
       this.logger.error(
         `No se pudo descontar ${quantity} unidad(es) del insumo ${supplyId} (administración ${administrationId ?? 'sin id'}): ${

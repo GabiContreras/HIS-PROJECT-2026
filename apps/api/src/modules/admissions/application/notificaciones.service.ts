@@ -31,7 +31,6 @@ export class NotificacionesService {
     return await this.notificacionRepo.save(notif);
   }
 
-  /** Nunca lanza: un fallo al notificar no debe romper la operación de negocio que lo disparó. */
   async notificarPorRol(rol: RolUsuario, contenido: ContenidoNotificacion): Promise<void> {
     try {
       const cuentas = await this.usuarioRepo.find({
@@ -47,7 +46,6 @@ export class NotificacionesService {
     }
   }
 
-  /** Nunca lanza: si una notificación falla se registra y se sigue con las demás. */
   async notificarUsuarios(ids: string[], contenido: ContenidoNotificacion): Promise<void> {
     for (const destinatarioId of ids) {
       try {
@@ -67,7 +65,6 @@ export class NotificacionesService {
     });
   }
 
-  /** Solo el destinatario puede marcarla: si es de otro usuario responde 404, igual que si no existe. */
   async marcarComoLeida(id: string, destinatarioId: string): Promise<NotificacionEntity> {
     const notif = await this.notificacionRepo.findOne({ where: { id, destinatarioId } });
     if (!notif) {

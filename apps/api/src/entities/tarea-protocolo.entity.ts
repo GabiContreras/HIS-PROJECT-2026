@@ -9,7 +9,6 @@ export class TareaProtocolo {
 
   @ManyToOne(() => ProtocoloIngreso, (protocolo) => protocolo.tareas, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'protocolo_id' })
-  /** `Relation<>` evita el error de inicialización por la importación circular entre entidades (ESM). */
   protocolo: Relation<ProtocoloIngreso>;
 
   @Column({ type: 'int' })
@@ -21,7 +20,6 @@ export class TareaProtocolo {
   @Column({ type: 'int', nullable: true, name: 'frecuencia_horas' })
   frecuenciaHoras: number | null;
 
-  /** Casilla del checklist de enfermería. Coherente con `hechaEn` (CHECK en base). */
   @Column({ type: 'boolean', default: false })
   hecha: boolean;
 

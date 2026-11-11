@@ -1,10 +1,7 @@
 import { CoverageType } from '../../../shared/events/coverage-type.js';
 
-/** Cómo se reparte el valor base de una prestación (HU de Facturación, épica 1). */
 export interface CoverageBreakdown {
-  /** Lo que paga el paciente. */
   pacientePesos: number;
-  /** Lo que se le factura a un tercero: el Estado o la prepaga. */
   terceroPesos: number;
 }
 
@@ -13,13 +10,8 @@ export interface CoverageStrategy {
   split(valorBasePesos: number): CoverageBreakdown;
 }
 
-/**
- * Copago fijo por consulta de la prepaga (ejemplo de la HU: Medicina Prepaga Premium, $3.000).
- * PENDIENTE: el nomenclador real define el copago por prepaga; hasta tenerlo se usa uno solo.
- */
 export const COPAGO_PREPAGA_PESOS = 3_000;
 
-/** Obra social pública: subsidia el 100%; el paciente abona cero. */
 export class ObraSocialPublicaStrategy implements CoverageStrategy {
   readonly tipo = CoverageType.PUBLIC_INSURANCE;
   split(valorBasePesos: number): CoverageBreakdown {
@@ -27,7 +19,6 @@ export class ObraSocialPublicaStrategy implements CoverageStrategy {
   }
 }
 
-/** Medicina prepaga: copago fijo para el paciente; el resto se le reclama a la prepaga. */
 export class MedicinaPrepagaStrategy implements CoverageStrategy {
   readonly tipo = CoverageType.PREPAID;
   split(valorBasePesos: number): CoverageBreakdown {
@@ -36,7 +27,6 @@ export class MedicinaPrepagaStrategy implements CoverageStrategy {
   }
 }
 
-/** Particular (sin cobertura): el paciente paga el 100% del valor base. */
 export class ParticularStrategy implements CoverageStrategy {
   readonly tipo = CoverageType.SELF_PAY;
   split(valorBasePesos: number): CoverageBreakdown {

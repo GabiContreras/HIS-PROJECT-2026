@@ -14,11 +14,6 @@ const ACCIONES: Accion[] = [
   'desbloquear',
 ];
  
-/**
- * Tabla de verdad de la máquina de estados:
- * estado de origen -> { acción válida: estado destino }.
- * Cualquier acción que NO figure acá debe ser rechazada.
- */
 const TRANSICIONES_VALIDAS: Record<EstadoCama, Partial<Record<Accion, EstadoCama>>> = {
   [EstadoCama.LIBRE]: {
     ocupar: EstadoCama.OCUPADA,
