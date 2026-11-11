@@ -26,10 +26,12 @@ import { BedAssigned } from '../../../shared/events/bed-assigned.event.js';
 import { BedCleaned } from '../../../shared/events/bed-cleaned.event.js';
 import { BedReleased } from '../../../shared/events/bed-released.event.js';
 import { EventBus } from '../../../shared/events/event-bus.service.js';
+import { PatientAdmitted } from '../../../shared/events/patient-admitted.event.js';
 import type { SessionIdentity } from '../../iam/application/auth.service.js';
 import { AsignarCamaDto } from '../api/dto/asignar-cama.dto.js';
 import { CamaResponseDto } from '../api/dto/cama-response.dto.js';
 import { ListarCamasQueryDto } from '../api/dto/listar-camas-query.dto.js';
+import { BED_BLOCKED, BED_UNBLOCKED, type BedBlockedPayload, type BedUnblockedPayload } from '../domain/bed-events.js';
 import { EstadoCama } from '../domain/estado-cama.enum.js';
 import { InvalidBedTransitionError } from '../domain/invalid-bed-transition.error.js';
 import { BedState } from '../domain/state/bed-state.js';
@@ -125,6 +127,7 @@ export class CamasService {
           pacienteId: paciente.id,
           camaId: cama.id,
           medicoId,
+          motivoIngreso: dto.motivoIngreso ?? null,
         }),
       );
       return { cama, internacion };
@@ -141,6 +144,22 @@ export class CamasService {
         internacion.id,
       ),
     );
+
+    // HU 2.1 de Enfermería: el ingreso dispara el protocolo de atención. Se publica después del commit
+    // y solo si se informó el motivo; sin motivo no hay protocolo que elegir.
+    if (internacion.motivoIngreso) {
+      this.events.publish(
+        new PatientAdmitted(
+          {
+            admissionId: internacion.id,
+            patientId: dto.pacienteId,
+            reason: internacion.motivoIngreso,
+            admittedAt: internacion.fechaIngreso.toISOString(),
+          },
+          internacion.id,
+        ),
+      );
+    }
     return this.toDto(cama);
   }
 
@@ -203,11 +222,25 @@ export class CamasService {
   }
 
   async bloquear(camaId: string): Promise<CamaResponseDto> {
-    return this.toDto(await this.cambiarEstado(camaId, (s) => s.bloquear()));
+    const cama = await this.cambiarEstado(camaId, (s) => s.bloquear());
+    const blockedAt = new Date().toISOString();
+    this.events.publish<BedBlockedPayload>({
+      type: BED_BLOCKED,
+      occurredAt: blockedAt,
+      payload: { bedId: cama.id, bedNumber: cama.numero, blockedAt },
+    });
+    return this.toDto(cama);
   }
 
   async desbloquear(camaId: string): Promise<CamaResponseDto> {
-    return this.toDto(await this.cambiarEstado(camaId, (s) => s.desbloquear()));
+    const cama = await this.cambiarEstado(camaId, (s) => s.desbloquear());
+    const unblockedAt = new Date().toISOString();
+    this.events.publish<BedUnblockedPayload>({
+      type: BED_UNBLOCKED,
+      occurredAt: unblockedAt,
+      payload: { bedId: cama.id, bedNumber: cama.numero, unblockedAt },
+    });
+    return this.toDto(cama);
   }
 
 

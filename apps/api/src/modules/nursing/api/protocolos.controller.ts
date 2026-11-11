@@ -53,7 +53,7 @@ export class ProtocolosController {
   @Roles(RolUsuario.MEDICO, RolUsuario.ADMINISTRATIVO)
   @ApiOperation({
     summary: 'Registrar un ingreso y generar su protocolo (Builder); idempotente por ingresoId',
-    description: 'Punto de entrada manual equivalente al evento patient.admitted, que hoy ningún módulo publica todavía.',
+    description: 'Alternativa manual al evento patient.admitted, que Recursos publica al asignar una cama con motivoIngreso (POST /camas/:id/asignar).',
   })
   @ApiResponse({ status: 400, description: 'Validación o motivo de ingreso sin protocolo definido' })
   @ApiResponse({ status: 403, description: 'Solo médicos y administrativos' })

@@ -14,6 +14,10 @@ export class Internacion {
   @Column({ name: 'medico_id', type: 'uuid' })
   medicoId: string;
 
+  /** Motivo o diagnóstico inicial informado al asignar la cama; null si no se informó. */
+  @Column({ name: 'motivo_ingreso', type: 'varchar', length: 200, nullable: true })
+  motivoIngreso: string | null;
+
   /** La BD la completa con now() al insertar. */
   @CreateDateColumn({ name: 'fecha_ingreso', type: 'timestamptz' })
   fechaIngreso: Date;

@@ -1,5 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsUUID } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
+
+/** Recorta espacios; un texto vacío se trata como "no informado". */
+const trimOrUndefined = ({ value }: { value: unknown }) => {
+  if (typeof value !== 'string') return value;
+  const texto = value.trim();
+  return texto === '' ? undefined : texto;
+};
 
 export class AsignarCamaDto {
   @ApiProperty({
@@ -17,4 +25,18 @@ export class AsignarCamaDto {
   @IsOptional()
   @IsUUID('4', { message: 'medicoId debe ser un UUID válido.' })
   medicoId?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Motivo o diagnóstico inicial del ingreso. Si se informa, se guarda en la internación y se publica patient.admitted para que Enfermería genere el protocolo de atención ("cirugía programada" o "neumonía" / "infección respiratoria").',
+    example: 'Cirugía programada',
+    minLength: 3,
+    maxLength: 200,
+  })
+  @Transform(trimOrUndefined)
+  @IsOptional()
+  @IsString({ message: 'motivoIngreso debe ser un texto.' })
+  @MinLength(3, { message: 'motivoIngreso debe tener al menos 3 caracteres.' })
+  @MaxLength(200, { message: 'motivoIngreso no puede superar los 200 caracteres.' })
+  motivoIngreso?: string;
 }
