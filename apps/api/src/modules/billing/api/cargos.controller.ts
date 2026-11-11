@@ -20,7 +20,7 @@ import { CargoDetalleDto } from './dto/cargo-detalle.dto.js';
 @ApiTags('Billing')
 @ApiBearerAuth()
 export class CargosController {
-  constructor(private readonly billing: BillingService) {}
+  constructor(private readonly billing: BillingService) { }
 
   @Get()
   @ApiOperation({
@@ -40,5 +40,11 @@ export class CargosController {
   })
   list() {
     return this.billing.list();
+  }
+  @Get('resumen')
+  @ApiOperation({ summary: 'Reporte: cargos agrupados por tipo de cobertura' })
+  @ApiOkResponse({ description: 'Totales por cobertura.' })
+  resumen() {
+    return this.billing.resumen();
   }
 }
