@@ -3,13 +3,6 @@ import type { ToastInput, ToastSeverity } from '../features/feedback/types';
 
 type ToastOptions = Omit<ToastInput, 'severity' | 'message'>;
 
-/**
- * Punto de entrada para dar feedback desde cualquier componente o servicio:
- *   toast.success('Turno reservado')
- *   toast.error('No se pudo guardar', { action: { label: 'Reintentar', handler } })
- *   if (await confirm({ title, message, confirmLabel: 'Dar de baja', tone: 'danger' })) { ... }
- *   notify({ level: 'critical', category: 'clinico', title, detail, roles: ['MEDICO'] })
- */
 export function useFeedback() {
   const store = useNotificationStore();
   const make =

@@ -1,15 +1,3 @@
-/**
- * Prueba funcional del Bloque B (Enfermería, Recursos, IAM) contra un servidor y una base REALES.
- *
- * Uso (desde apps/api, con la API levantada contra una base LOCAL ya migrada y con superadmin):
- *   DATABASE_URL=postgres://postgres:local@localhost:5433/his \
- *   SUPERADMIN_EMAIL=... SUPERADMIN_PASSWORD=... \
- *   node scripts/functional-check.mjs
- *
- * Variables opcionales: API_URL (http://localhost:3000), ORIGIN (http://localhost:5173).
- * Crea usuarios, pacientes, camas e insumos de prueba: por seguridad solo corre contra localhost.
- * Imprime una tabla Markdown con el resultado de cada caso y termina con código 1 si alguno falla.
- */
 import pg from 'pg';
 
 const API = process.env.API_URL ?? 'http://localhost:3000';
@@ -34,7 +22,6 @@ const PASSWORD = 'Clave5Segura8';
 const results = [];
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/** Llama a la API. Devuelve { status, body, cookie }. */
 async function api(method, path, { token, body, cookie, origin } = {}) {
   const headers = {};
   if (token) headers.authorization = `Bearer ${token}`;
@@ -59,7 +46,6 @@ async function login(email, password = PASSWORD) {
   return { token: res.body.accessToken, cookie: res.cookie, account: res.body.account };
 }
 
-/** Registra un caso: `check` devuelve { ok, obs } o lanza. */
 async function caso(hu, nombre, esperado, check) {
   let ok = false;
   let obs = '';
@@ -77,7 +63,6 @@ const statuses = (responses) => responses.map((r) => r.status).sort().join(', ')
 async function main() {
   await db.connect();
 
-  // ---------- Datos de prueba ----------
   const root = await login(ROOT_EMAIL, ROOT_PASSWORD);
 
   const emails = {
@@ -144,7 +129,6 @@ async function main() {
   const escaso = await insumo('Insumo escaso', 10);
   const stockDe = async (id) => (await db.query(`SELECT cantidad_disponible FROM insumos WHERE id = $1`, [id])).rows[0].cantidad_disponible;
 
-  // ---------- Recursos 1.1: asignación segura ----------
   await caso('Recursos 1.1', 'Dos asignaciones simultáneas de la misma cama', 'Una 201 y una 409', async () => {
     const [a, b] = await Promise.all([
       api('POST', `/camas/${camas[0]}/asignar`, { token: admin.token, body: { pacienteId: pacientes[0], medicoId: idDe(emails.medico) } }),
@@ -167,7 +151,6 @@ async function main() {
     return { ok: rows.length === 1 && rows[0].fecha_ingreso instanceof Date && cama.estado === 'OCUPADA' && cama.paciente?.id === ganador, obs: `estado ${cama.estado}; fecha_ingreso ${rows[0]?.fecha_ingreso?.toISOString()}` };
   });
 
-  // ---------- Recursos 2.1 (tiempo real): stream abierto mientras se opera ----------
   const recibidos = [];
   const abort = new AbortController();
   const stream = await fetch(`${API}/camas/eventos`, { headers: { authorization: `Bearer ${admin.token}` }, signal: abort.signal });
@@ -187,12 +170,10 @@ async function main() {
         }
       }
     } catch {
-      /* conexión cerrada por el cliente */
     }
   })();
   await sleep(300);
 
-  // ---------- Enfermería 2.1: protocolo al asignar la cama con motivo (B1) ----------
   let protocolo;
   await caso('Enfermería 2.1', 'Asignar cama con motivo "Cirugía programada"', 'Aparece el protocolo pre-quirúrgico sin llamar a POST /protocolos/ingresos', async () => {
     const res = await api('POST', `/camas/${camas[2]}/asignar`, { token: admin.token, body: { pacienteId: pacientes[2], medicoId: idDe(emails.medico), motivoIngreso: '  Cirugía programada  ' } });
@@ -238,7 +219,6 @@ async function main() {
     return { ok: res.status === 200 && marcada?.hecha === true && Boolean(marcada.hechaEn) && Boolean(marcada.hechaPor), obs: `HTTP ${res.status}; hecha=${marcada?.hecha}; hechaPor="${marcada?.hechaPor}"; hechaEn=${marcada?.hechaEn}` };
   });
 
-  // ---------- Recursos 2.1: máquina de estados ----------
   await caso('Recursos 2.1', 'Alta, limpieza y confirmación', 'OCUPADA → EN_LIMPIEZA → LIBRE', async () => {
     const alta = await api('POST', `/camas/${camas[0]}/alta`, { token: medico.token });
     const enLimpieza = await api('POST', `/camas/${camas[0]}/asignar`, { token: admin.token, body: { pacienteId: pacientes[5], medicoId: idDe(emails.medico) } });
@@ -279,7 +259,6 @@ async function main() {
     return { ok: sinToken.status === 401 && porQuery.status === 401, obs: `sin token: ${sinToken.status}; por query: ${porQuery.status}` };
   });
 
-  // ---------- Enfermería 1.1: signos vitales ----------
   const control = (temperatura, extra = {}) => ({ pacienteId: pacientes[2], sistolica: 120, diastolica: 80, frecuenciaCardiaca: 72, temperatura, ...extra });
 
   await caso('Enfermería 1.1', 'Control con valores normales', '201, critico: false y nota automática', async () => {
@@ -305,7 +284,6 @@ async function main() {
     return { ok: res.status === 400 && antes === despues, obs: `HTTP ${res.status}; filas antes ${antes}, después ${despues}; "${[].concat(res.body?.message ?? '').join(' ')}"` };
   });
 
-  // ---------- Enfermería 1.2 + Recursos 3.1 + Facturación 2.1: medicación ----------
   const nuevaIndicacion = async () =>
     must(await api('POST', '/indicaciones', { token: medico.token, body: { pacienteId: pacientes[2], insumoId: ibuprofeno, dosis: '400 mg', frecuenciaHoras: 8 } }), 201, 'crear indicación');
 
@@ -323,7 +301,6 @@ async function main() {
 
   await caso('Enfermería 1.2', 'Administrar fuera de ±30 min', 'Rechazada (409) y sin descuento', async () => {
     const indicacion = await nuevaIndicacion();
-    // La dosis vigente pasa a estar a 2 h de distancia: fuera de la ventana.
     await db.query(`UPDATE indicaciones_medicas SET fecha_inicio = now() - interval '2 hours' WHERE id = $1`, [indicacion.id]);
     const antes = await stockDe(ibuprofeno);
     const res = await api('POST', `/indicaciones/${indicacion.id}/administraciones`, { token: enfermero.token, body: {} });
@@ -349,7 +326,6 @@ async function main() {
     return { ok: ok201 === 10 && conflictos === 5 && stock === 0, obs: `15 pedidos sobre 10 unidades: ${ok201} aceptados, ${conflictos} con 409; stock final ${stock}` };
   });
 
-  // ---------- IAM ----------
   await caso('IAM', 'Login y GET /auth/me', '200 con access token y cookie de refresh HttpOnly', async () => {
     const res = await fetch(`${API}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json', origin: ORIGIN }, body: JSON.stringify({ email: emails.enfermero, password: PASSWORD }) });
     const setCookie = res.headers.get('set-cookie') ?? '';

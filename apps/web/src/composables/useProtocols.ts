@@ -6,9 +6,7 @@ export function useProtocols() {
   const protocols = ref<Protocol[]>([]);
   const loading = ref(false);
   const error = ref<string | null>(null);
-  /** Aviso del último intento fallido de marcar una tarea (se limpia al reintentar). */
   const taskError = ref<string | null>(null);
-  /** Ids de tareas con un PATCH en curso (la casilla queda deshabilitada). */
   const pendingTasks = ref<ReadonlySet<string>>(new Set());
 
   let request = 0;
@@ -45,7 +43,6 @@ export function useProtocols() {
     pendingTasks.value = next;
   }
 
-  /** Marca/desmarca con actualización optimista; si el PATCH falla vuelve al estado anterior y avisa. */
   async function toggleTask(protocolId: string, taskId: string, hecha: boolean): Promise<void> {
     const task = protocols.value.find((p) => p.id === protocolId)?.tareas.find((t) => t.id === taskId);
     if (!task || pendingTasks.value.has(taskId)) return;

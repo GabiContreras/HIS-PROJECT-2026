@@ -1,5 +1,4 @@
 :root {
-  /* Paleta del diseño de Figma */
   --color-ink: #17201d;
   --color-muted: #66726e;
   --color-line: #dfe5e2;
@@ -15,7 +14,6 @@
   --color-violet: #5b3fa0;
   --color-violet-soft: #efe9fb;
 
-  /* Nombres que ya usaban los componentes existentes */
   --color-primary: var(--color-brand);
   --color-accent: var(--color-brand);
   --color-bg: #f5f7f6;
@@ -25,7 +23,6 @@
   --color-success: var(--color-brand);
   --color-neutral: #7b8794;
 
-  /* Estados de cama */
   --cama-disponible: #0d6657;
   --cama-ocupada: #27657b;
   --cama-limpieza: #d49a2e;

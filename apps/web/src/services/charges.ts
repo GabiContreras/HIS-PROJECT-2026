@@ -9,16 +9,12 @@ export interface Charge {
   importePesos: number;
   tipoAtencion: TipoAtencion;
   createdAt: string;
-  /** Cobertura del paciente al facturar y cómo se repartió el valor base. null en cargos anteriores al registro de coberturas. */
   cobertura: {
     tipo: TipoCobertura;
     entidad: string | null;
-    /** Lo que paga el paciente. */
     pacientePesos: number | null;
-    /** Lo que se le reclama al Estado o a la prepaga. */
     terceroPesos: number | null;
   } | null;
-  /** null si el turno que originó el cargo ya no se puede leer. */
   turno: {
     fechaHora: string;
     duracionMinutos: number;

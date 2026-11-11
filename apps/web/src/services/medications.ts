@@ -4,23 +4,19 @@ import { http } from '../shared/http';
 export type MedicationStatus = 'PENDIENTE' | 'ADMINISTRADA';
 
 export interface Medication {
-  /** Una fila por dosis programada del día: `<indicacionId>:<n>`. */
   id: string;
-  /** Indicación médica de la dosis (la API administra la dosis vigente de la indicación). */
   indicacionId: string;
   paciente: string;
   medicamento: string;
   dosis: string;
   indicacion: string;
-  programadaAt: string; // ISO
+  programadaAt: string;
   estado: MedicationStatus;
-  /** Insumo del inventario que se descuenta al administrar (si corresponde). */
   insumoId: string | null;
   administradaPor: string | null;
   administradaAt: string | null;
 }
 
-/** Margen permitido para administrar respecto del horario indicado. */
 export const ADMIN_WINDOW_MIN = 30;
 
 export function minutesToSchedule(medication: Medication, now = new Date()): number {
@@ -69,7 +65,6 @@ export async function listMedications(): Promise<Medication[]> {
     .sort((a, b) => a.programadaAt.localeCompare(b.programadaAt));
 }
 
-/** El backend toma al enfermero de la sesión, valida la ventana de ±30 min y descuenta el insumo (409 si ya se administró). */
 export async function administerMedication(id: string): Promise<void> {
   const indicacionId = id.split(':')[0]!;
   await http.post(`/indicaciones/${encodeURIComponent(indicacionId)}/administraciones`, {});

@@ -16,7 +16,6 @@ function toData(row: SignoVital): SignoVitalData {
     pacienteId: row.paciente.id,
     paciente: `${row.paciente.apellido}, ${row.paciente.nombre}`,
     tipo: row.tipo,
-    // La columna es NUMERIC en PostgreSQL: el driver lo devuelve como string.
     valor: Number(row.valor),
     fechaHora: new Date(row.fechaHora),
     controlId: row.controlId,

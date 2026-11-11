@@ -15,7 +15,7 @@ describe('IndicacionesService', () => {
   const nurse: SessionIdentity = { accountId: 'nurse-1', sessionId: 's1', rol: RolUsuario.ENFERMERO, esSuperadmin: false };
   const doctor: SessionIdentity = { accountId: 'doc-1', sessionId: 's2', rol: RolUsuario.MEDICO, esSuperadmin: false };
 
-  const inicio = new Date('2030-01-01T06:00:00.000Z'); // dosis 06:00, 14:00, 22:00
+  const inicio = new Date('2030-01-01T06:00:00.000Z');
   const indicacion: IndicacionData = {
     id: 'ind-1',
     pacienteId: 'patient-1',

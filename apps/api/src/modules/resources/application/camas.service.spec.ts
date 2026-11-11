@@ -31,7 +31,6 @@ interface Options {
   internacionesActivas?: number;
 }
 
-/** Arma el servicio con un EntityManager falso: la transacción corre el trabajo y devuelve su resultado. */
 function build(options: Options = {}) {
   const cama = { id: CAMA, numero: '101', sector: 'Piso 1', estado: options.estado ?? EstadoCama.LIBRE, pacienteActual: null };
   const internacionesGuardadas: Array<Record<string, unknown>> = [];
@@ -167,7 +166,6 @@ describe('CamasService.bloquear / desbloquear', () => {
 });
 
 describe('CamasService.asignar + suscriptor de Enfermería (EventBus real)', () => {
-  /** Enfermería real (servicio + suscriptor) sobre un repositorio en memoria. */
   function conEnfermeria(events: EventBus) {
     const guardados = new Map<string, ProtocoloData>();
     const repository = {
@@ -196,7 +194,6 @@ describe('CamasService.asignar + suscriptor de Enfermería (EventBus real)', () 
     return { protocolos, subscriber, guardados };
   }
 
-  /** El suscriptor procesa en segundo plano: se espera a que termine la cola de promesas. */
   const esperarSuscriptor = () => new Promise((resolve) => setImmediate(resolve));
 
   it('asignar con "Cirugía programada" deja el protocolo pre-quirúrgico de ese ingreso', async () => {

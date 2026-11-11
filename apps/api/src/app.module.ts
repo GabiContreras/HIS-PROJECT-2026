@@ -32,13 +32,11 @@ import { AllExceptionsFilter } from './shared/http/all-exceptions.filter.js';
 
 @Module({
   imports: [
-    // 1. Cargamos ConfigModule especificando posibles rutas del .env
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ['.env', 'apps/api/.env', '../../.env'],
     }),
 
-    // 2. Usamos forRootAsync para esperar a que las variables de entorno se carguen
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

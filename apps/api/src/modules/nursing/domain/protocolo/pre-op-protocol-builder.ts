@@ -1,7 +1,6 @@
 import { BaseProtocolBuilder } from './protocol-builder.js';
 import { TipoIngreso } from './protocolo.js';
 
-/** Builder concreto: ingreso pre-quirúrgico por cirugía programada (HU 2.1, escenario 1). */
 export class PreOpProtocolBuilder extends BaseProtocolBuilder {
   readonly tipo = TipoIngreso.PRE_QUIRURGICO;
 

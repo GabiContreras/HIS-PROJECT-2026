@@ -42,7 +42,6 @@ function reset(): void {
   saveError.value = null;
 }
 
-// Cada vez que se abre arranca limpio.
 watch(() => props.open, (isOpen) => isOpen && reset());
 
 async function submit(): Promise<void> {

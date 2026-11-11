@@ -31,7 +31,6 @@ export class AccountAdminService {
     private readonly dataSource: DataSource,
   ) {}
 
-  /** Las cuentas dadas de baja solo se listan si lo pide un superadmin. */
   async list(
     actor: SessionIdentity,
     incluirBajas = false,
@@ -69,7 +68,6 @@ export class AccountAdminService {
         'El perfil del superadmin raíz no puede modificarse desde administración.',
       );
     }
-    // Cada administrativo puede corregir su propio nombre; el de otros, solo el superadmin.
     this.assertCanManage(actor, account, { allowSelf: true });
     if (dto.nombre !== undefined) {
       if (!nombre) {
@@ -86,7 +84,6 @@ export class AccountAdminService {
     return this.toPublicAccount(await this.usuarios.save(account));
   }
 
-  /** Asigna la jornada de atención del médico (la disponibilidad se calcula con ella). */
   async updateSchedule(
     id: string,
     dto: HorarioMedicoDto,
@@ -161,11 +158,6 @@ export class AccountAdminService {
     return this.toPublicAccount(saved);
   }
 
-  /**
-   * Baja lógica (solo superadmin): la cuenta se archiva sin borrar nada. No puede iniciar
-   * sesión y deja de aparecer en listados y selectores; turnos e historial se conservan.
-   * Un médico con turnos futuros activos no se puede dar de baja hasta resolverlos.
-   */
   async dispose(id: string, actor: SessionIdentity): Promise<PublicAccount> {
     const initial = await this.findAccount(id);
     if (initial.esSuperadmin) {
@@ -179,7 +171,6 @@ export class AccountAdminService {
     }
 
     return this.dataSource.transaction(async (manager) => {
-      // Mismo lock que usa la reserva de turnos: nadie reserva con el médico mientras se da de baja.
       const account = await manager.getRepository(Usuario).findOne({
         where: { id },
         lock: { mode: 'pessimistic_write' },
@@ -206,7 +197,6 @@ export class AccountAdminService {
             `El médico tiene ${pendientes} turno${pendientes === 1 ? '' : 's'} pendiente${pendientes === 1 ? '' : 's'}. Cancelalos o reasignalos antes de dar de baja la cuenta.`,
           );
         }
-        // Nadie queda esperando un horario de un médico que ya no atiende.
         await manager
           .createQueryBuilder()
           .update(EntreturnoStandby)
@@ -228,7 +218,6 @@ export class AccountAdminService {
     });
   }
 
-  /** Restaura una baja: vuelve como DESHABILITADA para que alguien la habilite a propósito. */
   async restore(id: string): Promise<PublicAccount> {
     const account = await this.findAccount(id);
     if (account.estado !== EstadoCuenta.BAJA) {
@@ -239,7 +228,6 @@ export class AccountAdminService {
     return this.toPublicAccount(await this.usuarios.save(account));
   }
 
-  /** Reglas comunes: una cuenta dada de baja no se toca, y los administrativos son del superadmin. */
   private assertCanManage(
     actor: SessionIdentity,
     target: Usuario,

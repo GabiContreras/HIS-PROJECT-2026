@@ -2,8 +2,6 @@ export const MAX_AGE_YEARS = 115;
 
 export type BirthDateError = 'FUTURE' | 'TOO_OLD';
 
-// Fechas en formato YYYY-MM-DD: se pueden comparar como texto.
-// Con 115 años cumplidos todavía se admite; el día que cumpliría 116 ya no.
 export function validateBirthDate(
   birth: string,
   today: string,

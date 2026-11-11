@@ -20,7 +20,6 @@ registradoPor: Usuario;
   @Column({ type: 'float' })
   valor: number;
 
-  /** Agrupa los valores de un mismo control de signos vitales; nulo en registros sueltos. */
   @Column({ type: 'uuid', nullable: true })
   controlId: string | null;
 

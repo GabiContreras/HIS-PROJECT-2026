@@ -26,7 +26,6 @@ const paciente = ref<Patient | null>(null);
 const { toast } = useFeedback();
 const working = ref(false);
 
-// Asignar, dar de alta y bloquear: administrativo. Confirmar la limpieza: también enfermería.
 const canManage = computed(() => session.role === 'ADMINISTRATIVO');
 const canClean = computed(() => session.role === 'ADMINISTRATIVO' || session.role === 'ENFERMERO');
 
@@ -38,7 +37,6 @@ async function run(operation: () => Promise<void>, success: string): Promise<voi
     await operation();
     toast.success(success);
   } catch (reason) {
-    // Por ejemplo, otra persona ocupó la cama un instante antes: el mapa ya se refrescó.
     toast.error(messageFrom(reason), { title: 'No se pudo completar la acción' });
   } finally {
     working.value = false;

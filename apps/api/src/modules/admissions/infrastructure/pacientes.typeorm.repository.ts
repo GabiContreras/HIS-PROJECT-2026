@@ -43,7 +43,6 @@ export class PacientesTypeOrmRepository implements PacientesRepository {
       .limit(limit);
 
     if (term) {
-      // Escapa los comodines de LIKE para buscar "%" o "_" como texto.
       const pattern = `%${term.replace(/[\\%_]/g, '\\$&')}%`;
       query.andWhere(
         new Brackets((qb) => {

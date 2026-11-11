@@ -1,6 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-/** Forma que produce AllExceptionsFilter para todos los errores. */
 export class ErrorResponseDto {
   @ApiProperty({
     description: 'Código HTTP de la respuesta.',

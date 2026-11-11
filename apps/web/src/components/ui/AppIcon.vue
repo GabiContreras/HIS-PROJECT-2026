@@ -3,7 +3,6 @@ export type IconName = 'calendar' | 'search' | 'check' | 'x' | 'plus' | 'chevron
 
 withDefaults(defineProps<{ name: IconName; size?: number }>(), { size: 18 });
 
-// Íconos de trazo simple (24x24). Son decorativos: el texto siempre acompaña.
 const PATHS: Record<IconName, string> = {
   calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',

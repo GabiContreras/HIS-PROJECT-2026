@@ -89,7 +89,6 @@ export class IndicacionesTypeOrmRepository implements IndicacionesRepository {
       ...(pacienteId ? { paciente: { id: pacienteId } } : {}),
     };
     const rows = await this.indicaciones.find({
-      // Sin fin, o con fin posterior a ahora.
       where: [
         { ...base, fechaFin: IsNull() },
         { ...base, fechaFin: MoreThan(ahora) },
@@ -121,8 +120,6 @@ export class IndicacionesTypeOrmRepository implements IndicacionesRepository {
     decidir: (contexto: ContextoAdministracion) => NuevaAdministracion,
   ): Promise<{ indicacion: IndicacionData; administracion: AdministracionData }> {
     return this.dataSource.transaction(async (manager: EntityManager) => {
-      // Bloqueo SOLO sobre la fila de la indicación: sin relations, porque PostgreSQL no admite
-      // FOR UPDATE sobre el lado nullable de un LEFT JOIN (mismo bug que tuvimos en turnos).
       const locked = await manager.getRepository(IndicacionMedica).findOne({
         where: { id: indicacionId },
         lock: { mode: 'pessimistic_write', tables: ['indicaciones_medicas'] },
@@ -131,7 +128,6 @@ export class IndicacionesTypeOrmRepository implements IndicacionesRepository {
         decidir({ indicacion: null, administraciones: [] });
         throw new Error('decidir debe lanzar cuando la indicación no existe');
       }
-      // Ya con la fila bloqueada, se leen los datos con sus relaciones (sin lock).
       const row = await manager.getRepository(IndicacionMedica).findOneOrFail({
         where: { id: indicacionId },
         relations: RELACIONES,

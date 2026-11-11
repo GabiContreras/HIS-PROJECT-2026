@@ -8,7 +8,6 @@ import { ADMISSION_REASONS, saveAdmissionProtocol, type AdmissionReason } from '
 import { messageFrom } from '../../shared/errors';
 import type { Patient } from '../../services/patients';
 
-/** Vista que orquesta: formulario de ingreso + checklist del paciente elegido (ruta hija `:pacienteId`). */
 const router = useRouter();
 const route = useRoute();
 
@@ -19,7 +18,6 @@ const generating = ref(false);
 const saveNotice = ref<{ tone: 'success' | 'warning'; text: string } | null>(null);
 const checklist = ref<{ reload: () => Promise<void> } | null>(null);
 
-// Elegir (o quitar) un paciente navega a la ruta dinámica; abrir la URL directa carga igual su protocolo.
 watch(paciente, (selected) => {
   saveNotice.value = null;
   if (selected) {
@@ -38,7 +36,6 @@ async function generate(): Promise<void> {
   try {
     await saveAdmissionProtocol(paciente.value.id, reason.value);
     saveNotice.value = { tone: 'success', text: 'Protocolo guardado en el sistema.' };
-    // Se recarga desde el backend para que las tareas tengan sus ids reales.
     await checklist.value?.reload();
   } catch (error) {
     saveNotice.value = { tone: 'warning', text: `No se pudo guardar el protocolo: ${messageFrom(error)}` };

@@ -25,7 +25,6 @@ export const useMedicationsStore = defineStore('medications', () => {
     }
   }
 
-  /** Registra la administración; el backend toma al enfermero de la sesión y descuenta el insumo. */
   async function administer(id: string): Promise<void> {
     await administerMedication(id);
     await Promise.all([load(), inventory.load()]);

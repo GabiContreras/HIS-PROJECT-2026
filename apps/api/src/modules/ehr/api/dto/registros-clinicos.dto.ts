@@ -2,7 +2,6 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsString, MaxLength, MinLength } from 'class-validator';
 
-/** Quita espacios de los extremos antes de validar, para que "   " no cuente como texto. */
 const Trim = () => Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value));
 
 export class RegistrarAlergiaDto {

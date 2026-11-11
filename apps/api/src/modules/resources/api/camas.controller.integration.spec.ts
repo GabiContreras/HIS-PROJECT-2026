@@ -20,8 +20,6 @@ describe('CamasController: stream de eventos (GET /camas/eventos)', () => {
 
   const camas = { obtener: vi.fn(async () => ({ id: CAMA_ID })) };
 
-  // Reemplaza solo la autenticación: sin header no hay sesión (401); con header el usuario tiene ese rol.
-  // El RolesGuard es el real.
   const authGuardFalso = {
     canActivate: (context: ExecutionContext) => {
       const req = context.switchToHttp().getRequest<{ headers: Record<string, string | undefined>; user?: unknown }>();
@@ -56,7 +54,6 @@ describe('CamasController: stream de eventos (GET /camas/eventos)', () => {
     await app?.close();
   });
 
-  /** Abre el stream, espera el primer mensaje de datos y corta la conexión. */
   function leerPrimerMensaje(rol: RolUsuario, alConectar: () => void): Promise<{ status: number; contentType: string; body: string }> {
     const { port } = app.getHttpServer().address() as AddressInfo;
     return new Promise((resolve, reject) => {
@@ -70,7 +67,6 @@ describe('CamasController: stream de eventos (GET /camas/eventos)', () => {
             resolve({ status: res.statusCode ?? 0, contentType: String(res.headers['content-type']), body });
           }
         });
-        // El stream ya está abierto: se dispara el evento a observar.
         setTimeout(alConectar, 50);
       });
       req.on('error', (error: NodeJS.ErrnoException) => {
@@ -104,7 +100,6 @@ describe('CamasController: stream de eventos (GET /camas/eventos)', () => {
   });
 
   it('"eventos" no se interpreta como el id de una cama', async () => {
-    // Si GET /camas/:id capturara la ruta, respondería 400 por UUID inválido y llamaría al detalle.
     await leerPrimerMensaje(RolUsuario.ADMINISTRATIVO, () =>
       events.publish(new BedCleaned({ bedId: CAMA_ID, bedNumber: '205', cleanedAt: '2030-01-01T10:00:00.000Z' })),
     );

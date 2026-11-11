@@ -2,11 +2,6 @@ import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGenerat
 import { Paciente } from './paciente.entity.js';
 import { Usuario } from './usuario.entity.js';
 
-/**
- * Registro de la historia clínica. Inmutable: solo se insertan filas (la migración lo refuerza con un trigger).
- * Según la categoría, `titulo` guarda la sustancia (alergia), el parentesco (antecedente) o el tipo de estudio;
- * en las evoluciones no se usa. `detalle` guarda la reacción, la descripción, la nota o el resultado.
- */
 @Entity('registros_clinicos')
 export class RegistroClinico {
   @PrimaryGeneratedColumn('uuid')

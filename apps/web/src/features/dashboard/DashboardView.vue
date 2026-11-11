@@ -7,7 +7,6 @@ import NurseHome from './homes/NurseHome.vue';
 
 const session = useSessionStore();
 
-// Cada rol tiene su propio panel de inicio.
 const home = computed(() => {
   if (session.role === 'MEDICO') return DoctorHome;
   if (session.role === 'ENFERMERO') return NurseHome;

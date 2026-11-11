@@ -31,10 +31,6 @@ export interface CoberturaInput {
   entidadCobertura?: string;
 }
 
-/**
- * Reglas de la cobertura: la prepaga necesita su nombre (el copago depende de ella), la obra
- * social pública lo admite opcional y el particular no tiene entidad.
- */
 export function normalizeCoverage(input: CoberturaInput): {
   tipoCobertura: CoverageType;
   entidadCobertura: string | null;
@@ -101,7 +97,6 @@ export class PacientesService {
         ...coverage,
       });
     } catch (error) {
-      // Dos altas simultáneas con el mismo documento: gana una, la otra recibe 409.
       if (error instanceof DocumentoDuplicadoError) {
         throw new ConflictException(error.message);
       }

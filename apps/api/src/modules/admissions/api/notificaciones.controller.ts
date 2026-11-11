@@ -24,7 +24,6 @@ export class NotificacionesController {
   @ApiQuery({ name: 'soloNoLeidas', required: false, type: Boolean, description: 'Si es true, devuelve solo las notificaciones no leídas' })
   @ApiOkResponse({ type: NotificacionResponseDto, isArray: true })
   async listarMisNotificaciones(@Req() req: AuthenticatedRequest, @Query('soloNoLeidas') soloNoLeidas?: string) {
-    // El AuthGuard deja la identidad en req.user con el id de la cuenta en `accountId`.
     return await this.notificacionesService.obtenerPorUsuario(req.user.accountId, soloNoLeidas === 'true');
   }
 

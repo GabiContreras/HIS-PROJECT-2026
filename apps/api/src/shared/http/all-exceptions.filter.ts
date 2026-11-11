@@ -17,10 +17,6 @@ const CODE_BY_STATUS: Record<number, string> = {
   422: 'UNPROCESSABLE_ENTITY',
 };
 
-/**
- * Filtro global: garantiza que TODO error salga con el mismo formato.
- * Los filtros de módulo (ej. errores de dominio de billing) tienen prioridad sobre este.
- */
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger(AllExceptionsFilter.name);
@@ -46,7 +42,6 @@ export class AllExceptionsFilter implements ExceptionFilter {
           ? 'VALIDATION_ERROR'
           : (CODE_BY_STATUS[statusCode] ?? 'HTTP_ERROR');
     } else {
-      // Error inesperado: se loguea completo, pero al cliente no se le filtra el detalle.
       this.logger.error(
         `Error no controlado en ${req.method} ${req.url}`,
         exception instanceof Error ? exception.stack : String(exception),

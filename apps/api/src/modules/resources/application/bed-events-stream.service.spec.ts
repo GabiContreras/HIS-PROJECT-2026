@@ -41,7 +41,6 @@ describe('BedEventsStreamService', () => {
       { tipo: 'bed.blocked', camaId: 'cama-1', numero: '101', estado: EstadoCama.BLOQUEADA, at: AT },
       { tipo: 'bed.unblocked', camaId: 'cama-1', numero: '101', estado: EstadoCama.LIBRE, at: AT },
     ]);
-    // Los cambios de cama van como mensaje por defecto (sin `type`), para que el cliente los reciba en onmessage.
     expect(recibidos.every((m) => m.type === undefined)).toBe(true);
   });
 

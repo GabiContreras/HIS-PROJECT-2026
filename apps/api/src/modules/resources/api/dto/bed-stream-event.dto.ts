@@ -1,7 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { EstadoCama } from '../../domain/estado-cama.enum.js';
 
-/** Campo `data` de cada mensaje de GET /camas/eventos. */
 export class BedStreamEventDto {
   @ApiProperty({
     example: 'bed.assigned',

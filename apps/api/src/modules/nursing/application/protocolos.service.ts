@@ -21,7 +21,6 @@ export interface TareaProtocoloView {
   frecuenciaHoras: number | null;
   hecha: boolean;
   hechaEn: string | null;
-  /** "Apellido, Nombre" de quien la marcó. */
   hechaPor: string | null;
 }
 
@@ -35,7 +34,6 @@ export interface ProtocoloView {
   tareas: TareaProtocoloView[];
 }
 
-/** HU 2.1: genera (con el Patrón Builder) y consulta el protocolo de atención base de cada ingreso. */
 @Injectable()
 export class ProtocolosService {
   private readonly director = new ProtocolDirector();
@@ -46,10 +44,6 @@ export class ProtocolosService {
     private readonly pacientes: PacientesService,
   ) {}
 
-  /**
-   * Genera el protocolo del ingreso. Idempotente por `ingresoId`: reprocesar devuelve el existente.
-   * 400 si el motivo no tiene protocolo definido; 404 si el paciente no existe.
-   */
   async generarParaIngreso(input: IngresoInput): Promise<{ protocolo: ProtocoloView; creado: boolean }> {
     const motivo = input.motivoIngreso.trim();
     const protocolo = this.director.construirPorMotivo(motivo);
@@ -58,7 +52,6 @@ export class ProtocolosService {
         `El motivo de ingreso "${motivo}" no tiene un protocolo de atención definido (disponibles: cirugía programada, neumonía / infección respiratoria).`,
       );
     }
-    // Admisión es dueño de pacientes: se consulta por su caso de uso (404 si no existe).
     await this.pacientes.get(input.pacienteId);
 
     const { protocolo: guardado, creado } = await this.repository.crearSiNoExiste({
@@ -77,10 +70,6 @@ export class ProtocolosService {
     return rows.map((row) => this.toView(row));
   }
 
-  /**
-   * Marca o desmarca una tarea del checklist. Idempotente. 404 si la tarea no existe en ese protocolo.
-   * Devuelve el protocolo completo actualizado.
-   */
   async marcarTarea(
     protocoloId: string,
     tareaId: string,

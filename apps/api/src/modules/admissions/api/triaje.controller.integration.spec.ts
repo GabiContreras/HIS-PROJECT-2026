@@ -20,7 +20,6 @@ describe('TriajeController: autorización por rol y validación de entrada', () 
     atender: vi.fn(async () => ({ id: 't1' })),
   };
 
-  // Reemplaza solo la autenticación; el RolesGuard es el real.
   const authGuardFalso = {
     canActivate: (context: ExecutionContext) => {
       const req = context.switchToHttp().getRequest<{ headers: Record<string, string | undefined>; user?: unknown }>();

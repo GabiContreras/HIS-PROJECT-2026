@@ -49,7 +49,6 @@ describe('Billing integration', () => {
     }),
   };
 
-  // Turnos que originaron los cargos (paciente y médico se leen de acá).
   const appointments: Array<Partial<Turno>> = [];
   const turnosRepository = {
     find: vi.fn(async () => [...appointments]),
@@ -162,7 +161,6 @@ describe('Billing integration', () => {
       .expect(200);
 
     expect(response.body).toEqual([
-      // El turno no se pudo leer: el cargo igual se lista.
       expect.objectContaining({ turnoId: 'appointment-gone', turno: null }),
       expect.objectContaining({
         turnoId: 'appointment-regular',

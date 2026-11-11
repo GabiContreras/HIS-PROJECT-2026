@@ -33,14 +33,9 @@ const DAY_MS = 24 * 60 * 60_000;
 const DEFAULT_AVAILABILITY_DAYS = 7;
 const MAX_AVAILABILITY_DAYS = 31;
 
-// Horario general de la clínica: 08:00 a 20:00 (hora de Argentina). Cada médico
-// atiende dentro de su propio horario (usuarios.horaInicio/horaFin), que nunca
-// puede salir de ese rango. La disponibilidad se calcula, no se carga a mano.
 const CLINIC_TIME_ZONE = 'America/Argentina/Buenos_Aires';
 
-/** Estados que no ocupan agenda: los cancelados y las franjas libres heredadas. */
 const NON_OCCUPYING_STATES = [EstadoTurno.CANCELADO, EstadoTurno.DISPONIBLE];
-/** Estados en los que un paciente "tiene" el turno (para evitar dobles reservas). */
 const PATIENT_ACTIVE_STATES = [
   EstadoTurno.RESERVADO,
   EstadoTurno.CONFIRMADO,
@@ -54,7 +49,6 @@ const clinicClock = new Intl.DateTimeFormat('en-GB', {
   hourCycle: 'h23',
 });
 
-/** Minutos transcurridos desde la medianoche, en la hora local de la clínica. */
 function clinicMinutesOfDay(date: Date): number {
   const parts = clinicClock.formatToParts(date);
   const hour = Number(parts.find((part) => part.type === 'hour')?.value);
@@ -62,13 +56,11 @@ function clinicMinutesOfDay(date: Date): number {
   return hour * 60 + minute;
 }
 
-/** 'HH:MM' o 'HH:MM:SS' → minutos desde la medianoche. */
 function scheduleMinutes(time: string): number {
   const [hour, minute] = time.split(':').map(Number);
   return hour * 60 + minute;
 }
 
-/** Paciente de la lista de espera al que se le asignó el horario liberado (HU 1.3). */
 export interface PromocionStandby {
   turno: TurnoSummary;
   paciente: { id: string; nombre: string; apellido: string };
@@ -76,7 +68,6 @@ export interface PromocionStandby {
 
 export interface SlotDisponible {
   fechaHora: Date;
-  /** 30, o 15 si un entreturno ocupa la segunda mitad del horario. */
   duracionMinutos: number;
   medico: { id: string; nombre: string; apellido: string };
 }
@@ -107,11 +98,6 @@ export class TurnosService {
     private readonly events: EventBus,
   ) {}
 
-  /**
-   * Horarios libres calculados: grilla de 30 min dentro del horario de cada
-   * médico activo, menos lo ocupado. No incluye entreturnos (se insertan sobre
-   * un horario libre de 30 min, a los :15 o :45).
-   */
   async listAvailable(
     medicoId?: string,
     desde?: string,
@@ -252,7 +238,6 @@ export class TurnosService {
     }));
   }
 
-  /** HU 1.1: reserva de un horario libre. Lock del médico + índice único. */
   async reserve(
     dto: ReservarTurnoDto,
     identity: SessionIdentity,
@@ -281,7 +266,6 @@ export class TurnosService {
           'Este turno acaba de ser ocupado. Elegí otro horario.',
         );
       }
-      // Si un entreturno ya ocupa la segunda mitad, el turno queda en 15 min (HU 1.2).
       const secondHalf = new Date(start.getTime() + URGENT_DURATION_MINUTES * 60_000);
       const duration = (await this.hasOverlap(
         repository,
@@ -295,10 +279,6 @@ export class TurnosService {
     });
   }
 
-  /**
-   * HU 1.2: entreturno de 15 min a los :15/:45 dentro de un horario libre de 30 min.
-   * El horario adyacente queda en 15 min (se deriva solo, no se modifica ninguna fila).
-   */
   async reserveUrgent(
     dto: ReservarTurnoDto,
     identity: SessionIdentity,
@@ -339,7 +319,6 @@ export class TurnosService {
     });
   }
 
-  /** HU 2.1: transiciones del flujo de atención según el Patrón State. */
   async transition(
     id: string,
     nextState: EstadoTurno,
@@ -370,7 +349,6 @@ export class TurnosService {
         throw error;
       }
       const saved = await repository.save(turno);
-      // HU 1.3: el horario liberado pasa al primero de la lista de espera, en la misma transacción.
       const promovido =
         nextState === EstadoTurno.CANCELADO
           ? await this.promoteFromStandby(manager, saved)
@@ -390,7 +368,6 @@ export class TurnosService {
       });
     }
     if (nextState === EstadoTurno.EN_SALA_DE_ESPERA) {
-      // Alerta al consultorio del médico (HU 2.1, escenario 1).
       this.events.publish({
         type: INTEGRATION_EVENTS.PATIENT_WAITING,
         occurredAt,
@@ -416,11 +393,6 @@ export class TurnosService {
     return { ...result.summary, promovido: result.promovido };
   }
 
-  /**
-   * HU 1.3: al cancelarse un turno, el horario liberado se le asigna al primero de la cola de
-   * espera de ese médico y día. Se salta a quien ya tenga otro turno en ese horario.
-   * Corre dentro de la transacción de la cancelación, con el lock del médico ya tomado.
-   */
   private async promoteFromStandby(
     manager: EntityManager,
     cancelled: Turno,
@@ -473,7 +445,6 @@ export class TurnosService {
     return null;
   }
 
-  /** Destinos válidos por estado, para que el front habilite el drag & drop. */
   getTransitionTable(): Record<string, EstadoTurno[]> {
     return tablaTransiciones();
   }
@@ -601,7 +572,6 @@ export class TurnosService {
     }
   }
 
-  /** ¿Cae exactamente en minuto `offset` de cada media hora (0 → :00/:30, 15 → :15/:45)? */
   private isAligned(date: Date, offset: number): boolean {
     return (
       date.getUTCMinutes() % 30 === offset &&
@@ -610,7 +580,6 @@ export class TurnosService {
     );
   }
 
-  /** El horario regular de 30 min debe entrar completo en la jornada del médico. */
   private assertWithinSchedule(doctor: Usuario, slotStart: Date): void {
     const minutes = clinicMinutesOfDay(slotStart);
     if (

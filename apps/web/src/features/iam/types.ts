@@ -4,7 +4,6 @@ export type AccountStatus =
   | 'PENDIENTE_HABILITACION'
   | 'ACTIVO'
   | 'DESHABILITADO'
-  /** Baja lógica: archivada por el superadmin. */
   | 'BAJA';
 
 export const ROLE_LABELS: Record<Role, string> = {
@@ -13,7 +12,6 @@ export const ROLE_LABELS: Record<Role, string> = {
   ADMINISTRATIVO: 'Administrativo',
 };
 
-// Provisorio: se ajusta con la respuesta real de /auth/login
 export interface Account {
   id: string;
   nombre: string;
@@ -22,10 +20,8 @@ export interface Account {
   rol: Role;
   estado: AccountStatus;
   esSuperadmin: boolean;
-  /** Solo médicos: jornada de atención 'HH:MM'. */
   horaInicio?: string;
   horaFin?: string;
-  /** Solo cuentas dadas de baja (ISO). */
   dadoDeBajaEn?: string | null;
 }
 

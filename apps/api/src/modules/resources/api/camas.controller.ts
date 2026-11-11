@@ -93,7 +93,6 @@ export class CamasController {
     return this.camas.listar(query);
   }
 
-  // Va antes de @Get(':id') para que "eventos" no se interprete como el id de una cama.
   @Sse('eventos')
   @Roles(RolUsuario.MEDICO, RolUsuario.ENFERMERO, RolUsuario.ADMINISTRATIVO)
   @ApiOperation({

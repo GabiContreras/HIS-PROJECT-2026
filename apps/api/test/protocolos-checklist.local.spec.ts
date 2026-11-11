@@ -19,8 +19,6 @@ import { Turno } from '../src/entities/turno.entity.js';
 import { Usuario } from '../src/entities/usuario.entity.js';
 import { ProtocolosTypeOrmRepository } from '../src/modules/nursing/infrastructure/protocolos.typeorm.repository.js';
 
-// Requiere un Postgres LOCAL ya migrado y con al menos 2 usuarios y 1 paciente.
-// Se activa con CHECKLIST_TEST_DATABASE_URL (por ejemplo postgres://postgres:***@localhost:55432/his_browser); sin ella se omite.
 const url = process.env.CHECKLIST_TEST_DATABASE_URL;
 
 describe.skipIf(!url)('ProtocolosTypeOrmRepository - marca original del checklist (PostgreSQL local)', () => {

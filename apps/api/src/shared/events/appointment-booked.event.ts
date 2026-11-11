@@ -5,7 +5,6 @@ export interface AppointmentBookedPayload {
   appointmentId: string;
   patientId: string;
   doctorId: string;
-  /** ISO-8601 UTC */
   scheduledAt: string;
 }
 

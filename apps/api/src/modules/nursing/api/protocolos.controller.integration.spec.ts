@@ -18,7 +18,6 @@ const RUTA_TAREA = `/protocolos/${PROTOCOLO_ID}/tareas/${TAREA_ID}`;
 describe('ProtocolosController: autorización por rol y validación de entrada', () => {
   let app: INestApplication;
 
-  // El caso de uso se simula: acá se prueba la capa HTTP (guards, pipes y delegación), no la base de datos.
   const protocolo = { id: PROTOCOLO_ID, tareas: [] };
   const service = {
     listarPorPaciente: vi.fn(async () => [protocolo]),
@@ -26,8 +25,6 @@ describe('ProtocolosController: autorización por rol y validación de entrada',
     generarParaIngreso: vi.fn(async () => ({ protocolo })),
   };
 
-  // Reemplaza solo la autenticación: sin header no hay sesión (401); con header el usuario tiene ese rol.
-  // El RolesGuard es el real, por eso los 403 que se verifican son los del controlador.
   const authGuardFalso = {
     canActivate: (context: ExecutionContext) => {
       const req = context.switchToHttp().getRequest<{ headers: Record<string, string | undefined>; user?: unknown }>();
@@ -38,11 +35,6 @@ describe('ProtocolosController: autorización por rol y validación de entrada',
     },
   };
 
-  // Checklist del protocolo: lo trabaja enfermería y el médico lo consulta/corrige.
-  // Alta manual del ingreso (POST ingresos), decisión D4: ADMINISTRATIVO y MEDICO.
-  // Las fuentes respaldan al administrativo; se mantiene al médico porque la pantalla de protocolos del
-  // frontend (/enfermeria/protocolos, roles ENFERMERO y MEDICO) llama a este endpoint con la sesión del médico.
-  // ENFERMERO queda afuera: enfermería recibe el protocolo, no lo da de alta.
   const endpoints = [
     {
       nombre: 'GET /protocolos',
@@ -91,7 +83,6 @@ describe('ProtocolosController: autorización por rol y validación de entrada',
       .useValue(authGuardFalso)
       .compile();
     app = module.createNestApplication();
-    // Misma configuración que app.module.ts.
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
     await app.init();
   });

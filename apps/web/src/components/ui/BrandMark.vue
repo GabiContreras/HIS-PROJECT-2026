@@ -2,7 +2,6 @@
 import { BRAND } from '../../shared/brand';
 </script>
 
-<!-- Cuando esté el ícono definitivo, reemplazar el contenido de este componente (por ejemplo, por un <img> o un SVG). -->
 <template>
   <span class="brand-mark" aria-hidden="true">{{ BRAND.initial }}</span>
 </template>

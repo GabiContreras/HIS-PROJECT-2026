@@ -23,7 +23,6 @@ const vitals = useVitalsStore();
 const { queue, redCount } = storeToRefs(triage);
 const { critical } = storeToRefs(vitals);
 
-// El back ya devuelve solo la agenda del médico que inició sesión.
 const mine = computed(() =>
   agenda.turnos.value.filter((t) => isToday(t.fechaHora)).sort((a, b) => a.fechaHora.localeCompare(b.fechaHora)),
 );

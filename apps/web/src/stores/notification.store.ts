@@ -12,17 +12,11 @@ import type {
   ToastInput,
 } from '../features/feedback/types';
 
-/**
- * Store único de feedback: toasts (acciones propias), notificaciones del sistema (campana)
- * y confirmaciones modales. Se usa desde componentes con `useFeedback()` y desde
- * servicios con `useNotificationStore()`.
- */
 export const useNotificationStore = defineStore('notification', () => {
   const session = useSessionStore();
 
-  // ---------- Toasts ----------
-  const toasts = ref<Toast[]>([]); // visibles, el más nuevo primero
-  const waiting = ref<Toast[]>([]); // en cola cuando ya hay 3 visibles
+  const toasts = ref<Toast[]>([]);
+  const waiting = ref<Toast[]>([]);
 
   function showToast(input: ToastInput): string {
     const now = Date.now();
@@ -57,7 +51,6 @@ export const useNotificationStore = defineStore('notification', () => {
       return;
     }
     if (priority) {
-      // Reemplaza al más viejo de los que se cierran solos; si todos son fijos, entra primero en la cola.
       for (let i = toasts.value.length - 1; i >= 0; i -= 1) {
         if (toasts.value[i]?.duration !== null) {
           toasts.value.splice(i, 1);
@@ -92,7 +85,6 @@ export const useNotificationStore = defineStore('notification', () => {
     waiting.value = [];
   }
 
-  // ---------- Notificaciones del sistema (campana) ----------
   const items = ref<SystemNotification[]>([]);
 
   const visible = computed(() =>
@@ -100,7 +92,6 @@ export const useNotificationStore = defineStore('notification', () => {
       (n) => n.source === 'server' || (session.role !== null && (n.roles?.includes(session.role) ?? true)),
     ),
   );
-  /** Las críticas sin leer quedan fijadas arriba; el resto, de la más nueva a la más vieja. */
   const sorted = computed(() =>
     [...visible.value].sort((a, b) => {
       const pinA = a.level === 'critical' && !a.read ? 1 : 0;
@@ -111,7 +102,6 @@ export const useNotificationStore = defineStore('notification', () => {
   const unread = computed(() => visible.value.filter((n) => !n.read).length);
   const criticalUnread = computed(() => visible.value.filter((n) => n.level === 'critical' && !n.read).length);
 
-  /** Registra una notificación local; las críticas además muestran un toast que no se cierra solo. */
   function notify(input: NotifyInput): string {
     const notification: SystemNotification = {
       id: crypto.randomUUID(),
@@ -149,7 +139,6 @@ export const useNotificationStore = defineStore('notification', () => {
     if (n && !n.read) {
       n.read = true;
       n.readAt = new Date().toISOString();
-      // Las del servidor se marcan también allá; si falla, vuelven a quedar sin leer.
       if (n.source === 'server') {
         void markNotificationRead(id).catch(() => {
           n.read = false;
@@ -178,20 +167,14 @@ export const useNotificationStore = defineStore('notification', () => {
     };
   }
 
-  /**
-   * Trae las notificaciones del usuario desde GET /notificaciones y reemplaza las del servidor que había.
-   * Las locales no se tocan. Un fallo de red no interrumpe la app: se reintenta en el próximo ciclo.
-   */
   async function syncFromServer(): Promise<void> {
     try {
       const rows = await listMyNotifications();
       items.value = [...items.value.filter((n) => n.source !== 'server'), ...rows.map(fromServer)];
     } catch {
-      /* se reintenta en el próximo ciclo */
     }
   }
 
-  /** Solo cuando la persona lo pide: abrir o cerrar el panel no marca nada como leído. */
   function markAllRead(): void {
     for (const n of visible.value) markRead(n.id);
   }
@@ -200,11 +183,9 @@ export const useNotificationStore = defineStore('notification', () => {
     items.value = items.value.filter((n) => n.id !== id);
   }
 
-  // ---------- Confirmaciones modales ----------
   const confirmQueue = ref<ConfirmRequest[]>([]);
   const currentConfirm = computed(() => confirmQueue.value[0] ?? null);
 
-  /** Nunca hay dos modales a la vez: los pedidos esperan su turno. */
   function confirm(options: ConfirmOptions): Promise<boolean> {
     return new Promise((resolve) => {
       confirmQueue.value.push({ ...options, id: crypto.randomUUID(), resolve });

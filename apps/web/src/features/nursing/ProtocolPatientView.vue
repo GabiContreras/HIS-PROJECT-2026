@@ -7,7 +7,6 @@ import { getPatient } from '../../services/patients';
 import { useSessionStore } from '../iam/session.store';
 import ProtocolChecklist from './components/ProtocolChecklist.vue';
 
-/** Ruta dinámica /enfermeria/protocolos/:pacienteId: carga y muestra el checklist guardado del paciente. */
 const props = defineProps<{ pacienteId: string }>();
 
 const session = useSessionStore();

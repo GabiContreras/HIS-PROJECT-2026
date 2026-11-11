@@ -9,14 +9,13 @@ export interface ClinicalRecord {
   titulo: string | null;
   detalle: string;
   registradoPor: string;
-  fechaHora: string; // ISO
+  fechaHora: string;
 }
 
 export interface ClinicalHistory extends Record<ClinicalSectionKey, ClinicalRecord[]> {
   paciente: Patient;
 }
 
-/** Cada sección de la historia: ruta de alta y nombre de los campos que espera la API. */
 export interface ClinicalSection {
   key: ClinicalSectionKey;
   title: string;

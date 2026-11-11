@@ -23,7 +23,6 @@ const session = useSessionStore();
 const { toast, confirm } = useFeedback();
 const { usuario, cargando, error, cargarPorId } = useUsers();
 
-// --- Permisos: el superadmin gestiona a todos; un administrativo común no toca a otros administrativos. ---
 const soySuperadmin = computed(() => session.account?.esSuperadmin === true);
 const esMiCuenta = computed(() => usuario.value?.id === session.account?.id);
 const enBaja = computed(() => usuario.value?.estado === 'BAJA');
@@ -74,8 +73,6 @@ const restaurar = () =>
   usuario.value &&
   ejecutar(() => restaurarUsuario(usuario.value!.id), 'Cuenta restaurada. Quedó deshabilitada: habilitala para que pueda ingresar.');
 
-// En los modales, `run` mantiene la ventana abierta: si el servidor rechaza la operación
-// (por ejemplo, un médico con turnos pendientes), el motivo se ve adentro del modal.
 async function deshabilitar(): Promise<void> {
   const u = usuario.value;
   if (!u) return;
@@ -112,7 +109,6 @@ async function darDeBaja(): Promise<void> {
   if (ok) toast.success('La cuenta se dio de baja.');
 }
 
-// Horario de atención: de 08:00 a 20:00 (horario de la clínica), en bloques de 30 minutos.
 const OPCIONES = Array.from({ length: 25 }, (_, i) => {
   const minutos = 8 * 60 + i * 30;
   return `${String(Math.floor(minutos / 60)).padStart(2, '0')}:${minutos % 60 === 0 ? '00' : '30'}`;

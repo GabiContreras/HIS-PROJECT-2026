@@ -10,7 +10,6 @@ import { SignosVitalesController } from './signos-vitales.controller.js';
 const PACIENTE_ID = '550e8400-e29b-41d4-a716-446655440000';
 const ROL_HEADER = 'x-test-rol';
 
-/** Roles que el controlador declara con @Roles (HU 1.1: enfermería registra, el médico consulta y también puede registrar). */
 const PERMITIDOS = [RolUsuario.ENFERMERO, RolUsuario.MEDICO];
 const NO_PERMITIDOS = Object.values(RolUsuario).filter((rol) => !PERMITIDOS.includes(rol));
 
@@ -20,7 +19,6 @@ const SIGNO = { pacienteId: PACIENTE_ID, tipo: TipoSignoVital.TEMPERATURA, valor
 describe('SignosVitalesController: autorización por rol y validación de entrada', () => {
   let app: INestApplication;
 
-  // El caso de uso se simula: acá se prueba la capa HTTP (guards, pipes y delegación), no la base de datos.
   const service = {
     tipos: vi.fn(() => []),
     listar: vi.fn(async () => []),
@@ -29,8 +27,6 @@ describe('SignosVitalesController: autorización por rol y validación de entrad
     registrarControl: vi.fn(async () => ({ id: 'control-1' })),
   };
 
-  // Reemplaza solo la autenticación: sin header no hay sesión (401); con header el usuario tiene ese rol.
-  // El RolesGuard es el real, por eso los 403 que se verifican son los del controlador.
   const authGuardFalso = {
     canActivate: (context: ExecutionContext) => {
       const req = context.switchToHttp().getRequest<{ headers: Record<string, string | undefined>; user?: unknown }>();
@@ -65,7 +61,6 @@ describe('SignosVitalesController: autorización por rol y validación de entrad
       .useValue(authGuardFalso)
       .compile();
     app = module.createNestApplication();
-    // Misma configuración que app.module.ts.
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
     await app.init();
   });

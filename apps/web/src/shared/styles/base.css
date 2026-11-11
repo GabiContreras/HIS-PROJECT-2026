@@ -6,7 +6,6 @@ h1 { font-size: 1.6rem; }
 .muted { color: var(--color-muted); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
 
-/* Elementos nativos: baja especificidad para que cada componente pueda pisarlos */
 :where(a) { color: var(--color-brand); text-decoration: none; font-weight: 600; }
 :where(a:hover) { text-decoration: underline; }
 :where(button) {
@@ -30,7 +29,6 @@ h1 { font-size: 1.6rem; }
 :where(tbody tr:last-child td) { border-bottom: 0; }
 :where(tbody tr:hover) { background: #f8fbfa; }
 
-/* Botones */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 16px; border-radius: 8px;
   border: 1px solid var(--color-brand); background: var(--color-brand); color: #fff; font-weight: 700; }
 .btn:hover:not(:disabled) { background: var(--color-brand-dark); border-color: var(--color-brand-dark); transform: translateY(-1px); }
@@ -41,7 +39,6 @@ h1 { font-size: 1.6rem; }
 .btn-sm { padding: 6px 11px; font-size: 0.78rem; }
 .actions { display: flex; flex-wrap: wrap; gap: 6px; }
 
-/* Tarjetas y estructura */
 .card { background: #fff; border: 1px solid var(--color-line); border-radius: var(--radius); box-shadow: 0 2px 8px rgba(14, 45, 38, 0.035); }
 .card-body { padding: 16px 20px; }
 .page { display: grid; gap: 20px; }
@@ -57,7 +54,6 @@ h1 { font-size: 1.6rem; }
 .list .who small, .list small { color: var(--color-muted); font-size: 0.78rem; }
 .critical-row { background: var(--color-danger-soft); }
 
-/* Formularios */
 .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; padding: 20px; }
 .form-grid.three { grid-template-columns: repeat(3, 1fr); }
 .form-grid .full { grid-column: 1 / -1; }
@@ -67,7 +63,6 @@ h1 { font-size: 1.6rem; }
 .inline-form { display: flex; flex-wrap: wrap; align-items: end; gap: 16px; }
 .inline-form > label { min-width: 190px; }
 
-/* Etiquetas de estado */
 .badge { display: inline-flex; align-items: center; gap: 6px; width: fit-content; padding: 3px 9px; border-radius: 99px;
   font-size: 0.7rem; font-weight: 700; white-space: nowrap; color: #535e5a; background: #eef1f0; }
 .badge::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
@@ -78,7 +73,6 @@ h1 { font-size: 1.6rem; }
 .badge-violet { color: var(--color-violet); background: var(--color-violet-soft); }
 .badge-dark { color: #fff; background: var(--color-brand-dark); }
 
-/* Avisos */
 .notice { display: flex; gap: 11px; align-items: flex-start; padding: 12px 14px; border-radius: 8px; border: 1px solid; font-size: 0.85rem; }
 .notice strong { display: block; }
 .notice-success { color: var(--color-brand-dark); background: var(--color-brand-soft); border-color: #b7d9d1; }

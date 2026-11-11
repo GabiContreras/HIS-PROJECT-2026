@@ -2,7 +2,6 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 
-/** Recorta espacios; un texto vacío se trata como "no informado". */
 const trimOrUndefined = ({ value }: { value: unknown }) => {
   if (typeof value !== 'string') return value;
   const texto = value.trim();

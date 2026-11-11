@@ -19,7 +19,6 @@ export interface Bed {
   estado: BedStatus;
   paciente: BedPatient | null;
   ingresoAt: string | null;
-  /** Versión para bloqueo optimista: si cambió, otra persona modificó la cama. */
   version: number;
 }
 
@@ -30,7 +29,6 @@ export class BedConflictError extends Error {
   }
 }
 
-// Máquina de estados de la cama: no se puede pasar de "ocupada" a "libre" sin limpieza.
 const TRANSITIONS: Record<BedStatus, BedStatus[]> = {
   DISPONIBLE: ['OCUPADA', 'MANTENIMIENTO'],
   OCUPADA: ['EN_LIMPIEZA'],
@@ -41,7 +39,6 @@ const TRANSITIONS: Record<BedStatus, BedStatus[]> = {
 const STATES: BedStatus[] = ['OCUPADA', 'DISPONIBLE', 'DISPONIBLE', 'OCUPADA', 'EN_LIMPIEZA', 'DISPONIBLE', 'MANTENIMIENTO'];
 const NAMES = ['Carlos López', 'Ana Rojas', 'Laura Gómez', 'Marta Pérez', 'Luis Rossi', 'Raúl Benítez', 'Carla Molina', 'Tomás Herrera'];
 
-// Datos de prueba en memoria mientras no exista el endpoint de camas.
 const beds: Bed[] = Array.from({ length: 30 }, (_, i) => {
   const estado = STATES[i % STATES.length] ?? 'DISPONIBLE';
   const nombre = NAMES[i % NAMES.length] ?? 'Paciente';
@@ -75,7 +72,7 @@ function move(bed: Bed, next: BedStatus): void {
 const copy = (bed: Bed): Bed => ({ ...bed, paciente: bed.paciente ? { ...bed.paciente } : null });
 
 export async function listBeds(): Promise<Bed[]> {
-  return beds.map(copy); // TODO: http.get<Bed[]>('/camas') cuando exista el endpoint
+  return beds.map(copy);
 }
 
 export async function getBed(id: string): Promise<Bed | undefined> {
@@ -83,7 +80,6 @@ export async function getBed(id: string): Promise<Bed | undefined> {
   return bed ? copy(bed) : undefined;
 }
 
-/** Solo una cama libre y sin cambios desde que se leyó puede ocuparse (evita la doble asignación). */
 export async function assignBed(id: string, patient: BedPatient, expectedVersion: number): Promise<Bed> {
   const bed = find(id);
   if (bed.version !== expectedVersion || bed.estado !== 'DISPONIBLE') {
@@ -98,7 +94,6 @@ export async function assignBed(id: string, patient: BedPatient, expectedVersion
   return copy(bed);
 }
 
-/** Alta o traslado: la cama pasa automáticamente a limpieza y no puede asignarse hasta higienizarla. */
 export async function dischargeBed(id: string): Promise<Bed> {
   const bed = find(id);
   move(bed, 'EN_LIMPIEZA');

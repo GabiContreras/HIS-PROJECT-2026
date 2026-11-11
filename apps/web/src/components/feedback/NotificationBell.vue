@@ -14,10 +14,8 @@ const route = useRoute();
 const open = ref(false);
 const tab = ref<'todas' | 'sin-leer'>('todas');
 const root = ref<HTMLElement | null>(null);
-// Reloj para que "hace 5 minutos" se actualice con el panel abierto.
 const now = ref(Date.now());
 let clock: ReturnType<typeof setInterval> | undefined;
-// Sondeo de las notificaciones del servidor (la API no tiene tiempo real).
 const SERVER_POLL_MS = 30_000;
 let serverPoll: ReturnType<typeof setInterval> | undefined;
 
@@ -73,7 +71,6 @@ onBeforeUnmount(() => {
       @click="open = !open"
     >
       <AppIcon name="bell" :size="20" />
-      <!-- :key re-monta el badge cuando cambia el conteo: la animación corre una sola vez por novedad. -->
       <span
         v-if="store.unread > 0"
         :key="store.unread"

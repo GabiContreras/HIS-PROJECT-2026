@@ -30,7 +30,6 @@ const ADMIN = { nombre: 'María', apellido: 'González', email: 'maria@ejemplo.c
 describe('UsuariosController: autorización por rol y por superadmin', () => {
   let app: INestApplication;
 
-  // Los casos de uso se simulan: acá se prueba la capa HTTP (guards, pipes y delegación).
   const cuenta = { id: ID };
   const accounts = {
     createAdministrator: vi.fn(async () => cuenta),
@@ -45,7 +44,6 @@ describe('UsuariosController: autorización por rol y por superadmin', () => {
   };
   const auth = { register: vi.fn(async () => ({ message: 'ok' })) };
 
-  // Reemplaza solo la autenticación. RolesGuard y SuperadminGuard son los reales.
   const authGuardFalso = {
     canActivate: (context: ExecutionContext) => {
       const req = context.switchToHttp().getRequest<{ headers: Record<string, string | undefined>; user?: unknown }>();
@@ -89,7 +87,6 @@ describe('UsuariosController: autorización por rol y por superadmin', () => {
     await app?.close();
   });
 
-  // Endpoints de administración común: cualquier ADMINISTRATIVO (el superadmin también lo es).
   const deAdministrativo = [
     { nombre: 'POST /usuarios', metodo: 'post', ruta: '/usuarios', body: STAFF, ok: 201, caso: () => auth.register },
     { nombre: 'GET /usuarios', metodo: 'get', ruta: '/usuarios', ok: 200, caso: () => accounts.list },
@@ -126,7 +123,6 @@ describe('UsuariosController: autorización por rol y por superadmin', () => {
     });
   });
 
-  // Operaciones raíz: solo el superadmin; un administrativo común recibe 403.
   const deSuperadmin = [
     { nombre: 'POST /usuarios/administrativos', metodo: 'post', ruta: '/usuarios/administrativos', body: ADMIN, ok: 201, caso: () => accounts.createAdministrator },
     { nombre: 'PATCH /usuarios/:id/baja', metodo: 'patch', ruta: `/usuarios/${ID}/baja`, ok: 200, caso: () => accounts.dispose },

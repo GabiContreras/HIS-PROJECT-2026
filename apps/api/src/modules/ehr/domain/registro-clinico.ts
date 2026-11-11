@@ -3,17 +3,14 @@ export enum CategoriaRegistro {
   ANTECEDENTE_FAMILIAR = 'ANTECEDENTE_FAMILIAR',
   EVOLUCION = 'EVOLUCION',
   ESTUDIO = 'ESTUDIO',
-  /** Nota de enfermería (la genera Enfermería, por ejemplo al registrar un control de signos vitales). */
   NOTA_ENFERMERIA = 'NOTA_ENFERMERIA',
 }
 
 export interface RegistroClinicoView {
   id: string;
   categoria: CategoriaRegistro;
-  /** Sustancia, parentesco o tipo de estudio; `null` en las evoluciones. */
   titulo: string | null;
   detalle: string;
-  /** "Apellido, Nombre" de quien lo registró. */
   registradoPor: string;
   fechaHora: string;
 }
@@ -26,7 +23,6 @@ export interface Historia {
   notasEnfermeria: RegistroClinicoView[];
 }
 
-/** Reparte los registros (ya ordenados) en las secciones de la historia clínica, conservando el orden. */
 export function armarHistoria(registros: RegistroClinicoView[]): Historia {
   const historia: Historia = { alergias: [], antecedentesFamiliares: [], evoluciones: [], estudios: [], notasEnfermeria: [] };
   for (const registro of registros) {

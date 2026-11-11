@@ -6,7 +6,6 @@ const store = useNotificationStore();
 </script>
 
 <template>
-  <!-- Arriba a la derecha: abajo taparía los botones del pie de los drawers. -->
   <Teleport to="body">
     <TransitionGroup tag="div" name="toast" class="toast-host" aria-label="Avisos">
       <ToastItem v-for="t in store.toasts" :key="t.id" :toast="t" />

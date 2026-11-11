@@ -7,7 +7,6 @@ export interface MedicationAdministeredPayload {
   quantity: number;
   administeredBy: string;
   administeredAt: string;
-  /** Id de la administración registrada; sirve como clave de idempotencia para los suscriptores. */
   administrationId?: string;
 }
 

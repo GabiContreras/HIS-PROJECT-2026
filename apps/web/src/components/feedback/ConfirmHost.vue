@@ -16,7 +16,6 @@ let previousFocus: HTMLElement | null = null;
 
 async function focusSafeAction(): Promise<void> {
   await nextTick();
-  // En acciones destructivas el foco arranca en la salida segura (cancelar), no en el botón peligroso.
   const buttons = dialog.value?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)');
   (buttons?.[0] ?? null)?.focus();
 }
@@ -54,7 +53,6 @@ async function accept(): Promise<void> {
     await current.run();
     store.settleConfirm(true);
   } catch (reason) {
-    // El modal no se cierra: el error se ve adentro y se puede reintentar o cancelar.
     error.value = messageFrom(reason, 'No se pudo completar la acción.');
     busy.value = false;
   }
@@ -68,7 +66,6 @@ function onKeydown(event: KeyboardEvent): void {
     return;
   }
   if (event.key !== 'Tab') return;
-  // Trampa de foco: Tab no sale del modal.
   const focusable = [...(dialog.value?.querySelectorAll<HTMLElement>('button:not(:disabled)') ?? [])];
   const first = focusable[0];
   const last = focusable[focusable.length - 1];

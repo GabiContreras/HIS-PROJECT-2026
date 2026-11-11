@@ -21,7 +21,7 @@ describe('PasswordPolicyValidator', () => {
 
   it('rechaza menos de 8 caracteres', () => {
     expect(validator.validate('Clave13')).toBe(false);
-    expect(validator.validate('Clave135')).toBe(true); // 8 exactos
+    expect(validator.validate('Clave135')).toBe(true);
   });
 
   it('rechaza si falta una mayúscula', () => {
@@ -44,7 +44,7 @@ describe('PasswordPolicyValidator', () => {
   it('acepta dígitos repetidos o no contiguos en valor', () => {
     expect(validator.validate('ClaveSegura11')).toBe(true);
     expect(validator.validate('ClaveSegura13')).toBe(true);
-    expect(validator.validate('Clave1Segura2')).toBe(true); // 1 y 2 no están juntos
+    expect(validator.validate('Clave1Segura2')).toBe(true);
   });
 
   it('informa la política completa en el mensaje', () => {

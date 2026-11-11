@@ -7,7 +7,6 @@ export class ProtocoloIngreso {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  /** Identificador del ingreso/internación que originó el protocolo; clave de idempotencia (único). */
   @Column({ type: 'uuid', name: 'ingreso_id', unique: true })
   ingresoId: string;
 

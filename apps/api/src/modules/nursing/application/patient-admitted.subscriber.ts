@@ -5,11 +5,6 @@ import { EventBus } from '../../../shared/events/event-bus.service.js';
 import { PatientAdmitted, type PatientAdmittedPayload } from '../../../shared/events/patient-admitted.event.js';
 import { ProtocolosService } from './protocolos.service.js';
 
-/**
- * Al recibir el ingreso de un paciente, genera su protocolo de atención base (HU 2.1).
- * Nunca lanza hacia el EventBus: cualquier fallo (motivo sin protocolo, paciente inexistente,
- * error de base) se registra con log. Reprocesar el mismo ingreso no duplica el protocolo.
- */
 @Injectable()
 export class PatientAdmittedSubscriber implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(PatientAdmittedSubscriber.name);
@@ -30,7 +25,6 @@ export class PatientAdmittedSubscriber implements OnModuleInit, OnModuleDestroy 
     this.subscription?.unsubscribe();
   }
 
-  /** Nunca rechaza: los errores se registran y se descartan. */
   async handle(event: DomainEvent<PatientAdmittedPayload>): Promise<void> {
     const { admissionId, patientId, reason } = event.payload;
     try {

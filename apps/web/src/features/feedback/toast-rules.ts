@@ -11,10 +11,6 @@ const BASE_MS: Record<ToastSeverity, number> = {
   error: 8000,
 };
 
-/**
- * Tiempo en pantalla: base por gravedad + 40 ms por cada carácter pasados los 60, con tope de 12 s.
- * Con botón de acción no se cierra solo (null): la persona tiene que poder usarlo.
- */
 export function toastDuration(severity: ToastSeverity, message: string, hasAction = false): number | null {
   if (hasAction) return null;
   const extra = Math.max(0, message.length - 60) * 40;

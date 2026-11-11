@@ -9,7 +9,7 @@ export interface VitalSign {
   diastolica: number;
   frecuenciaCardiaca: number;
   temperatura: number;
-  fechaHora: string; // ISO
+  fechaHora: string;
   registradoPor: string;
   critico: boolean;
   nota: string;
@@ -20,7 +20,6 @@ export type VitalSignInput = Pick<
   'pacienteId' | 'paciente' | 'sistolica' | 'diastolica' | 'frecuenciaCardiaca' | 'temperatura'
 >;
 
-/** Por encima de esta temperatura se destaca en rojo y se avisa al médico de guardia. */
 export const CRITICAL_TEMPERATURE = 39;
 
 const NORMAL = {
@@ -30,7 +29,6 @@ const NORMAL = {
   temperatura: { label: 'Temperatura', unit: '°C' },
 } as const;
 
-// Límites fisiológicos: fuera de ellos es casi seguro un error de carga.
 const POSSIBLE = {
   sistolica: [50, 260],
   diastolica: [30, 160],
@@ -56,8 +54,8 @@ export function validateInput(input: VitalSignInput): string[] {
 }
 
 interface ControlDto extends Omit<VitalSign, 'paciente' | 'registradoPor'> {
-  paciente: string; // "Apellido, Nombre"
-  registradoPor: string; // "Apellido, Nombre"
+  paciente: string;
+  registradoPor: string;
   fueraDeRango: string[];
 }
 
@@ -70,7 +68,6 @@ export async function listVitalSigns(): Promise<VitalSign[]> {
   return controls.map(toRecord);
 }
 
-/** Guarda el control completo con un solo POST; la API valida, marca el estado crítico y arma la nota. */
 export async function addVitalSign(input: VitalSignInput): Promise<VitalSign> {
   const problems = validateInput(input);
   if (problems.length > 0) throw new Error(problems.join(' '));
