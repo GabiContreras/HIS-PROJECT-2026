@@ -4,14 +4,14 @@ import { PasswordPolicyValidator } from '../../application/password-policy.valid
 
 export class ChangePasswordDto {
   @ApiProperty({
-    example: 'ClaveAnterior123!',
+    example: 'ClaveAnterior135!',
     description: 'Contraseña actual del usuario.',
   })
   @IsString()
   passwordActual: string;
 
   @ApiProperty({
-    example: 'ClaveNueva456!',
+    example: 'ClaveNueva246!',
     description: 'Nueva contraseña. Debe cumplir con la política de seguridad establecida.',
   })
   @IsString()
