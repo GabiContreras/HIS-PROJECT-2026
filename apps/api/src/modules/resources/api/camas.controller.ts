@@ -4,10 +4,12 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  type MessageEvent,
   Param,
   ParseUUIDPipe,
   Post,
   Query,
+  Sse,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -20,6 +22,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiProduces,
   ApiTags,
   ApiUnauthorizedResponse,
   ApiExtraModels,
@@ -31,8 +34,11 @@ import { AuthGuard } from '../../iam/api/auth.guard.js';
 import { Roles } from '../../iam/api/roles.decorator.js';
 import { RolesGuard } from '../../iam/api/roles.guard.js';
 import type { SessionIdentity } from '../../iam/application/auth.service.js';
+import type { Observable } from 'rxjs';
+import { BedEventsStreamService } from '../application/bed-events-stream.service.js';
 import { CamasService } from '../application/camas.service.js';
 import { AsignarCamaDto } from './dto/asignar-cama.dto.js';
+import { BedStreamEventDto } from './dto/bed-stream-event.dto.js';
 import { CamaResponseDto } from './dto/cama-response.dto.js';
 import { ErrorResponseDto } from './dto/error-response.dto.js';
 import { ListarCamasQueryDto } from './dto/listar-camas-query.dto.js';
@@ -43,7 +49,7 @@ const CAMA_ID = { name: 'id', description: 'UUID de la cama', format: 'uuid' };
 @UseGuards(AuthGuard, RolesGuard)
 @ApiTags('Camas')
 @ApiBearerAuth()
-@ApiExtraModels(ErrorResponseDto)
+@ApiExtraModels(ErrorResponseDto, BedStreamEventDto)
 @ApiUnauthorizedResponse({
   description: 'Sesión inválida',
   schema: {
@@ -71,7 +77,10 @@ const CAMA_ID = { name: 'id', description: 'UUID de la cama', format: 'uuid' };
   },
 })
 export class CamasController {
-  constructor(private readonly camas: CamasService) {}
+  constructor(
+    private readonly camas: CamasService,
+    private readonly bedEvents: BedEventsStreamService,
+  ) {}
 
   @Get()
   @Roles(RolUsuario.MEDICO, RolUsuario.ENFERMERO, RolUsuario.ADMINISTRATIVO)
@@ -82,6 +91,25 @@ export class CamasController {
   @ApiOkResponse({ type: CamaResponseDto, isArray: true,  description: 'Listado de camas obtenido correctamente.', })
   listar(@Query() query: ListarCamasQueryDto): Promise<CamaResponseDto[]> {
     return this.camas.listar(query);
+  }
+
+  // Va antes de @Get(':id') para que "eventos" no se interprete como el id de una cama.
+  @Sse('eventos')
+  @Roles(RolUsuario.MEDICO, RolUsuario.ENFERMERO, RolUsuario.ADMINISTRATIVO)
+  @ApiOperation({
+    summary: 'Cambios de estado de las camas en tiempo real (SSE)',
+    description:
+      'Stream de Server-Sent Events para los monitores (Recursos 2.1). Emite un mensaje por cada bed.assigned, bed.released, bed.cleaned, bed.blocked y bed.unblocked, con el estado en el que queda la cama, y un evento "ping" cada 25 segundos para mantener la conexión. ' +
+      'Solo llegan los cambios posteriores a la conexión: el estado inicial se consulta con GET /camas. ' +
+      'Requiere el header Authorization: el EventSource nativo del navegador no puede enviarlo, por lo que el cliente debe usar fetch con lectura del stream. El token no se acepta por query string.',
+  })
+  @ApiProduces('text/event-stream')
+  @ApiOkResponse({
+    description: 'Stream abierto. Cada mensaje lleva en "data" un objeto con esta forma.',
+    content: { 'text/event-stream': { schema: { $ref: getSchemaPath(BedStreamEventDto) } } },
+  })
+  eventos(): Observable<MessageEvent> {
+    return this.bedEvents.stream();
   }
 
   @Get(':id')
