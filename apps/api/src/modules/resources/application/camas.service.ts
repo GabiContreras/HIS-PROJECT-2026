@@ -31,6 +31,7 @@ import type { SessionIdentity } from '../../iam/application/auth.service.js';
 import { AsignarCamaDto } from '../api/dto/asignar-cama.dto.js';
 import { CamaResponseDto } from '../api/dto/cama-response.dto.js';
 import { ListarCamasQueryDto } from '../api/dto/listar-camas-query.dto.js';
+import { BED_BLOCKED, BED_UNBLOCKED, type BedBlockedPayload, type BedUnblockedPayload } from '../domain/bed-events.js';
 import { EstadoCama } from '../domain/estado-cama.enum.js';
 import { InvalidBedTransitionError } from '../domain/invalid-bed-transition.error.js';
 import { BedState } from '../domain/state/bed-state.js';
@@ -221,11 +222,25 @@ export class CamasService {
   }
 
   async bloquear(camaId: string): Promise<CamaResponseDto> {
-    return this.toDto(await this.cambiarEstado(camaId, (s) => s.bloquear()));
+    const cama = await this.cambiarEstado(camaId, (s) => s.bloquear());
+    const blockedAt = new Date().toISOString();
+    this.events.publish<BedBlockedPayload>({
+      type: BED_BLOCKED,
+      occurredAt: blockedAt,
+      payload: { bedId: cama.id, bedNumber: cama.numero, blockedAt },
+    });
+    return this.toDto(cama);
   }
 
   async desbloquear(camaId: string): Promise<CamaResponseDto> {
-    return this.toDto(await this.cambiarEstado(camaId, (s) => s.desbloquear()));
+    const cama = await this.cambiarEstado(camaId, (s) => s.desbloquear());
+    const unblockedAt = new Date().toISOString();
+    this.events.publish<BedUnblockedPayload>({
+      type: BED_UNBLOCKED,
+      occurredAt: unblockedAt,
+      payload: { bedId: cama.id, bedNumber: cama.numero, unblockedAt },
+    });
+    return this.toDto(cama);
   }
 
 
