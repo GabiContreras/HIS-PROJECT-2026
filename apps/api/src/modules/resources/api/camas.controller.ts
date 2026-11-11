@@ -111,7 +111,7 @@ export class CamasController {
   @ApiOperation({
     summary: 'Asignar un paciente a una cama',
     description:
-      'Valida que la cama esté LIBRE con bloqueo pesimista dentro de una transacción, crea la internación y emite bed.assigned.',
+      'Valida que la cama esté LIBRE con bloqueo pesimista dentro de una transacción, crea la internación y emite bed.assigned. Si se informa motivoIngreso, emite además patient.admitted y Enfermería genera el protocolo de atención en segundo plano.',
   })
   @ApiParam(CAMA_ID)
   @ApiCreatedResponse({ type: CamaResponseDto, description: 'Cama ocupada e internación creada' })
