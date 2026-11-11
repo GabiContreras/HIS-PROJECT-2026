@@ -26,6 +26,7 @@ import { BedAssigned } from '../../../shared/events/bed-assigned.event.js';
 import { BedCleaned } from '../../../shared/events/bed-cleaned.event.js';
 import { BedReleased } from '../../../shared/events/bed-released.event.js';
 import { EventBus } from '../../../shared/events/event-bus.service.js';
+import { PatientAdmitted } from '../../../shared/events/patient-admitted.event.js';
 import type { SessionIdentity } from '../../iam/application/auth.service.js';
 import { AsignarCamaDto } from '../api/dto/asignar-cama.dto.js';
 import { CamaResponseDto } from '../api/dto/cama-response.dto.js';
@@ -125,6 +126,7 @@ export class CamasService {
           pacienteId: paciente.id,
           camaId: cama.id,
           medicoId,
+          motivoIngreso: dto.motivoIngreso ?? null,
         }),
       );
       return { cama, internacion };
@@ -141,6 +143,22 @@ export class CamasService {
         internacion.id,
       ),
     );
+
+    // HU 2.1 de Enfermería: el ingreso dispara el protocolo de atención. Se publica después del commit
+    // y solo si se informó el motivo; sin motivo no hay protocolo que elegir.
+    if (internacion.motivoIngreso) {
+      this.events.publish(
+        new PatientAdmitted(
+          {
+            admissionId: internacion.id,
+            patientId: dto.pacienteId,
+            reason: internacion.motivoIngreso,
+            admittedAt: internacion.fechaIngreso.toISOString(),
+          },
+          internacion.id,
+        ),
+      );
+    }
     return this.toDto(cama);
   }
 
