@@ -49,7 +49,7 @@ export class RegistroDto {
   rol: RolUsuario;
 
   @ApiProperty({
-    example: 'ClaveSegura123!',
+    example: 'ClaveSegura135!',
     description: 'Contraseña que debe cumplir con la política de seguridad establecida.',
   })
   @IsString()

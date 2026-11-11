@@ -11,7 +11,7 @@ export class ResetPasswordDto {
   email: string;
 
   @ApiProperty({
-    example: 'ClaveNueva456!',
+    example: 'ClaveNueva246!',
     description: 'Nueva contraseña que debe cumplir con la política de seguridad establecida.',
   })
   @IsString()
