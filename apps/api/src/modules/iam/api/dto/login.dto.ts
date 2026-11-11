@@ -10,7 +10,7 @@ export class LoginDto {
   email: string;
 
   @ApiProperty({
-    example: 'ClaveSegura123!',
+    example: 'ClaveSegura135!',
     description: 'Contraseña de acceso del usuario.',
   })
   @IsString()
