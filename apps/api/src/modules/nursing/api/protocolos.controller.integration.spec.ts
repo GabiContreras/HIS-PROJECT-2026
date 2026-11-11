@@ -39,9 +39,10 @@ describe('ProtocolosController: autorización por rol y validación de entrada',
   };
 
   // Checklist del protocolo: lo trabaja enfermería y el médico lo consulta/corrige.
-  // Alta del ingreso (POST ingresos): la regla está pendiente de decisión (¿solo ADMINISTRATIVO o también MEDICO?).
-  // Por eso ahí solo se afirma lo que vale en ambas opciones: ADMINISTRATIVO entra y ENFERMERO queda afuera.
-  // MEDICO no se afirma en ningún sentido hasta que el equipo decida.
+  // Alta manual del ingreso (POST ingresos), decisión D4: ADMINISTRATIVO y MEDICO.
+  // Las fuentes respaldan al administrativo; se mantiene al médico porque la pantalla de protocolos del
+  // frontend (/enfermeria/protocolos, roles ENFERMERO y MEDICO) llama a este endpoint con la sesión del médico.
+  // ENFERMERO queda afuera: enfermería recibe el protocolo, no lo da de alta.
   const endpoints = [
     {
       nombre: 'GET /protocolos',
@@ -69,7 +70,7 @@ describe('ProtocolosController: autorización por rol y validación de entrada',
       body: INGRESO,
       ok: 201,
       caso: 'generarParaIngreso',
-      permitidos: [RolUsuario.ADMINISTRATIVO],
+      permitidos: [RolUsuario.ADMINISTRATIVO, RolUsuario.MEDICO],
       rechazados: [RolUsuario.ENFERMERO],
     },
   ] as const;
