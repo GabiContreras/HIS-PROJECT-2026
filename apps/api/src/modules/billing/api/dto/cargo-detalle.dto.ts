@@ -1,5 +1,6 @@
 
 import { ApiProperty } from '@nestjs/swagger';
+import { EstadoCargo } from '../../domain/estado-cargo.js';
 import type { Cargo } from '../../../../entities/cargo.entity.js';
 import type { CoverageType } from '../../../../shared/events/coverage-type.js';
 
@@ -152,6 +153,13 @@ export class CargoDetalleDto {
     description: 'Tipo de atención facturada.',
   })
   tipoAtencion: Cargo['tipoAtencion'];
+
+  @ApiProperty({
+    enum: EstadoCargo,
+    example: EstadoCargo.PENDIENTE,
+    description: 'Estado del cargo.',
+  })
+  estado: EstadoCargo;
 
   @ApiProperty({
     example: '2026-11-06T10:30:00.000Z',
