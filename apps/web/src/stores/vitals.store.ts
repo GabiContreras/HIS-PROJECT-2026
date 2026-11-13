@@ -1,12 +1,10 @@
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
-import { useSessionStore } from '../features/iam/session.store';
 import { addVitalSign, listVitalSigns, type VitalSign, type VitalSignInput } from '../services/vitalSigns';
 import { messageFrom } from '../shared/errors';
 import { useNotificationStore } from './notification.store';
 
 export const useVitalsStore = defineStore('vitals', () => {
-  const session = useSessionStore();
   const notifications = useNotificationStore();
 
   const records = ref<VitalSign[]>([]);
@@ -31,7 +29,7 @@ export const useVitalsStore = defineStore('vitals', () => {
   }
 
   async function record(input: VitalSignInput): Promise<VitalSign> {
-    const saved = await addVitalSign(input, session.fullName);
+    const saved = await addVitalSign(input);
     if (saved.critico) {
       notifications.notify({
         level: 'critical',

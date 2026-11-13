@@ -16,6 +16,10 @@ import { SignoVital } from './modules/ehr/infrastructure/persistence/entities/si
 import { IndicacionMedica } from './modules/ehr/infrastructure/persistence/entities/indicacion-medica.entity.js';
 import { AdministracionMedicacion } from './modules/nursing/infrastructure/persistence/entities/administracion-medicacion.entity.js';
 import { Cargo } from './modules/billing/infrastructure/persistence/entities/cargo.entity.js';
+
+import { ProtocoloIngreso } from './entities/protocolo-ingreso.entity.js';
+import { TareaProtocolo } from './entities/tarea-protocolo.entity.js';
+import { RegistroClinico } from './entities/registro-clinico.entity.js';
 import { IamModule } from './modules/iam/iam.module.js';
 import { AdmissionsModule } from './modules/admissions/admissions.module.js';
 import { EhrModule } from './modules/ehr/ehr.module.js';
@@ -56,6 +60,9 @@ import { AllExceptionsFilter } from './shared/http/all-exceptions.filter.js';
           Cargo,
           Internacion,
           EntreturnoStandby,
+          ProtocoloIngreso,
+          TareaProtocolo,
+          RegistroClinico,
         ],
         autoLoadEntities: true,
         synchronize: false,

@@ -43,24 +43,24 @@ Es un proyecto académico. No está preparado para uso clínico real. El alcance
 
 ## 2. Estado de implementación
 
-La siguiente tabla refleja el código actual del repositorio, no el alcance planificado.
+La siguiente tabla refleja el código actual del repositorio, no el alcance planificado. El detalle de lo verificado contra un servidor y una base reales está en `docs/PRUEBAS-FUNCIONALES-ENFERMERIA-RECURSOS-IAM.md`.
 
 | Módulo | Backend (API) | Frontend |
 | --- | --- | --- |
 | IAM (login, refresh, roles, usuarios) | Implementado | Conectado a la API |
 | Admisión: pacientes | Implementado | Conectado a la API |
-| Admisión: turnos, entreturnos, lista de espera, transiciones de estado | Implementado | Conectado a la API |
-| Notificaciones | Implementado (`/notificaciones`) | Store de notificaciones |
-| Recursos: camas (asignación, alta, limpieza, bloqueo) | Implementado | Conectado a la API |
-| Recursos: descuento de inventario | Implementado (`POST /resources/inventory/descontar`) | Listado de insumos con datos locales en memoria |
-| Facturación: cargos automáticos por turno atendido | Implementado (`GET /billing/cargos`) | Conectado a la API |
-| Triaje de guardia | No hay endpoint | Pantalla con datos locales en memoria |
-| Signos vitales | No hay endpoint | Pantalla con datos locales en memoria |
-| Medicaciones | No hay endpoint | Pantalla con datos locales en memoria |
-| Protocolos de ingreso (patrón Builder) | No implementado | Pantalla con datos locales en memoria |
-| Historia clínica electrónica (EHR) | Módulo vacío (solo esqueleto) | Sin pantalla |
+| Admisión: turnos, entreturnos, lista de espera, transiciones de estado | Implementado; los avisos al consultorio y a recepción se guardan como notificaciones | Conectado a la API |
+| Admisión: triaje de guardia | Implementado (`/triaje`), con cola persistida y ordenada por nivel | Pantalla con datos locales en memoria |
+| Notificaciones | Implementado (`/notificaciones`) | Conectado a la API |
+| Recursos: camas (asignación, alta, limpieza, bloqueo) | Implementado, con cambios de estado en tiempo real (`GET /camas/eventos`) | Pantalla con datos locales en memoria |
+| Recursos: inventario | Implementado: listado, descuento manual y descuento automático al administrar medicación | Conectado a la API |
+| Enfermería: signos vitales | Implementado (`/signos-vitales`), con alerta por temperatura mayor a 39 °C | Conectado a la API |
+| Enfermería: medicación | Implementado (`/indicaciones`), con ventana de ±30 minutos | Conectado a la API |
+| Enfermería: protocolos de ingreso (patrón Builder) | Implementado (`/protocolos`); se generan solos al asignar una cama con motivo de ingreso | Conectado a la API |
+| Historia clínica electrónica | Implementado (`/historia-clinica`) | Conectado a la API |
+| Facturación: cargos por turno atendido y por medicación administrada | Implementado (`GET /billing/cargos`) | Conectado a la API |
 
-Las pantallas con datos locales en memoria marcan en el código el endpoint futuro con comentarios `TODO` (por ejemplo, `apps/web/src/services/vitalSigns.ts`). Los datos se pierden al recargar la página.
+Las dos pantallas con datos locales en memoria (camas y triaje) marcan en el código el endpoint que deben consumir con comentarios `TODO` (`apps/web/src/services/beds.ts` y `triage.ts`). Sus datos se pierden al recargar la página. Los endpoints ya existen en la API.
 
 ## 3. Tecnologías
 
@@ -104,21 +104,33 @@ Justificación: el equipo es de seis personas y el plazo es de aproximadamente d
 
 | Patrón | Dónde | Descripción |
 | --- | --- | --- |
-| State | `modules/admissions/domain/states/` | Estados del turno: `DISPONIBLE`, `RESERVADO`, `CONFIRMADO`, `ATENDIDO` y cancelación. Las transiciones inválidas se rechazan. |
+| State | `modules/admissions/domain/states/` | Estados del turno: `RESERVADO`, `CONFIRMADO`, `EN_SALA_DE_ESPERA`, `ATENDIDO` y `CANCELADO`. Las transiciones inválidas se rechazan con 409. |
 | State | `modules/resources/domain/state/` | Estados de la cama: `LIBRE`, `OCUPADA`, `EN_LIMPIEZA`, `BLOQUEADA`. Una cama ocupada solo pasa a limpieza tras el alta. |
 | Strategy | `modules/billing/domain/` | Importe por tipo de atención (regular y urgencia) y reparto del costo según cobertura (pública, prepaga y particular). |
+| Builder | `modules/nursing/domain/protocolo/` | Protocolos de ingreso: `PreOpProtocolBuilder` y `RespiratoryProtocolBuilder`, elegidos por `ProtocolDirector` según el motivo de ingreso. |
 | Ports and adapters | `modules/*/domain/ports/` | Repositorios definidos como interfaces en el dominio. |
 | Observer / eventos | `src/shared/events/` | Bus de eventos interno en memoria (RxJS). |
 
-El patrón Builder para los protocolos de enfermería **no está implementado** (ver sección 2).
-
 ### 4.3 Concurrencia
 
-La reserva de turnos, la creación de agenda, los cambios de estado, la asignación de camas y el descuento de inventario se ejecutan en transacciones con bloqueo pesimista (`pessimistic_write`, equivalente a `SELECT ... FOR UPDATE`). Ante un conflicto, la API responde con error de conflicto en lugar de asignar dos veces el mismo recurso. Las entidades `Turno` y `Cama` además tienen columna `@VersionColumn()`.
+La reserva de turnos, los cambios de estado, la asignación de camas y la administración de medicación se ejecutan en transacciones con bloqueo pesimista (`pessimistic_write`, equivalente a `SELECT ... FOR UPDATE`). El descuento de inventario usa una única sentencia `UPDATE` condicional (`cantidad_disponible >= cantidad`), que es atómica y nunca deja el stock en negativo. Ante un conflicto, la API responde `409` en lugar de asignar dos veces el mismo recurso. Las entidades `Turno` y `Cama` además tienen columna `@VersionColumn()`, y la base refuerza las reglas con índices únicos (una internación activa por cama y por paciente, un cargo por turno y por administración).
 
 ### 4.4 Eventos
 
-`src/shared/events/EventBus` es un bus en memoria. Un evento publicado no tiene garantía de entrega tras un reinicio del proceso. El caso implementado es `admissions.appointment-attended`: al pasar un turno de `CONFIRMADO` a `ATENDIDO`, el módulo de facturación crea un cargo. La unicidad de `turno_id` en la tabla `cargos` evita duplicados ante reintentos.
+`src/shared/events/EventBus` es un bus en memoria (RxJS). Los eventos se publican **después** de confirmar la transacción y no tienen garantía de entrega: si el proceso se cae entre el commit y el procesamiento, el evento se pierde. Los suscriptores nunca propagan errores al bus; los registran en el log.
+
+| Evento | Lo publica | Lo escucha | Efecto |
+| --- | --- | --- | --- |
+| `admissions.appointment-attended` | Admisión, al pasar un turno a `ATENDIDO` | Facturación | Crea el cargo del turno (único por `turno_id`) |
+| `admissions.patient-waiting` | Admisión, al pasar un turno a `EN_SALA_DE_ESPERA` | Admisión | Notificación al médico del turno |
+| `admissions.standby-promoted` | Admisión, al promover a un paciente de la lista de espera | Admisión | Notificación a los administrativos |
+| `vital-sign.alert-raised` | Enfermería, al registrar un signo vital fuera de rango | Admisión | Con temperatura mayor a 39 °C, notificación de alta prioridad al médico responsable de la internación (o a todos los médicos si no hay internación activa) |
+| `medication.administered` | Enfermería, al confirmar una dosis | Recursos y Facturación | Descuenta el insumo del inventario y crea el cargo de farmacia (único por administración) |
+| `patient.admitted` | Recursos, al asignar una cama con `motivoIngreso` | Enfermería | Genera el protocolo de ingreso (único por internación) |
+| `bed.assigned`, `bed.released`, `bed.cleaned` | Recursos, en cada cambio de estado de cama | Recursos | Se reenvían por `GET /camas/eventos` |
+| `bed.blocked`, `bed.unblocked` | Recursos, al bloquear o desbloquear una cama | Recursos | Se reenvían por `GET /camas/eventos` |
+
+**Tiempo real de camas.** `GET /camas/eventos` es un flujo Server-Sent Events (`text/event-stream`) que emite `{ tipo, camaId, numero, estado, at }` por cada cambio y un evento `ping` cada 25 segundos. Solo entrega lo que ocurre con la conexión abierta, por lo que el cliente debe cargar antes el mapa con `GET /camas`. El `EventSource` del navegador no envía el header `Authorization`: hay que consumirlo con `fetch` leyendo el cuerpo. El token no se acepta por query string.
 
 ### 4.5 Decisiones técnicas y compromisos
 
@@ -295,13 +307,16 @@ Los archivos `.env` no deben subirse al repositorio.
 | `Turno` | Turnos de agenda con estado y columna de versión |
 | `EntreturnoStandby` | Cola de espera de entreturnos |
 | `Cama` | Camas con estado y columna de versión |
-| `Internacion` | Vínculo entre paciente, cama y fecha de ingreso |
+| `Internacion` | Vínculo entre paciente, cama, médico responsable y fecha de ingreso, con el motivo de ingreso si se informó |
 | `Insumo` | Inventario de insumos médicos |
 | `SignoVital` | Registros de signos vitales |
 | `IndicacionMedica` | Indicaciones médicas |
 | `AdministracionMedicacion` | Administraciones de medicación |
-| `Cargo` | Cargos de facturación, único por turno |
-| `Notificacion` | Notificaciones internas |
+| `Cargo` | Cargos de facturación: uno por turno atendido o uno por administración de medicación |
+| `NotificacionEntity` | Notificaciones internas por usuario |
+| `ProtocoloIngreso`, `TareaProtocolo` | Protocolo de atención de un ingreso y su checklist de tareas |
+| `RegistroClinico` | Historia clínica: alergias, antecedentes, evoluciones, estudios y notas de enfermería |
+| `TriajeRegistro` | Cola de triaje de guardia |
 
 Las relaciones son `ManyToOne` hacia `Usuario`, `Paciente`, `Turno`, `Insumo` e `IndicacionMedica`, con reglas de borrado explícitas (`RESTRICT`, `CASCADE` o `SET NULL`) según el caso.
 
@@ -312,10 +327,11 @@ Las relaciones son `ManyToOne` hacia `Usuario`, `Paciente`, `Turno`, `Insumo` e 
 | Módulo | Responsabilidad |
 | --- | --- |
 | `iam` | Autenticación, sesiones, cuentas, roles y guards |
-| `admissions` | Pacientes, agenda de turnos, entreturnos, lista de espera, transiciones y notificaciones |
-| `resources` | Camas con máquina de estados, internaciones e inventario |
+| `admissions` | Pacientes, agenda de turnos, entreturnos, lista de espera, transiciones, triaje y notificaciones |
+| `resources` | Camas con máquina de estados y tiempo real, internaciones e inventario |
 | `billing` | Cargos automáticos y estrategias de cálculo |
-| `nursing`, `ehr` | Esqueleto, sin casos de uso |
+| `nursing` | Signos vitales, indicaciones y administración de medicación, protocolos de ingreso |
+| `ehr` | Historia clínica electrónica |
 | `health` | Esqueleto de diagnóstico técnico |
 
 ### Endpoints
@@ -365,11 +381,36 @@ Todos los endpoints, salvo los marcados como públicos, requieren `Authorization
 | `POST /camas/:id/asignar`, `POST /camas/:id/alta` | `MEDICO`, `ADMINISTRATIVO` |
 | `POST /camas/:id/limpieza/confirmar` | `ENFERMERO`, `ADMINISTRATIVO` |
 | `POST /camas/:id/bloquear`, `POST /camas/:id/desbloquear` | `ADMINISTRATIVO` |
+| `GET /camas/eventos` (Server-Sent Events) | `MEDICO`, `ENFERMERO`, `ADMINISTRATIVO` |
+
+`POST /camas/:id/asignar` acepta `motivoIngreso` (opcional, 3 a 200 caracteres). Si se informa, se guarda en la internación y Enfermería genera el protocolo de ingreso.
+
+**Enfermería**
+
+| Método y ruta | Acceso |
+| --- | --- |
+| `GET /signos-vitales`, `GET /signos-vitales/tipos`, `GET /signos-vitales/controles`, `POST /signos-vitales`, `POST /signos-vitales/controles` | `ENFERMERO`, `MEDICO` |
+| `POST /indicaciones` | `MEDICO` |
+| `GET /indicaciones` | `ENFERMERO`, `MEDICO` |
+| `POST /indicaciones/:id/administraciones` | `ENFERMERO` |
+| `GET /protocolos`, `PATCH /protocolos/:protocoloId/tareas/:tareaId` | `ENFERMERO`, `MEDICO` |
+| `POST /protocolos/ingresos` (alta manual de un protocolo) | `MEDICO`, `ADMINISTRATIVO` |
+
+**Historia clínica y triaje**
+
+| Método y ruta | Acceso |
+| --- | --- |
+| `GET /historia-clinica/:pacienteId` | `MEDICO`, `ENFERMERO` |
+| `POST /historia-clinica/:pacienteId/alergias`, `/antecedentes-familiares`, `/evoluciones`, `/estudios` | `MEDICO` |
+| `POST /triaje` | `ENFERMERO`, `MEDICO` |
+| `GET /triaje` | `ENFERMERO`, `MEDICO`, `ADMINISTRATIVO` |
+| `PATCH /triaje/:id/atender` | `MEDICO` |
 
 **Otros**
 
 | Método y ruta | Acceso |
 | --- | --- |
+| `GET /resources/inventory` | `MEDICO`, `ENFERMERO`, `ADMINISTRATIVO` |
 | `POST /resources/inventory/descontar` | `MEDICO` |
 | `GET /billing/cargos` | `ADMINISTRATIVO` |
 | `GET /notificaciones`, `PATCH /notificaciones/:id/leer` | Autenticado |
@@ -377,9 +418,11 @@ Todos los endpoints, salvo los marcados como públicos, requieren `Authorization
 ### Reglas de negocio destacadas
 
 - La agenda usa turnos regulares de 30 minutos y turnos urgentes de 15. Un entreturno solo puede insertarse 15 minutos después del inicio de un turno libre de 30; ese turno se reduce a 15 en la misma transacción.
-- Flujo de turno: `DISPONIBLE -> RESERVADO -> CONFIRMADO -> ATENDIDO`. Se puede cancelar desde `RESERVADO` o `CONFIRMADO`.
+- Flujo de turno: `RESERVADO -> CONFIRMADO -> EN_SALA_DE_ESPERA -> ATENDIDO`. Se puede cancelar desde `RESERVADO` o `CONFIRMADO`.
 - Flujo de cama: `LIBRE -> OCUPADA -> EN_LIMPIEZA -> LIBRE`; `BLOQUEADA` es un estado de mantenimiento. Una cama ocupada no puede pasar a `LIBRE` sin el proceso intermedio de limpieza.
 - Facturación: al atender un turno se crea un cargo de 15.000 ARS (consulta regular) o 25.000 ARS (urgencia). El reparto según cobertura es: pública, el paciente paga 0 y el Estado cubre el 100%; prepaga, copago fijo de 3.000 ARS y el resto a la prepaga; particular, el paciente paga el 100%. El copago de prepaga es un valor único provisorio, pendiente del nomenclador real.
+- Enfermería: un control con temperatura mayor a 39 °C queda marcado como crítico y genera una notificación de alta prioridad. Una dosis solo se confirma dentro de ±30 minutos de su hora programada; al confirmarla se registra al enfermero, se descuenta una unidad del inventario y se crea el cargo de farmacia.
+- Protocolos de ingreso: "cirugía programada" genera el protocolo pre-quirúrgico y "neumonía" o "infección respiratoria" el respiratorio. Otros motivos no tienen protocolo definido: la internación se crea igual y no se genera ninguno.
 - Baja lógica de cuentas: solo el superadmin puede dar de baja y restaurar. Un médico con turnos futuros activos no puede darse de baja.
 
 ## 11. Frontend (Vue 3)
@@ -430,6 +473,17 @@ Cada rol (médico, enfermero, administrativo) tiene un panel propio. La interfaz
 - Access token JWT de corta duración (15 minutos por defecto) y refresh token aleatorio rotativo. Este último se guarda como hash en base de datos y se envía solo en la cookie `his_refresh`, nunca en el cuerpo de la respuesta.
 - Roles: `MEDICO`, `ENFERMERO` y `ADMINISTRATIVO`. Un indicador aparte identifica al superadmin raíz, que se crea con `iam:bootstrap-superadmin` y es el único que puede crear otros administrativos y dar de baja cuentas.
 - Autorización con `AuthGuard`, `RolesGuard` y `SuperadminGuard`, aplicados por controlador o por ruta.
+- Equivalencia entre los roles del diseño y los del sistema:
+
+  | Rol en el documento de diseño | En el sistema |
+  | --- | --- |
+  | Administrador | `ADMINISTRATIVO` con indicador de superadmin (cuenta raíz) |
+  | Médico | `MEDICO` |
+  | Enfermero | `ENFERMERO` |
+  | Recepcionista | `ADMINISTRATIVO` |
+  | Paciente | No existe como cuenta: los pacientes son datos que carga el personal y no inician sesión |
+
+  Las historias de usuario nombran además al administrativo de piso, al coordinador de agendas y al personal de admisión, que operan como `ADMINISTRATIVO`, y al personal de limpieza, cuya confirmación de higiene la registran `ENFERMERO` o `ADMINISTRATIVO`.
 - Un médico recién registrado queda pendiente de habilitación por un administrativo. Las cuentas deshabilitadas no inician sesión y sus sesiones se revocan.
 - Política de contraseña: mínimo 8 caracteres, una mayúscula, un dígito y sin dígitos consecutivos ascendentes ni descendentes. Las contraseñas se almacenan con `scrypt`.
 - Los atajos de desarrollo (alta sin verificación por correo y restablecimiento sin código) están bloqueados con `NODE_ENV=production`.
@@ -442,7 +496,7 @@ Cada rol (médico, enfermero, administrativo) tiene un panel propio. La interfaz
 
 ## 14. Pruebas
 
-El backend usa Vitest (alternativa a Jest) y Supertest.
+El backend usa Vitest (alternativa a Jest) y Supertest. Vitest ejecuta los archivos `*.spec.ts` y `*.test.ts`.
 
 ```bash
 npm run api:test                                  # pruebas unitarias e integración sin base de datos
@@ -450,19 +504,22 @@ npm --prefix apps/api run test:cov                # con cobertura
 npm --prefix apps/api run test:e2e                # e2e (requiere base de datos configurada)
 ```
 
-Cobertura actual de pruebas: unitarias de IAM (autenticación, tokens, hash de contraseñas, administración de cuentas), de admisión (turnos, entreturnos, pacientes, estados del turno, DTO), de facturación (estrategias de cobertura y endpoint de cargos), de recursos (inventario) y de la estrategia de nombres.
+Estado actual: **577 pruebas pasan y 7 se omiten** (las que necesitan una base real). Cubren IAM (autenticación, tokens, política de contraseñas, guards, administración de cuentas y autorización de `/usuarios`), admisión (turnos, entreturnos, pacientes, estados, triaje, notificaciones), enfermería (signos vitales, medicación, protocolos), recursos (camas, tiempo real, inventario), facturación e historia clínica. La cobertura de líneas de `modules/iam` es 94,68 %.
 
-Pruebas opcionales que requieren una base real, deshabilitadas por defecto:
+Pruebas que requieren una base real, deshabilitadas por defecto. **Corren solo contra PostgreSQL local**; cada archivo valida el host y el nombre de la base antes de escribir:
 
-```bash
-# Concurrencia real de turnos (solo base local)
-RUN_LOCAL_CONCURRENCY_TEST=true DATABASE_URL=... npm run api:test
+| Archivo | Variables | Requisito |
+| --- | --- | --- |
+| `test/turnos-concurrency.local.spec.ts` | `RUN_LOCAL_CONCURRENCY_TEST=true`, `DATABASE_URL` | Base local migrada llamada `his_admissions_test` |
+| `test/inventory-service-concurrency.spec.ts` | `PGLOCAL_PASSWORD` | Base `his_test` en `localhost:5432`; correr antes `node scripts/prepare-inventory-test.mjs` |
+| `test/protocolos-checklist.local.spec.ts` | `CHECKLIST_TEST_DATABASE_URL` | Base local migrada con al menos 2 usuarios y 1 paciente |
+| `test/inventory-supabase.integration.spec.ts` | `RUN_SUPABASE_INTEGRATION=true`, `DATABASE_URL` | Solo acepta el host de Supabase y modifica inventario real: no correrlo sin avisar al equipo |
 
-# Integración de inventario contra Supabase
-RUN_SUPABASE_INTEGRATION=true DATABASE_URL=... npm run api:test
-```
+Con las tres bases locales configuradas pasan 583 pruebas y queda 1 omitida (la de Supabase).
 
-No hay pruebas automatizadas del frontend. El script `type-check` (`vue-tsc --build`) verifica los tipos.
+Prueba funcional contra servidor y base reales: `apps/api/scripts/functional-check.mjs` recorre 29 criterios de aceptación de Enfermería, Recursos e IAM por HTTP. El resultado y la forma de repetirla están en `docs/PRUEBAS-FUNCIONALES-ENFERMERIA-RECURSOS-IAM.md`.
+
+Frontend: hay 4 archivos de pruebas con Vitest (`npm --prefix apps/web run test`). Pasan 3; `stores/__tests__/dashboard.store.spec.ts` falla porque importa un store que no existe. El script `type-check` (`vue-tsc --build`) verifica los tipos.
 
 ## 15. Seguridad
 
@@ -511,26 +568,26 @@ Ubicación en el código de cada criterio de la rúbrica.
 | UX/UI | Panel por rol, notificaciones, drawers, estados de carga y error, reglas responsive |
 | Documentación | Este README y `docs/` |
 | Proyecto NestJS | `apps/api/src/modules` (módulos por dominio con capas) |
-| Interpretación del problema | Historias de usuario de Admisión, Recursos y Facturación cubiertas según la sección 2 |
+| Interpretación del problema | Historias de usuario de Admisión, Enfermería, Recursos y Facturación cubiertas según la sección 2; verificación por historia en `docs/PRUEBAS-FUNCIONALES-ENFERMERIA-RECURSOS-IAM.md` |
 | Base de datos | `apps/api/src/entities` y `apps/api/src/migrations` (PostgreSQL, relaciones y restricciones) |
 | Autenticación y autorización | `apps/api/src/modules/iam` (JWT, refresh rotativo, guards por rol) |
-| Test y documentación | `apps/api/src/**/*.spec.ts`, `apps/api/test`, Swagger en `/docs` |
+| Test y documentación | `apps/api/src/**/*.spec.ts`, `apps/api/test`, `apps/api/scripts/functional-check.mjs`, Swagger en `/docs` |
 
 ## 19. Limitaciones conocidas y mejoras futuras
 
-- Triaje, signos vitales, medicaciones, protocolos de ingreso y listado de insumos del frontend usan datos locales en memoria. Faltan los endpoints correspondientes en el backend.
-- Los módulos `nursing` y `ehr` del backend son solo esqueleto, aunque existen las entidades `SignoVital`, `IndicacionMedica` y `AdministracionMedicacion`.
-- El patrón Builder para protocolos de enfermería no está implementado.
+- **Eventos en memoria, sin entrega durable.** Si el servidor se cae entre la confirmación de la transacción y el procesamiento del evento, se pierde el efecto asociado: el descuento de inventario, el cargo de farmacia, el protocolo de ingreso o la notificación. La mejora es el patrón Outbox con idempotencia. Los suscriptores ya son idempotentes por clave (turno, administración, internación).
+- **El protocolo de ingreso se genera en segundo plano.** `POST /camas/:id/asignar` responde antes de que exista el protocolo; un cliente que consulte en el mismo instante puede no verlo todavía.
+- **Protocolos solo para dos motivos de ingreso.** Las historias de usuario definen tareas para ingreso pre-quirúrgico y para infección respiratoria. Para cualquier otro motivo no se genera protocolo.
+- **Tiempo real de camas sin historial.** `GET /camas/eventos` solo entrega los cambios ocurridos con la conexión abierta, y con más de una instancia de la API cada cliente vería solo los eventos de la instancia a la que está conectado. El frontend todavía no lo consume.
+- **Frontend de camas y de triaje con datos locales.** Los endpoints existen, pero esas dos pantallas no los consumen.
+- **Copago de prepaga provisorio.** Es un valor único (3.000 ARS) hasta contar con el nomenclador real. Las tarifas y los umbrales clínicos también son valores fijos.
+- **Historial de migraciones de la base compartida desincronizado con `main`.** Una migración ya aplicada figura con un timestamp anterior y bloquea `migration:run`. El diagnóstico y el arreglo propuesto están en `docs/PRUEBAS-FUNCIONALES-ENFERMERIA-RECURSOS-IAM.md`, sección 3. Sobre una base vacía las 26 migraciones aplican sin errores.
+- **`migration:generate` no refleja cambios reales.** La base es más estricta que las entidades (restricciones, índices y longitudes definidos a mano), por lo que el comando siempre propone cambios. Las migraciones se escriben a mano.
 - Las entidades TypeORM siguen en `src/entities/` en lugar de la infraestructura de cada módulo.
-- El bus de eventos es en memoria. Para garantizar la entrega se debería usar el patrón Outbox con idempotencia.
-- La entidad `Notificacion` no figura en la lista de entidades de `data-source.ts`, y ninguna migración crea su tabla. Debe revisarse antes de ejecutar las migraciones sobre una base vacía.
-- Dos migraciones comparten el mismo timestamp (`1793370400000`) y el conjunto no fue verificado sobre una base vacía.
-- `vitest.config.ts` solo incluye archivos `*.spec.ts`; las pruebas con sufijo `.test.ts` (estados de cama) no se ejecutan con `npm run api:test`.
-- `main.ts` llama dos veces a `enableCors`; debe quedar una sola configuración basada en `FRONTEND_ORIGINS`.
-- `packages/contracts` no tiene `package.json` en su raíz (existe uno dentro de `src/` con el nombre `src`) y no contiene contratos compartidos.
-- Reglas de tarifas y umbrales clínicos pendientes de definición del docente; el copago de prepaga es un valor único provisorio.
+- `packages/contracts` no contiene contratos compartidos ni tiene `package.json` en su raíz. Hoy los DTOs viven en cada módulo de la API y los tipos del frontend en `apps/web/src/services`.
+- El sistema tiene tres roles (`MEDICO`, `ENFERMERO`, `ADMINISTRATIVO`) frente a los cinco del documento de diseño; la equivalencia está en la sección 12.
 - Sin verificación por correo electrónico ni recuperación de contraseña por correo.
-- Sin pruebas automatizadas del frontend.
+- Una prueba del frontend falla (sección 14).
 
 ## 20. Documentación complementaria
 
@@ -541,6 +598,8 @@ Ubicación en el código de cada criterio de la rúbrica.
 | `docs/CONTRATOS-Y-GIT.md` | Contratos de API y flujo de trabajo con Git |
 | `docs/FRONTEND-IMPLEMENTACION.md` | Implementación del frontend |
 | `docs/VALIDACION-ERRORES-IMPLEMENTACION.md` | Validación y errores |
+| `docs/PRUEBAS-FUNCIONALES-ENFERMERIA-RECURSOS-IAM.md` | Prueba funcional contra servidor y base reales, migraciones sobre base vacía y tests de integración |
+| `docs/RESUMEN-EXPOSICION.md` | Resumen para la exposición: patrones, concurrencia, eventos y límites |
 
 ## Integrantes
 - ASTUDILLO AMPARO,

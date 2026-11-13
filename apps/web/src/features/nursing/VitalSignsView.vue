@@ -6,7 +6,7 @@ import BaseCard from '../../components/ui/BaseCard.vue';
 import NoticeBanner from '../../components/ui/NoticeBanner.vue';
 import StatusChip from '../../components/ui/StatusChip.vue';
 import type { Patient } from '../../services/patients';
-import { CRITICAL_TEMPERATURE, validateInput } from '../../services/vitalSigns';
+import { CRITICAL_TEMPERATURE, isValid, validateInput } from '../../services/vitalSigns';
 import { messageFrom } from '../../shared/errors';
 import { formatDateTime } from '../../shared/format';
 import { useVitalsStore } from '../../stores/vitals.store';
@@ -33,7 +33,13 @@ const input = computed(() => ({
   temperatura: Number(form.temperatura),
 }));
 const problems = computed(() => validateInput(input.value));
-const hot = computed(() => Number(form.temperatura) > CRITICAL_TEMPERATURE);
+const invalid = computed(() => ({
+  sistolica: !isValid('sistolica', input.value.sistolica),
+  diastolica: !isValid('diastolica', input.value.diastolica),
+  frecuenciaCardiaca: !isValid('frecuenciaCardiaca', input.value.frecuenciaCardiaca),
+  temperatura: !isValid('temperatura', input.value.temperatura),
+}));
+const hot = computed(() => !invalid.value.temperatura && input.value.temperatura > CRITICAL_TEMPERATURE);
 
 async function save(): Promise<void> {
   submitted.value = true;
@@ -65,12 +71,12 @@ onMounted(store.load);
       <form novalidate @submit.prevent="save">
         <div class="form-grid">
           <div class="full"><PatientPicker v-model="paciente" label="Paciente internado" /></div>
-          <label>Sistólica (mmHg)<input v-model="form.sistolica" type="number" inputmode="numeric" /></label>
-          <label>Diastólica (mmHg)<input v-model="form.diastolica" type="number" inputmode="numeric" /></label>
-          <label>Frecuencia cardíaca (lpm)<input v-model="form.frecuenciaCardiaca" type="number" inputmode="numeric" /></label>
+          <label>Sistólica (mmHg)<input v-model="form.sistolica" type="number" inputmode="numeric" :class="{ hot: submitted && invalid.sistolica }" /></label>
+          <label>Diastólica (mmHg)<input v-model="form.diastolica" type="number" inputmode="numeric" :class="{ hot: submitted && invalid.diastolica }" /></label>
+          <label>Frecuencia cardíaca (lpm)<input v-model="form.frecuenciaCardiaca" type="number" inputmode="numeric" :class="{ hot: submitted && invalid.frecuenciaCardiaca }" /></label>
           <label>
             Temperatura (°C)
-            <input v-model="form.temperatura" type="number" step="0.1" :class="{ hot }" />
+            <input v-model="form.temperatura" type="number" step="0.1" :class="{ hot: hot || (submitted && invalid.temperatura) }" />
             <span v-if="hot" class="field-error">Supera {{ CRITICAL_TEMPERATURE }} °C: se avisará al médico de guardia.</span>
           </label>
           <div v-if="submitted" class="full errors" role="alert">
@@ -120,7 +126,8 @@ onMounted(store.load);
 .layout { display: grid; grid-template-columns: 1fr 1.6fr; gap: 20px; align-items: start; }
 .layout.single { grid-template-columns: 1fr; }
 .layout > * { min-width: 0; }
-.stack { display: grid; gap: 16px; }
+.stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.stack > * { min-width: 0; }
 .errors { display: grid; gap: 4px; }
 .hot { border-color: var(--color-danger); background: var(--color-danger-soft); }
 .red { color: var(--color-danger); }

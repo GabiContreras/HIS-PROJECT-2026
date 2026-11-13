@@ -14,11 +14,13 @@ export class Internacion {
   @Column({ name: 'medico_id', type: 'uuid' })
   medicoId: string;
 
-  /** La BD la completa con now() al insertar. */
+   @Column({ name: 'motivo_ingreso', type: 'varchar', length: 200, nullable: true })
+  motivoIngreso: string | null;
+
   @CreateDateColumn({ name: 'fecha_ingreso', type: 'timestamptz' })
   fechaIngreso: Date;
 
-  /** null = internación activa. */
+
   @Column({ name: 'fecha_egreso', type: 'timestamptz', nullable: true })
   fechaEgreso: Date | null;
 

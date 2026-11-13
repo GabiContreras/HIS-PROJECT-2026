@@ -1,0 +1,71 @@
+import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { RolUsuario } from '../../../entities/usuario.entity.js';
+import { CurrentIdentity } from '../../iam/api/auth.decorator.js';
+import { AuthGuard } from '../../iam/api/auth.guard.js';
+import { Roles } from '../../iam/api/roles.decorator.js';
+import { RolesGuard } from '../../iam/api/roles.guard.js';
+import type { SessionIdentity } from '../../iam/application/auth.service.js';
+import { SignosVitalesService } from '../application/signos-vitales.service.js';
+import { RegistrarControlSignosVitalesDto } from './dto/registrar-control-signos-vitales.dto.js';
+import { RegistrarSignoVitalDto } from './dto/registrar-signo-vital.dto.js';
+import { SignosVitalesFiltroDto } from './dto/signos-vitales-filtro.dto.js';
+
+@Controller('signos-vitales')
+@UseGuards(AuthGuard, RolesGuard)
+@ApiTags('Enfermería - Signos vitales')
+@ApiBearerAuth()
+export class SignosVitalesController {
+  constructor(private readonly signos: SignosVitalesService) {}
+
+  @Get('tipos')
+  @Roles(RolUsuario.ENFERMERO, RolUsuario.MEDICO)
+  @ApiOperation({ summary: 'Tipos de signo vital con unidad y rangos' })
+  @ApiResponse({ status: 403, description: 'Solo médicos y enfermeros' })
+  tipos() {
+    return this.signos.tipos();
+  }
+
+  @Get()
+  @Roles(RolUsuario.ENFERMERO, RolUsuario.MEDICO)
+  @ApiOperation({ summary: 'Últimos registros (100 máx.), opcionalmente de un paciente' })
+  @ApiResponse({ status: 400, description: 'pacienteId inválido' })
+  @ApiResponse({ status: 403, description: 'Solo médicos y enfermeros' })
+  list(@Query() filtro: SignosVitalesFiltroDto) {
+    return this.signos.listar(filtro.pacienteId);
+  }
+
+  @Post()
+  @Roles(RolUsuario.ENFERMERO, RolUsuario.MEDICO)
+  @ApiOperation({ summary: 'Registrar un signo vital; marca fuera de rango y emite alerta' })
+  @ApiResponse({ status: 400, description: 'Validación o valor no plausible para el tipo' })
+  @ApiResponse({ status: 403, description: 'Solo médicos y enfermeros' })
+  @ApiResponse({ status: 404, description: 'Paciente inexistente' })
+  register(@Body() dto: RegistrarSignoVitalDto, @CurrentIdentity() identity: SessionIdentity) {
+    return this.signos.registrar(dto, identity);
+  }
+
+  @Get('controles')
+  @Roles(RolUsuario.ENFERMERO, RolUsuario.MEDICO)
+  @ApiOperation({ summary: 'Últimos controles completos (100 máx.), opcionalmente de un paciente' })
+  @ApiResponse({ status: 400, description: 'pacienteId inválido' })
+  @ApiResponse({ status: 403, description: 'Solo médicos y enfermeros' })
+  listControles(@Query() filtro: SignosVitalesFiltroDto) {
+    return this.signos.listarControles(filtro.pacienteId);
+  }
+
+  @Post('controles')
+  @Roles(RolUsuario.ENFERMERO, RolUsuario.MEDICO)
+  @ApiOperation({
+    summary: 'Registrar un control completo (presión, frecuencia cardíaca y temperatura) en una sola operación',
+    description:
+      'Guarda los cuatro valores o ninguno, con la misma fecha y autor. Devuelve el control con la nota de enfermería automática; ' +
+      'si algún valor queda fuera de rango publica la alerta y, con más de 39 °C, marca el control como crítico.',
+  })
+  @ApiResponse({ status: 400, description: 'Validación o algún valor no plausible' })
+  @ApiResponse({ status: 403, description: 'Solo médicos y enfermeros' })
+  @ApiResponse({ status: 404, description: 'Paciente inexistente' })
+  registerControl(@Body() dto: RegistrarControlSignosVitalesDto, @CurrentIdentity() identity: SessionIdentity) {
+    return this.signos.registrarControl(dto, identity);
+  }
+}

@@ -39,7 +39,7 @@ export class CreateAdminDto {
   email: string;
 
   @ApiProperty({
-    example: 'ClaveSegura123!',
+    example: 'ClaveSegura135!',
     description: 'Contraseña que debe cumplir con la política de seguridad establecida.',
   })
   @IsString()

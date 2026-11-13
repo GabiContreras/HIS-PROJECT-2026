@@ -10,3 +10,7 @@ export * from './bed-assigned.event.js';
 export * from './bed-released.event.js';
 export * from './bed-cleaned.event.js';
 export * from './medication-administered.event.js';
+export * from './vital-sign-alert.event.js';
+export * from './patient-admitted.event.js';
+export * from './patient-waiting.event.js';
+export * from './standby-promoted.event.js';

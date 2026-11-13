@@ -1,4 +1,4 @@
-import { TipoAtencionFacturable } from '../infrastructure/persistence/entities/cargo.entity.js';
+import { TipoAtencionFacturable } from './tipo-atencion-facturable.js';
 
 export interface BillingStrategy {
   readonly tipoAtencion: TipoAtencionFacturable;

@@ -19,6 +19,7 @@ import { SessionIdentity } from '../../iam/application/auth.service.js';
 import { ReservarTurnoDto } from '../api/dto/reservar-turno.dto.js';
 import { clinicDateOf } from './clinic-time.js';
 import { EventBus } from '../../../shared/events/event-bus.service.js';
+import { INTEGRATION_EVENTS } from '../../../shared/events/integration-event-names.js';
 import {
   tablaTransiciones,
   turnoStateFor,
@@ -383,7 +384,7 @@ export class TurnosService {
     const occurredAt = new Date().toISOString();
     if (nextState === EstadoTurno.ATENDIDO) {
       this.events.publish({
-        type: 'admissions.appointment-attended',
+        type: INTEGRATION_EVENTS.ADMISSIONS_APPOINTMENT_ATTENDED,
         occurredAt,
         payload: { appointmentId: id, urgente: result.summary.urgente },
       });
@@ -391,7 +392,7 @@ export class TurnosService {
     if (nextState === EstadoTurno.EN_SALA_DE_ESPERA) {
       // Alerta al consultorio del médico (HU 2.1, escenario 1).
       this.events.publish({
-        type: 'admissions.patient-waiting',
+        type: INTEGRATION_EVENTS.PATIENT_WAITING,
         occurredAt,
         payload: {
           appointmentId: id,
@@ -402,12 +403,13 @@ export class TurnosService {
     }
     if (result.promovido) {
       this.events.publish({
-        type: 'admissions.standby-promoted',
+        type: INTEGRATION_EVENTS.STANDBY_PROMOTED,
         occurredAt,
         payload: {
           appointmentId: result.promovido.turno.id,
           doctorId: result.promovido.turno.medico.id,
           patientId: result.promovido.paciente.id,
+          scheduledAt: result.promovido.turno.fechaHora.toISOString(),
         },
       });
     }

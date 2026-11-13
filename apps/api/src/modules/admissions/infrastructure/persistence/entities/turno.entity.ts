@@ -8,15 +8,9 @@ import {
 } from 'typeorm';
 import { Paciente } from './paciente.entity.js';
 import { Usuario } from '../../../../iam/infrastructure/persistence/entities/usuario.entity.js';
+import { EstadoTurno } from '../../../domain/states/estado-turno.js';
 
-export enum EstadoTurno {
-  DISPONIBLE = 'DISPONIBLE',
-  RESERVADO = 'RESERVADO',
-  CONFIRMADO = 'CONFIRMADO',
-  EN_SALA_DE_ESPERA = 'EN_SALA_DE_ESPERA',
-  ATENDIDO = 'ATENDIDO',
-  CANCELADO = 'CANCELADO',
-}
+export { EstadoTurno };
 
 @Entity('turnos')
 export class Turno {
@@ -29,7 +23,6 @@ export class Turno {
 
   @ManyToOne(() => Usuario, { onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'medico_id' })
- 
   medico: Usuario;
 
   @Column({ name: 'fecha_hora', type: 'timestamptz' })
@@ -41,7 +34,7 @@ export class Turno {
   @Column({ type: 'boolean', default: false })
   urgente: boolean;
 
-    @Column({
+  @Column({
     type: 'enum',
     enum: EstadoTurno,
     enumName: 'estado_turno',

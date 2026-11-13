@@ -8,11 +8,11 @@ export class SignoVital {
   id: string;
 
   @ManyToOne(() => Paciente, { onDelete: 'CASCADE' })
-paciente: Paciente;
+  paciente: Paciente;
 
 
   @ManyToOne(() => Usuario, { onDelete: 'RESTRICT' })
-registradoPor: Usuario;
+  registradoPor: Usuario;
 
   @Column()
   tipo: string;
@@ -20,6 +20,9 @@ registradoPor: Usuario;
   @Column({ type: 'float' })
   valor: number;
 
+  @Column({ type: 'uuid', nullable: true })
+  controlId: string | null;
+
   @CreateDateColumn({ type: 'timestamptz' })
-fechaHora: Date;
+  fechaHora: Date;
 }

@@ -258,4 +258,28 @@ if (
       (error.driverError as { code?: string }).code === '23505'
     );
   }
+  async resumen(): Promise<{
+  tipoCobertura: string | null;
+  cantidad: number;
+  totalPesos: number;
+  pacientePesos: number;
+  terceroPesos: number;
+}[]> {
+  const rows = await this.cargos
+    .createQueryBuilder('c')
+    .select('c.tipoCobertura', 'tipoCobertura')
+    .addSelect('COUNT(*)', 'cantidad')
+    .addSelect('COALESCE(SUM(c.importePesos), 0)', 'totalPesos')
+    .addSelect('COALESCE(SUM(c.importePacientePesos), 0)', 'pacientePesos')
+    .addSelect('COALESCE(SUM(c.importeTerceroPesos), 0)', 'terceroPesos')
+    .groupBy('c.tipoCobertura')
+    .getRawMany();
+  return rows.map((r) => ({
+    tipoCobertura: r.tipoCobertura,
+    cantidad: Number(r.cantidad),
+    totalPesos: Number(r.totalPesos),
+    pacientePesos: Number(r.pacientePesos),
+    terceroPesos: Number(r.terceroPesos),
+  }));
+}
 }

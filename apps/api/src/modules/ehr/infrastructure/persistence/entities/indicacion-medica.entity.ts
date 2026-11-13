@@ -9,7 +9,7 @@ export class IndicacionMedica {
   id: string;
 
   @ManyToOne(() => Paciente, { onDelete: 'CASCADE' })
-paciente: Paciente;
+  paciente: Paciente;
 
   @ManyToOne(() => Usuario, { onDelete: 'RESTRICT' })
   medico: Usuario;
@@ -22,6 +22,10 @@ paciente: Paciente;
 
   @Column()
   frecuencia: string;
+
+  
+  @Column({ type: 'int', nullable: true })
+  frecuenciaHoras: number | null;
 
   @CreateDateColumn({ type: 'timestamptz' })
   fechaInicio: Date;
