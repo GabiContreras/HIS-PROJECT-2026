@@ -58,7 +58,7 @@ La siguiente tabla refleja el código actual del repositorio, no el alcance plan
 | Enfermería: medicación | Implementado (`/indicaciones`), con ventana de ±30 minutos | Conectado a la API |
 | Enfermería: protocolos de ingreso (patrón Builder) | Implementado (`/protocolos`); se generan solos al asignar una cama con motivo de ingreso | Conectado a la API |
 | Historia clínica electrónica | Implementado (`/historia-clinica`) | Conectado a la API |
-| Facturación: cargos por turno atendido y por medicación administrada | Implementado (`GET /billing/cargos`) | Conectado a la API |
+| Facturación: cargos por turno atendido y por medicación administrada | Implementado (`GET /billing/cargos` y reporte por cobertura en `GET /billing/cargos/resumen`) | Conectado a la API |
 
 Las dos pantallas con datos locales en memoria (camas y triaje) marcan en el código el endpoint que deben consumir con comentarios `TODO` (`apps/web/src/services/beds.ts` y `triage.ts`). Sus datos se pierden al recargar la página. Los endpoints ya existen en la API.
 
@@ -332,7 +332,7 @@ Las relaciones son `ManyToOne` hacia `Usuario`, `Paciente`, `Turno`, `Insumo` e 
 | `billing` | Cargos automáticos y estrategias de cálculo |
 | `nursing` | Signos vitales, indicaciones y administración de medicación, protocolos de ingreso |
 | `ehr` | Historia clínica electrónica |
-| `health` | Esqueleto de diagnóstico técnico |
+| `health` | Chequeo de estado de la API y de la conexión a la base (`GET /health`) |
 
 ### Endpoints
 
@@ -413,6 +413,8 @@ Todos los endpoints, salvo los marcados como públicos, requieren `Authorization
 | `GET /resources/inventory` | `MEDICO`, `ENFERMERO`, `ADMINISTRATIVO` |
 | `POST /resources/inventory/descontar` | `MEDICO` |
 | `GET /billing/cargos` | `ADMINISTRATIVO` |
+| `GET /billing/cargos/resumen` (reporte: cantidad y totales por tipo de cobertura) | `ADMINISTRATIVO` |
+| `GET /health` (estado de la API y de la base) | Público |
 | `GET /notificaciones`, `PATCH /notificaciones/:id/leer` | Autenticado |
 
 ### Reglas de negocio destacadas
@@ -420,7 +422,7 @@ Todos los endpoints, salvo los marcados como públicos, requieren `Authorization
 - La agenda usa turnos regulares de 30 minutos y turnos urgentes de 15. Un entreturno solo puede insertarse 15 minutos después del inicio de un turno libre de 30; ese turno se reduce a 15 en la misma transacción.
 - Flujo de turno: `RESERVADO -> CONFIRMADO -> EN_SALA_DE_ESPERA -> ATENDIDO`. Se puede cancelar desde `RESERVADO` o `CONFIRMADO`.
 - Flujo de cama: `LIBRE -> OCUPADA -> EN_LIMPIEZA -> LIBRE`; `BLOQUEADA` es un estado de mantenimiento. Una cama ocupada no puede pasar a `LIBRE` sin el proceso intermedio de limpieza.
-- Facturación: al atender un turno se crea un cargo de 15.000 ARS (consulta regular) o 25.000 ARS (urgencia). El reparto según cobertura es: pública, el paciente paga 0 y el Estado cubre el 100%; prepaga, copago fijo de 3.000 ARS y el resto a la prepaga; particular, el paciente paga el 100%. El copago de prepaga es un valor único provisorio, pendiente del nomenclador real.
+- Facturación: al atender un turno se crea un cargo de 15.000 ARS (consulta regular) o 25.000 ARS (urgencia). El reparto según cobertura es: pública, el paciente paga 0 y el Estado cubre el 100%; prepaga, copago fijo de 3.000 ARS y el resto a la prepaga; particular, el paciente paga el 100%. El copago de prepaga es un valor único provisorio, pendiente del nomenclador real. El reporte `GET /billing/cargos/resumen` agrupa los cargos por tipo de cobertura con cantidad, total, parte del paciente y parte de terceros.
 - Enfermería: un control con temperatura mayor a 39 °C queda marcado como crítico y genera una notificación de alta prioridad. Una dosis solo se confirma dentro de ±30 minutos de su hora programada; al confirmarla se registra al enfermero, se descuenta una unidad del inventario y se crea el cargo de farmacia.
 - Protocolos de ingreso: "cirugía programada" genera el protocolo pre-quirúrgico y "neumonía" o "infección respiratoria" el respiratorio. Otros motivos no tienen protocolo definido: la internación se crea igual y no se genera ninguno.
 - Baja lógica de cuentas: solo el superadmin puede dar de baja y restaurar. Un médico con turnos futuros activos no puede darse de baja.
@@ -504,7 +506,7 @@ npm --prefix apps/api run test:cov                # con cobertura
 npm --prefix apps/api run test:e2e                # e2e (requiere base de datos configurada)
 ```
 
-Estado actual: **577 pruebas pasan y 7 se omiten** (las que necesitan una base real). Cubren IAM (autenticación, tokens, política de contraseñas, guards, administración de cuentas y autorización de `/usuarios`), admisión (turnos, entreturnos, pacientes, estados, triaje, notificaciones), enfermería (signos vitales, medicación, protocolos), recursos (camas, tiempo real, inventario), facturación e historia clínica. La cobertura de líneas de `modules/iam` es 94,68 %.
+Estado actual: **579 pruebas pasan y 7 se omiten** (las que necesitan una base real). Cubren IAM (autenticación, tokens, política de contraseñas, guards, administración de cuentas y autorización de `/usuarios`), admisión (turnos, entreturnos, pacientes, estados, triaje, notificaciones), enfermería (signos vitales, medicación, protocolos), recursos (camas, tiempo real, inventario), facturación e historia clínica. La cobertura de líneas de `modules/iam` es 94,68 %.
 
 Pruebas que requieren una base real, deshabilitadas por defecto. **Corren solo contra PostgreSQL local**; cada archivo valida el host y el nombre de la base antes de escribir:
 
@@ -515,7 +517,7 @@ Pruebas que requieren una base real, deshabilitadas por defecto. **Corren solo c
 | `test/protocolos-checklist.local.spec.ts` | `CHECKLIST_TEST_DATABASE_URL` | Base local migrada con al menos 2 usuarios y 1 paciente |
 | `test/inventory-supabase.integration.spec.ts` | `RUN_SUPABASE_INTEGRATION=true`, `DATABASE_URL` | Solo acepta el host de Supabase y modifica inventario real: no correrlo sin avisar al equipo |
 
-Con las tres bases locales configuradas pasan 583 pruebas y queda 1 omitida (la de Supabase).
+Con las tres bases locales configuradas pasan 585 pruebas y queda 1 omitida (la de Supabase).
 
 Prueba funcional contra servidor y base reales: `apps/api/scripts/functional-check.mjs` recorre 29 criterios de aceptación de Enfermería, Recursos e IAM por HTTP. El resultado y la forma de repetirla están en `docs/PRUEBAS-FUNCIONALES-ENFERMERIA-RECURSOS-IAM.md`.
 
