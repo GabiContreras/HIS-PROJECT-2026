@@ -1,0 +1,13 @@
+import { INTEGRATION_EVENTS } from '../integration-event-names.js';
+
+export const DURABLE_EVENT_TYPES: ReadonlySet<string> = new Set([
+  INTEGRATION_EVENTS.ADMISSIONS_APPOINTMENT_ATTENDED,
+  INTEGRATION_EVENTS.MEDICATION_ADMINISTERED,
+]);
+
+export const OUTBOX_POLL_INTERVAL_MS = 15_000;
+export const OUTBOX_BATCH_SIZE = 50;
+export const OUTBOX_MAX_ATTEMPTS = 10;
+export const OUTBOX_INITIAL_GRACE_MS = 30_000;
+export const OUTBOX_RETRY_BASE_DELAY_MS = 5_000;
+export const OUTBOX_RETRY_MAX_DELAY_MS = 300_000;
