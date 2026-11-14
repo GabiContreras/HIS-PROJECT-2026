@@ -475,12 +475,12 @@ Cada rol (médico, enfermero, administrativo) tiene un panel propio. La interfaz
 - Autorización con `AuthGuard`, `RolesGuard` y `SuperadminGuard`, aplicados por controlador o por ruta.
 - Equivalencia entre los roles del diseño y los del sistema:
 
-  | Rol en el documento de diseño | En el sistema |
+  | Rol en el documento de diseño | Rol en el sistema | Alcance |
   | --- | --- |
   | Administrador | `ADMINISTRATIVO` con indicador de superadmin (cuenta raíz) |
-  | Médico | `MEDICO` |
-  | Enfermero | `ENFERMERO` |
-  | Recepcionista | `ADMINISTRATIVO` |
+  | Médico | `MEDICO` | atencion clinica
+  | Enfermero | `ENFERMERO` | signos vitales, medicacion, limpieza de camas
+  | Recepcionista | `ADMINISTRATIVO` | pacientes, turnos, lista de espera consulta de triaje 
   | Paciente | No existe como cuenta: los pacientes son datos que carga el personal y no inician sesión |
 
   Las historias de usuario nombran además al administrativo de piso, al coordinador de agendas y al personal de admisión, que operan como `ADMINISTRATIVO`, y al personal de limpieza, cuya confirmación de higiene la registran `ENFERMERO` o `ADMINISTRATIVO`.

@@ -2,6 +2,9 @@ import {
   Body,
   Controller,
   Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -10,6 +13,7 @@ import {
   ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiNotFoundResponse,
+  ApiOkResponse,
   ApiOperation,
   ApiTags,
   ApiUnauthorizedResponse,
@@ -19,6 +23,9 @@ import {
 } from '@nestjs/swagger';
 import { AuthGuard } from '../../iam/api/auth.guard.js';
 import { RolesGuard } from '../../iam/api/roles.guard.js';
+import { ActualizarInsumoDto } from './dto/actualizar-insumo.dto.js';
+import { CrearInsumoDto } from './dto/crear-insumo.dto.js';
+import { InsumoResponseDto } from './dto/insumo-response.dto.js';
 import { DescontarStockDto } from './dto/descontar-stock.dto.js';
 import { InventoryService } from '../infrastructure/inventory.service.js';
 import { Roles } from '../../iam/api/roles.decorator.js';
@@ -41,6 +48,35 @@ export class InventoryController {
   @ApiResponse({ status: 403, description: 'Rol sin permiso' })
   listar() {
     return this.inventoryService.listar();
+  }
+
+  @Post()
+  @Roles(RolUsuario.ADMINISTRATIVO)
+  @ApiOperation({
+    summary: 'Dar de alta un insumo',
+    description: 'Crea un insumo con stock disponible 0. Solo pueden realizar esta operación los usuarios con rol administrativo.',
+  })
+  @ApiCreatedResponse({ description: 'Insumo creado.', type: InsumoResponseDto })
+  @ApiBadRequestResponse({ description: 'Datos inválidos.' })
+  @ApiConflictResponse({ description: 'Ya existe un insumo con ese nombre.' })
+  crear(@Body() dto: CrearInsumoDto) {
+    return this.inventoryService.crear(dto);
+  }
+
+  @Patch(':id')
+  @Roles(RolUsuario.ADMINISTRATIVO)
+  @ApiOperation({
+    summary: 'Editar precio, unidad de medida o stock mínimo de un insumo',
+    description: 'Actualiza solo los campos enviados y no modifica el stock disponible. Solo pueden realizar esta operación los usuarios con rol administrativo.',
+  })
+  @ApiOkResponse({ description: 'Insumo actualizado.', type: InsumoResponseDto })
+  @ApiBadRequestResponse({ description: 'Datos inválidos o sin campos para actualizar.' })
+  @ApiNotFoundResponse({ description: 'El insumo indicado no existe.' })
+  actualizar(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ActualizarInsumoDto,
+  ) {
+    return this.inventoryService.actualizar(id, dto);
   }
 
   @Post('descontar')

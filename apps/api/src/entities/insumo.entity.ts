@@ -16,4 +16,7 @@ export class Insumo {
 
   @Column({ name: 'precio_pesos', type: 'integer', default: 0 })
   precioPesos: number;
+
+  @Column({ name: 'stock_minimo', type: 'integer', default: 0 })
+  stockMinimo: number;
 }
