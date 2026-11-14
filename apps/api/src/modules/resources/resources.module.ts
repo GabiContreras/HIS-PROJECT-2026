@@ -19,7 +19,12 @@ import { InventoryService } from './infrastructure/inventory.service.js';
     IamModule,
   ],
   controllers: [InventoryController, CamasController],
-  providers: [InventoryService, CamasService, BedEventsStreamService, MedicationAdministeredSubscriber],
+  providers: [
+    InventoryService,
+    CamasService,
+    BedEventsStreamService,
+    MedicationAdministeredSubscriber,
+  ],
   exports: [TypeOrmModule, InventoryService, CamasService],
 })
 export class ResourcesModule {}
