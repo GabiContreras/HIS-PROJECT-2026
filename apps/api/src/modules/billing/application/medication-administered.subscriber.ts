@@ -1,47 +1,34 @@
-import {
-  Injectable,
-  Logger,
-  OnModuleDestroy,
-  OnModuleInit,
-} from '@nestjs/common';
-import { Subscription } from 'rxjs';
-import { EventBus } from '../../../shared/events/event-bus.service.js';
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { DomainEvent } from '../../../shared/events/domain-event.js';
+import { INTEGRATION_EVENTS } from '../../../shared/events/integration-event-names.js';
 import {
   MedicationAdministeredPayload,
 } from '../../../shared/events/medication-administered.event.js';
+import { OutboxService } from '../../../shared/events/outbox/outbox.service.js';
 import { BillingService } from './billing.service.js';
+
+export const BILLING_MEDICATION_CONSUMER = 'billing.medication-administered';
 
 @Injectable()
 export class MedicationAdministeredSubscriber
   implements OnModuleInit, OnModuleDestroy
 {
-  private readonly logger = new Logger(
-    MedicationAdministeredSubscriber.name,
-  );
-
-  private subscription?: Subscription;
-
   constructor(
-    private readonly events: EventBus,
+    private readonly outbox: OutboxService,
     private readonly billing: BillingService,
   ) {}
 
   onModuleInit(): void {
-    this.subscription = this.events
-      .ofType<MedicationAdministeredPayload>('medication.administered')
-      .subscribe((event) => {
-        void this.handle(event).catch((error: unknown) => {
-          this.logger.error(
-            `No se pudo registrar el cargo de farmacia de la administración ${event.payload.administrationId}.`,
-            error instanceof Error ? error.stack : undefined,
-          );
-        });
-      });
+    this.outbox.registerConsumer({
+      name: BILLING_MEDICATION_CONSUMER,
+      eventType: INTEGRATION_EVENTS.MEDICATION_ADMINISTERED,
+      handle: (event) =>
+        this.handle(event as DomainEvent<MedicationAdministeredPayload>),
+    });
   }
 
   onModuleDestroy(): void {
-    this.subscription?.unsubscribe();
+    this.outbox.unregisterConsumer(BILLING_MEDICATION_CONSUMER);
   }
 
   handle(event: DomainEvent<MedicationAdministeredPayload>): Promise<void> {

@@ -18,6 +18,7 @@ import { TareaProtocolo } from './entities/tarea-protocolo.entity.js';
 import { RegistroClinico } from './entities/registro-clinico.entity.js';
 import { NotificacionEntity } from './entities/notificacion.entity.js';
 import { TriajeRegistro } from './entities/triaje.entity.js';
+import { OutboxEvent } from './entities/outbox-event.entity.js';
 
 export default new DataSource({
   type: 'postgres',
@@ -41,6 +42,7 @@ export default new DataSource({
     RegistroClinico,
     NotificacionEntity,
     TriajeRegistro,
+    OutboxEvent,
   ],
   migrations: ['src/migrations/*.ts'],
   synchronize: false,
