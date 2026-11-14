@@ -17,6 +17,7 @@ import {
   SessionIdentity,
 } from '../application/auth.service.js';
 import { CreateAdminDto } from './dto/create-admin.dto.js';
+import { RestablecerClaveDto } from './dto/restablecer-clave.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
 import { HorarioMedicoDto } from './dto/horario-medico.dto.js';
 
@@ -159,6 +160,26 @@ export class AccountAdminService {
       { revocadoEn: new Date() },
     );
     return this.toPublicAccount(saved);
+  }
+
+  async resetPassword(
+    id: string,
+    dto: RestablecerClaveDto,
+    actor: SessionIdentity,
+  ): Promise<{ message: string }> {
+    const account = await this.findAccount(id);
+    if (account.esSuperadmin) {
+      throw new ConflictException(
+        'La contraseña del superadmin raíz no puede restablecerse desde administración.',
+      );
+    }
+    if (account.id === actor.accountId) {
+      throw new ConflictException(
+        'Para cambiar tu propia contraseña usá el cambio de contraseña con tu clave actual.',
+      );
+    }
+    this.assertCanManage(actor, account);
+    return this.auth.setTemporaryPassword(account.id, dto.passwordTemporal);
   }
 
   /**

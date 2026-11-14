@@ -1,14 +1,19 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, QueryFailedError, Repository } from 'typeorm';
+import { EntityManager, In, QueryFailedError, Repository } from 'typeorm';
 
-import {Cargo,TipoAtencionFacturable,} from '../../../entities/cargo.entity.js';
+import {Cargo,EstadoCargo,TipoAtencionFacturable,} from '../../../entities/cargo.entity.js';
 import { Turno } from '../../../entities/turno.entity.js';
 import { CoverageType } from '../../../shared/events/coverage-type.js';
 
 import { coverageStrategyFor } from '../domain/coverage.strategy.js';
 import { ConsultaRegularStrategy } from '../domain/consulta-regular.strategy.js';
 import { ConsultaUrgenciaStrategy } from '../domain/consulta-urgencia.strategy.js';
+import {
+  CargoState,
+  cargoStateFor,
+  InvalidCargoTransitionError,
+} from '../domain/estado-cargo.js';
 
 import { Insumo } from '../../../entities/insumo.entity.js';
 import { MedicationAdministeredPayload } from '../../../shared/events/medication-administered.event.js';
@@ -21,6 +26,7 @@ export interface CargoDetalle {
   concepto: string | null;
   importePesos: number;
   tipoAtencion: Cargo['tipoAtencion'];
+  estado: EstadoCargo;
   createdAt: Date;
 
   cobertura: {
@@ -215,6 +221,7 @@ if (
         concepto: cargo.concepto,
         importePesos: cargo.importePesos,
         tipoAtencion: cargo.tipoAtencion,
+        estado: cargo.estado,
         createdAt: cargo.createdAt,
 
         cobertura: cargo.tipoCobertura
@@ -250,6 +257,56 @@ if (
           : null,
       };
     });
+  }
+
+  pagar(id: string): Promise<Cargo> {
+    return this.changeState(id, (state) => state.pagar());
+  }
+
+  anular(id: string): Promise<Cargo> {
+    return this.changeState(id, (state) => state.anular());
+  }
+
+  private changeState(
+    id: string,
+    transition: (state: CargoState) => CargoState,
+  ): Promise<Cargo> {
+    return this.cargos.manager.transaction((manager) =>
+      this.changeStateLocked(manager, id, transition),
+    );
+  }
+
+  private async changeStateLocked(
+    manager: EntityManager,
+    id: string,
+    transition: (state: CargoState) => CargoState,
+  ): Promise<Cargo> {
+    const repository = manager.getRepository(Cargo);
+    const cargo = await repository.findOne({
+      where: { id },
+      lock: { mode: 'pessimistic_write' },
+    });
+
+    if (!cargo) {
+      throw new NotFoundException('El cargo no existe.');
+    }
+
+    cargo.estado = this.nextEstado(cargo.estado, transition);
+    return repository.save(cargo);
+  }
+
+  private nextEstado(
+    current: EstadoCargo,
+    transition: (state: CargoState) => CargoState,
+  ): EstadoCargo {
+    try {
+      return transition(cargoStateFor(current)).estado;
+    } catch (error) {
+      if (error instanceof InvalidCargoTransitionError) {
+        throw new ConflictException(error.message);
+      }
+      throw error;
+    }
   }
 
   private isDuplicateAppointmentCharge(error: unknown): boolean {

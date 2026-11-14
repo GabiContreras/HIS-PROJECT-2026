@@ -20,6 +20,7 @@ import { NotificacionEntity } from './entities/notificacion.entity.js';
 import { TriajeRegistro } from './entities/triaje.entity.js';
 import { Financiador } from './entities/financiador.entity.js';
 import { Plan } from './entities/plan.entity.js';
+import { OutboxEvent } from './entities/outbox-event.entity.js';
 
 export default new DataSource({
   type: 'postgres',
@@ -45,6 +46,7 @@ export default new DataSource({
     TriajeRegistro,
     Financiador,
     Plan,
+    OutboxEvent,
   ],
   migrations: ['src/migrations/*.ts'],
   synchronize: false,

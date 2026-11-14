@@ -12,6 +12,7 @@ describe('AuthController integration', () => {
     login: vi.fn(),
     refresh: vi.fn(),
     logout: vi.fn(),
+    register: vi.fn(),
     resetPassword: vi.fn(),
   };
   const tokenService = { refreshTokenTtlSeconds: 604800 };
@@ -110,25 +111,24 @@ describe('AuthController integration', () => {
     expect(authService.refresh).toHaveBeenCalledTimes(1);
   });
 
-  it('accepts password reset without an email verification code', async () => {
-    authService.resetPassword.mockResolvedValue({
-      message: 'La contraseña fue restablecida.',
-    });
-
-    const response = await request(app.getHttpServer())
-      .post('/auth/reset-password')
+  it('does not expose public registration or unauthenticated password reset', async () => {
+    await request(app.getHttpServer())
+      .post('/auth/register')
       .send({
-        email: 'doctor@example.com',
-        password: 'NewSecurePassword4',
+        nombre: 'Ada',
+        apellido: 'Lovelace',
+        email: 'ada@example.com',
+        rol: 'ENFERMERO',
+        password: 'CorrectHorse4',
       })
-      .expect(200);
+      .expect(404);
 
-    expect(response.body).toEqual({
-      message: 'La contraseña fue restablecida.',
-    });
-    expect(authService.resetPassword).toHaveBeenCalledWith({
-      email: 'doctor@example.com',
-      password: 'NewSecurePassword4',
-    });
+    await request(app.getHttpServer())
+      .post('/auth/reset-password')
+      .send({ email: 'doctor@example.com', password: 'NewSecurePassword4' })
+      .expect(404);
+
+    expect(authService.register).not.toHaveBeenCalled();
+    expect(authService.resetPassword).not.toHaveBeenCalled();
   });
 });
