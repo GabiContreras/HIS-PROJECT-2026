@@ -18,6 +18,8 @@ import { TareaProtocolo } from './entities/tarea-protocolo.entity.js';
 import { RegistroClinico } from './entities/registro-clinico.entity.js';
 import { NotificacionEntity } from './entities/notificacion.entity.js';
 import { TriajeRegistro } from './entities/triaje.entity.js';
+import { Financiador } from './entities/financiador.entity.js';
+import { Plan } from './entities/plan.entity.js';
 import { OutboxEvent } from './entities/outbox-event.entity.js';
 
 export default new DataSource({
@@ -42,6 +44,8 @@ export default new DataSource({
     RegistroClinico,
     NotificacionEntity,
     TriajeRegistro,
+    Financiador,
+    Plan,
     OutboxEvent,
   ],
   migrations: ['src/migrations/*.ts'],
