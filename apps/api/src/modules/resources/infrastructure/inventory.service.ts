@@ -6,14 +6,39 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { QueryFailedError, Repository } from 'typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import { Insumo } from '../../../entities/insumo.entity.js';
 import {
+  ActualizarInsumoInput,
+  CrearInsumoInput,
   DescontarStockInput,
   DescontarStockResult,
+  InsumoDetalle,
   InsumoStock,
   InventoryPort,
 } from '../domain/ports/inventory.port.js';
+
+const UNIQUE_VIOLATION_CODE = '23505';
+
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    error instanceof QueryFailedError &&
+    (error.driverError as { code?: string } | undefined)?.code ===
+      UNIQUE_VIOLATION_CODE
+  );
+}
+
+function toInsumoDetalle(insumo: Insumo): InsumoDetalle {
+  return {
+    id: insumo.id,
+    nombre: insumo.nombre,
+    unidadMedida: insumo.unidadMedida,
+    cantidadDisponible: insumo.cantidadDisponible,
+    precioPesos: insumo.precioPesos,
+    stockMinimo: insumo.stockMinimo,
+  };
+}
 
 @Injectable()
 export class InventoryService implements InventoryPort {
@@ -30,6 +55,75 @@ export class InventoryService implements InventoryPort {
       unidadMedida: i.unidadMedida,
       cantidadDisponible: i.cantidadDisponible,
     }));
+  }
+
+  async crear(input: CrearInsumoInput): Promise<InsumoDetalle> {
+    const insumo = this.insumoRepository.create({
+      nombre: input.nombre.trim(),
+      unidadMedida: input.unidadMedida.trim(),
+      precioPesos: input.precioPesos ?? 0,
+      stockMinimo: input.stockMinimo ?? 0,
+      cantidadDisponible: 0,
+    });
+
+    try {
+      return toInsumoDetalle(await this.insumoRepository.save(insumo));
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw new ConflictException('Ya existe un insumo con ese nombre');
+      }
+      throw error;
+    }
+  }
+
+  async actualizar(
+    insumoId: string,
+    input: ActualizarInsumoInput,
+  ): Promise<InsumoDetalle> {
+    const cambios: Partial<Insumo> = {};
+    if (input.unidadMedida !== undefined) {
+      cambios.unidadMedida = input.unidadMedida.trim();
+    }
+    if (input.precioPesos !== undefined) {
+      cambios.precioPesos = input.precioPesos;
+    }
+    if (input.stockMinimo !== undefined) {
+      cambios.stockMinimo = input.stockMinimo;
+    }
+
+    if (Object.keys(cambios).length === 0) {
+      throw new BadRequestException('Indique al menos un campo para actualizar');
+    }
+
+    const result = await this.insumoRepository
+      .createQueryBuilder()
+      .update(Insumo)
+      .set(cambios)
+      .where('"id" = :insumoId', { insumoId })
+      .returning('*')
+      .execute();
+
+    if (result.affected !== 1 || !result.raw?.[0]) {
+      throw new NotFoundException('El insumo no existe');
+    }
+
+    const actualizado = result.raw[0] as {
+      id: string;
+      nombre: string;
+      unidad_medida: string;
+      cantidad_disponible: number | string;
+      precio_pesos: number | string;
+      stock_minimo: number | string;
+    };
+
+    return {
+      id: actualizado.id,
+      nombre: actualizado.nombre,
+      unidadMedida: actualizado.unidad_medida,
+      cantidadDisponible: Number(actualizado.cantidad_disponible),
+      precioPesos: Number(actualizado.precio_pesos),
+      stockMinimo: Number(actualizado.stock_minimo),
+    };
   }
 
   async descontarStock(
