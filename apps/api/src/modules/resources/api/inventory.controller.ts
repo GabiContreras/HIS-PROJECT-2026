@@ -27,6 +27,7 @@ import { ActualizarInsumoDto } from './dto/actualizar-insumo.dto.js';
 import { CrearInsumoDto } from './dto/crear-insumo.dto.js';
 import { InsumoResponseDto } from './dto/insumo-response.dto.js';
 import { DescontarStockDto } from './dto/descontar-stock.dto.js';
+import { ReponerStockDto } from './dto/reponer-stock.dto.js';
 import { InventoryService } from '../infrastructure/inventory.service.js';
 import { Roles } from '../../iam/api/roles.decorator.js';
 import { RolUsuario } from '../../../entities/usuario.entity.js';
@@ -107,6 +108,39 @@ export class InventoryController {
   descontarStock(@Body() dto: DescontarStockDto) {
     return this.inventoryService.descontarStock({
       insumoId: dto.insumoId,
+      cantidad: dto.cantidad,
+    });
+  }
+
+  @Post(':id/reponer')
+  @Roles(RolUsuario.ADMINISTRATIVO)
+  @ApiOperation({
+    summary: 'Reponer stock de un insumo',
+    description: 'Suma una cantidad al stock disponible con un UPDATE atómico. Solo pueden realizar esta operación los usuarios con rol administrativo.',
+  })
+  @ApiCreatedResponse({
+    description: 'Stock repuesto correctamente.',
+    schema: {
+      example: {
+        insumoId: '550e8400-e29b-41d4-a716-446655440000',
+        cantidadRepuesta: 20,
+        cantidadActual: 27,
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'La cantidad debe ser un entero entre 1 y 10000 o el id no es un UUID.',
+  })
+  @ApiNotFoundResponse({ description: 'El insumo indicado no existe.' })
+  @ApiConflictResponse({
+    description: 'La reposición supera el stock máximo que puede registrarse.',
+  })
+  reponerStock(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ReponerStockDto,
+  ) {
+    return this.inventoryService.reponerStock({
+      insumoId: id,
       cantidad: dto.cantidad,
     });
   }

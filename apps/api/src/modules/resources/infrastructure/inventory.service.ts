@@ -16,15 +16,26 @@ import {
   InsumoDetalle,
   InsumoStock,
   InventoryPort,
+  ReponerStockInput,
+  ReponerStockResult,
 } from '../domain/ports/inventory.port.js';
 
 const UNIQUE_VIOLATION_CODE = '23505';
+const NUMERIC_OUT_OF_RANGE_CODE = '22003';
 
 function isUniqueViolation(error: unknown): boolean {
   return (
     error instanceof QueryFailedError &&
     (error.driverError as { code?: string } | undefined)?.code ===
       UNIQUE_VIOLATION_CODE
+  );
+}
+
+function isNumericOutOfRange(error: unknown): boolean {
+  return (
+    error instanceof QueryFailedError &&
+    (error.driverError as { code?: string } | undefined)?.code ===
+      NUMERIC_OUT_OF_RANGE_CODE
   );
 }
 
@@ -171,6 +182,52 @@ export class InventoryService implements InventoryPort {
       insumoId: actualizado.id,
       cantidadDescontada: cantidad,
       cantidadRestante: Number(actualizado.cantidad_disponible),
+    };
+  }
+
+  async reponerStock(input: ReponerStockInput): Promise<ReponerStockResult> {
+    const { insumoId, cantidad } = input;
+
+    if (!Number.isInteger(cantidad) || cantidad <= 0) {
+      throw new BadRequestException(
+        'La cantidad debe ser un entero positivo',
+      );
+    }
+
+    let result;
+    try {
+      result = await this.insumoRepository
+        .createQueryBuilder()
+        .update(Insumo)
+        .set({
+          cantidadDisponible: () => '"cantidad_disponible" + :cantidad',
+        })
+        .where('"id" = :insumoId', { insumoId })
+        .setParameters({ cantidad })
+        .returning('*')
+        .execute();
+    } catch (error) {
+      if (isNumericOutOfRange(error)) {
+        throw new ConflictException(
+          'La reposición supera el stock máximo que puede registrarse',
+        );
+      }
+      throw error;
+    }
+
+    if (result.affected !== 1 || !result.raw?.[0]) {
+      throw new NotFoundException('El insumo no existe');
+    }
+
+    const actualizado = result.raw[0] as {
+      id: string;
+      cantidad_disponible: number | string;
+    };
+
+    return {
+      insumoId: actualizado.id,
+      cantidadRepuesta: cantidad,
+      cantidadActual: Number(actualizado.cantidad_disponible),
     };
   }
 }
