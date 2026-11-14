@@ -3,7 +3,9 @@ export type AccountStatus =
   | 'PENDIENTE_VERIFICACION'
   | 'PENDIENTE_HABILITACION'
   | 'ACTIVO'
-  | 'DESHABILITADO';
+  | 'DESHABILITADO'
+  /** Baja lógica: archivada por el superadmin. */
+  | 'BAJA';
 
 export const ROLE_LABELS: Record<Role, string> = {
   MEDICO: 'Médico',
@@ -20,6 +22,11 @@ export interface Account {
   rol: Role;
   estado: AccountStatus;
   esSuperadmin: boolean;
+  /** Solo médicos: jornada de atención 'HH:MM'. */
+  horaInicio?: string;
+  horaFin?: string;
+  /** Solo cuentas dadas de baja (ISO). */
+  dadoDeBajaEn?: string | null;
 }
 
 export interface Session {

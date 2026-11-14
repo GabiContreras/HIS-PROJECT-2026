@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import AppShell from './AppShell.vue';
 import { useSessionStore } from '../features/iam/session.store';
 import type { Role } from '../features/iam/types';
+import { BRAND } from '../shared/brand';
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -96,6 +97,15 @@ export const router = createRouter({
               name: 'protocols',
               meta: { title: 'Protocolos de ingreso' },
               component: () => import('../features/nursing/ProtocolsView.vue'),
+              children: [
+                {
+                  path: ':pacienteId',
+                  name: 'protocol-patient',
+                  props: true,
+                  meta: { title: 'Protocolo del paciente' },
+                  component: () => import('../features/nursing/ProtocolPatientView.vue'),
+                },
+              ],
             },
           ],
         },
@@ -104,6 +114,12 @@ export const router = createRouter({
           name: 'inventory',
           meta: { roles: ['ENFERMERO', 'ADMINISTRATIVO'], title: 'Insumos' },
           component: () => import('../features/inventory/InventoryView.vue'),
+        },
+        {
+          path: 'historia-clinica',
+          name: 'clinical-history',
+          meta: { roles: ['MEDICO', 'ENFERMERO'], title: 'Historia clínica' },
+          component: () => import('../features/ehr/ClinicalHistoryView.vue'),
         },
         {
           path: 'facturacion',
@@ -135,5 +151,5 @@ router.beforeEach(async (to) => {
 });
 
 router.afterEach((to) => {
-  document.title = to.meta.title ? `${to.meta.title} · HIS` : 'HIS';
+  document.title = to.meta.title ? `${to.meta.title} · ${BRAND.name}` : BRAND.name;
 });

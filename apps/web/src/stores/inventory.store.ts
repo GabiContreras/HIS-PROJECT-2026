@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
-import { decrementStock, listInventory, LOW_STOCK_THRESHOLD, type InventoryItem } from '../services/inventory';
+import { listInventory, LOW_STOCK_THRESHOLD, type InventoryItem } from '../services/inventory';
 import { messageFrom } from '../shared/errors';
 
 export const useInventoryStore = defineStore('inventory', () => {
@@ -22,11 +22,5 @@ export const useInventoryStore = defineStore('inventory', () => {
     }
   }
 
-  /** Descuenta stock (lo usa enfermería al administrar una medicación). */
-  async function consume(id: string, quantity = 1): Promise<void> {
-    await decrementStock(id, quantity);
-    await load();
-  }
-
-  return { items, loading, error, lowStock, load, consume };
+  return { items, loading, error, lowStock, load };
 });

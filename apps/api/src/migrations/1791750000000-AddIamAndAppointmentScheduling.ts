@@ -1,0 +1,141 @@
+import { MigrationInterface, QueryRunner } from 'typeorm';
+
+export class AddIamAndAppointmentScheduling1791750000000 implements MigrationInterface {
+  name = 'AddIamAndAppointmentScheduling1791750000000';
+
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    // Esta migración se renombró (antes 1791660000000). Una base que ya la ejecutó con el
+    // nombre anterior vuelve a verla como pendiente: si ya existe, no se rehace.
+    // La restricción EXCLUDE que se agregó después de esa ejecución la asegura
+    // 1793370400001-NormalizeAndReconcileSchema.
+    const [{ existe }] = (await queryRunner.query(
+      `SELECT to_regclass('refresh_sessions') IS NOT NULL AS existe`,
+    )) as Array<{ existe: boolean }>;
+    if (existe) {
+      return;
+    }
+
+    await queryRunner.query(`
+      ALTER TABLE "usuarios"
+        ADD COLUMN "estado" character varying NOT NULL DEFAULT 'PENDIENTE_VERIFICACION',
+        ADD COLUMN "emailVerificado" boolean NOT NULL DEFAULT false,
+        ADD COLUMN "esSuperadmin" boolean NOT NULL DEFAULT false,
+        ADD COLUMN "intentosFallidos" integer NOT NULL DEFAULT 0,
+        ADD COLUMN "bloqueadoHasta" TIMESTAMP WITH TIME ZONE,
+        ADD COLUMN "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+    `);
+    await queryRunner.query(`
+      UPDATE "usuarios"
+      SET "estado" = 'ACTIVO', "emailVerificado" = true
+    `);
+    await queryRunner.query(`
+      CREATE UNIQUE INDEX "IDX_usuarios_single_superadmin"
+      ON "usuarios" ("esSuperadmin")
+      WHERE "esSuperadmin" = true
+    `);
+    await queryRunner.query(`
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM "usuarios"
+          GROUP BY LOWER("email")
+          HAVING COUNT(*) > 1
+        ) THEN
+          RAISE EXCEPTION 'Duplicate user emails differ only by case; resolve them before applying IAM migration';
+        END IF;
+      END
+      $$
+    `);
+    await queryRunner.query(`
+      CREATE UNIQUE INDEX "IDX_usuarios_email_lower"
+      ON "usuarios" (LOWER("email"))
+    `);
+    await queryRunner.query(`
+      CREATE TABLE "refresh_sessions" (
+        "id" uuid NOT NULL DEFAULT gen_random_uuid(),
+        "usuarioId" uuid NOT NULL,
+        "familiaId" uuid NOT NULL,
+        "tokenHash" character varying NOT NULL,
+        "expiraEn" TIMESTAMP WITH TIME ZONE NOT NULL,
+        "revocadoEn" TIMESTAMP WITH TIME ZONE,
+        "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+        CONSTRAINT "UQ_refresh_sessions_tokenHash" UNIQUE ("tokenHash"),
+        CONSTRAINT "PK_refresh_sessions" PRIMARY KEY ("id"),
+        CONSTRAINT "FK_refresh_sessions_usuario"
+          FOREIGN KEY ("usuarioId") REFERENCES "usuarios"("id") ON DELETE CASCADE
+      )
+    `);
+    await queryRunner.query(`
+      CREATE INDEX "IDX_refresh_sessions_usuario_familia"
+      ON "refresh_sessions" ("usuarioId", "familiaId")
+    `);
+    await queryRunner.query(`
+      ALTER TABLE "turnos"
+      ADD COLUMN "duracionMinutos" integer NOT NULL DEFAULT 30,
+      ADD COLUMN "urgente" boolean NOT NULL DEFAULT false
+    `);
+        await queryRunner.query(`
+      CREATE EXTENSION IF NOT EXISTS btree_gist
+    `);
+
+    await queryRunner.query(`
+      ALTER TABLE "turnos"
+      ADD CONSTRAINT "ex_turnos_medico_sin_superposicion"
+      EXCLUDE USING GIST (
+        "medico_id" WITH =,
+       (tsrange(
+        "fecha_hora" AT TIME ZONE 'UTC',
+        ("fecha_hora" AT TIME ZONE 'UTC')
+         + "duracionMinutos" * INTERVAL '1 minute',
+        '[)'
+       )) WITH &&
+      )
+      WHERE ("estado" IN ('RESERVADO', 'CONFIRMADO'))
+    `);
+    await queryRunner.query(`
+      ALTER TABLE "turnos"
+        ADD CONSTRAINT "CK_turnos_duracion"
+          CHECK ("duracionMinutos" IN (15, 30)),
+        ADD CONSTRAINT "CK_turnos_urgente_duracion"
+          CHECK (NOT "urgente" OR "duracionMinutos" = 15)
+    `);
+    await queryRunner.query(`
+      CREATE INDEX "IDX_turnos_medico_fecha"
+      ON "turnos" ("medico_id", "fecha_hora")
+    `);
+  }
+
+
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`DROP INDEX "IDX_turnos_medico_fecha"`);
+
+    await queryRunner.query(`
+      ALTER TABLE "turnos"
+      DROP CONSTRAINT "ex_turnos_medico_sin_superposicion"
+    `);
+
+    await queryRunner.query(`
+      ALTER TABLE "turnos"
+      DROP CONSTRAINT "CK_turnos_urgente_duracion",
+      DROP CONSTRAINT "CK_turnos_duracion",
+      DROP COLUMN "urgente",
+      DROP COLUMN "duracionMinutos"
+    `);
+
+    await queryRunner.query(
+      `DROP INDEX "IDX_refresh_sessions_usuario_familia"`,
+    );
+    await queryRunner.query(`DROP TABLE "refresh_sessions"`);
+    await queryRunner.query(`DROP INDEX "IDX_usuarios_email_lower"`);
+    await queryRunner.query(`DROP INDEX "IDX_usuarios_single_superadmin"`);
+    await queryRunner.query(`
+      ALTER TABLE "usuarios"
+        DROP COLUMN "updatedAt",
+        DROP COLUMN "bloqueadoHasta",
+        DROP COLUMN "intentosFallidos",
+        DROP COLUMN "esSuperadmin",
+        DROP COLUMN "emailVerificado",
+        DROP COLUMN "estado"
+    `);
+  }
+}

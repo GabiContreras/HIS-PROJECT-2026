@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import BrandMark from '../../../components/ui/BrandMark.vue';
+import { BRAND } from '../../../shared/brand.ts';
 import { useSessionStore } from '../session.store.ts';
 import { ApiError } from '../../../shared/http.ts';
 
@@ -39,17 +41,18 @@ async function submit() {
   <div class="login-shell">
     <section class="brand-panel">
       <div class="brand">
-        <span class="brand-mark">H</span>
-        <strong>HIS</strong>
+        <BrandMark />
+        <strong>{{ BRAND.name }}</strong>
       </div>
       <div class="copy">
         <span class="eyebrow">GESTIÓN HOSPITALARIA</span>
-        <h1>Cada rol, su propio espacio.</h1>
+        <h1>Cada rol, su propio espacio de trabajo.</h1>
         <p>
-          Organización, acceso y gestión centralizada.
+          Administrativos, médicos y enfermeros ingresan con su email y ven solo lo que necesitan para
+          atender, internar y registrar con seguridad.
         </p>
       </div>
-      <p class="foot">Sistema de Información Hospitalaria</p>
+      <p class="foot">{{ BRAND.name }} · {{ BRAND.tagline }}</p>
     </section>
 
     <section class="form-panel">
@@ -86,7 +89,6 @@ async function submit() {
 .brand-panel::after { content: ''; position: absolute; right: -210px; bottom: -100px; width: 420px; height: 420px; border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: 0 0 0 70px rgba(255, 255, 255, 0.025), 0 0 0 140px rgba(255, 255, 255, 0.02); }
 .brand { display: flex; align-items: center; gap: 12px; font-family: var(--font-display); font-size: 1.3rem; position: relative; z-index: 1; }
-.brand-mark { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 9px; background: #fff; color: var(--color-brand); font-weight: 700; }
 .copy { max-width: 520px; position: relative; z-index: 1; }
 .eyebrow { display: block; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.14em; color: #9ed2c8; margin-bottom: 8px; }
 .eyebrow.dark { color: var(--color-brand); }

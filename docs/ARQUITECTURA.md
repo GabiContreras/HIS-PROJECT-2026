@@ -31,13 +31,16 @@ Dependencias permitidas: `api -> application -> domain`; `infrastructure` implem
 
 ## Estado de esta adaptación
 
-Esta entrega crea el esqueleto modular y registra las entidades existentes dentro de módulos por dominio, pero conserva las entidades TypeORM en `src/entities/` para evitar una migración física riesgosa. La migración de cada entidad a `infrastructure/persistence/` se debe hacer módulo por módulo, actualizando las migraciones y verificando la compilación.
-
-`IamModule` expone autenticación, administración de cuentas y autorización con guards. Las entidades TypeORM permanecen temporalmente en `src/entities/` para evitar una migración física riesgosa.
+Todos los módulos de dominio tienen casos de uso implementados: `iam`, `admissions`, `resources`, `nursing`, `ehr` y `billing`. Las entidades TypeORM permanecen en `src/entities/` para evitar una migración física riesgosa; moverlas a la infraestructura de cada módulo queda como mejora.
 
 ## Eventos
 
-`src/shared/events/EventBus` provee un bus interno en memoria usando RxJS. Publicar un evento no garantiza persistencia ni entrega tras un reinicio. No usarlo como única garantía para facturación, administración de medicación o inventario. Para esos casos usar transacciones y/o patrón Outbox e idempotencia.
+`src/shared/events/EventBus` provee un bus interno en memoria usando RxJS. Publicar un evento no garantiza persistencia ni entrega tras un reinicio. Reglas que sigue el código:
+
+- El evento se publica **después** de confirmar la transacción, nunca adentro.
+- Los suscriptores no propagan errores al bus: los registran en el log.
+- Cada suscriptor es idempotente por una clave de negocio respaldada por un índice único en la base.
+- Para garantizar la entrega haría falta el patrón Outbox; no está implementado.
 
 Ejemplo de contrato:
 
@@ -51,10 +54,42 @@ Ejemplo de contrato:
 
 Convención: nombres de eventos en pasado, nombres estables y payloads versionables. Los eventos no deben transportar datos clínicos innecesarios.
 
+### Eventos entre módulos
+
+| Evento (`type`) | Publica | Cuándo | Escucha | Efecto | Clave de idempotencia |
+| --- | --- | --- | --- | --- | --- |
+| `admissions.appointment-attended` | Admisión (`TurnosService`) | Un turno pasa a `ATENDIDO` | Facturación (`AppointmentAttendedSubscriber`) | Crea el cargo del turno | `turno_id` único en `cargos` |
+| `admissions.patient-waiting` | Admisión (`TurnosService`) | Un turno pasa a `EN_SALA_DE_ESPERA` | Admisión (`PatientWaitingSubscriber`) | Notificación al médico del turno | No tiene |
+| `admissions.standby-promoted` | Admisión (`TurnosService`) | Una cancelación promueve a un paciente de la lista de espera | Admisión (`StandbyPromotedSubscriber`) | Notificación a los administrativos | No tiene |
+| `vital-sign.alert-raised` | Enfermería (`SignosVitalesService`) | Se guarda un signo vital fuera de rango | Admisión (`VitalSignAlertSubscriber`) | Con temperatura mayor a 39 °C, notificación de alta prioridad al médico responsable de la internación activa, o a todos los médicos si no hay | No tiene |
+| `medication.administered` | Enfermería (`IndicacionesService`) | Se confirma una dosis | Recursos (`MedicationAdministeredSubscriber`) | Descuenta una unidad del insumo | `administrationId`, en memoria del proceso |
+| `medication.administered` | Enfermería (`IndicacionesService`) | Se confirma una dosis | Facturación (`MedicationAdministeredSubscriber`) | Crea el cargo "Insumos de Farmacia" | `administration_id` único en `cargos` |
+| `patient.admitted` | Recursos (`CamasService.asignar`) | Se asigna una cama informando `motivoIngreso` | Enfermería (`PatientAdmittedSubscriber`) | Genera el protocolo de ingreso con el Patrón Builder | `ingreso_id` único en `protocolos_ingreso` |
+| `bed.assigned` | Recursos (`CamasService`) | `LIBRE` → `OCUPADA` | Recursos (`BedEventsStreamService`) | Se reenvía por el stream de camas | No aplica |
+| `bed.released` | Recursos (`CamasService`) | `OCUPADA` → `EN_LIMPIEZA` (alta) | Recursos (`BedEventsStreamService`) | Se reenvía por el stream de camas | No aplica |
+| `bed.cleaned` | Recursos (`CamasService`) | `EN_LIMPIEZA` → `LIBRE` | Recursos (`BedEventsStreamService`) | Se reenvía por el stream de camas | No aplica |
+| `bed.blocked`, `bed.unblocked` | Recursos (`CamasService`) | `LIBRE` ↔ `BLOQUEADA` | Recursos (`BedEventsStreamService`) | Se reenvía por el stream de camas | No aplica |
+
+`patient.registered`, `appointment.booked` y `appointment.attended` están definidos en `shared/events` pero ningún módulo los publica ni los escucha.
+
+`bed.blocked` y `bed.unblocked` son propios de Recursos: sus constantes están en `modules/resources/domain/bed-events.ts` y no en `shared/events`, porque ningún otro módulo los necesita.
+
+### Stream de camas en tiempo real
+
+`GET /camas/eventos` (roles `MEDICO`, `ENFERMERO`, `ADMINISTRATIVO`) expone los eventos de cama como Server-Sent Events. Responde a la historia de usuario 2.1 de Recursos, que pide publicar eventos para actualizar en tiempo real los monitores.
+
+- **Formato.** Cada cambio llega como un mensaje `data: {"tipo","camaId","numero","estado","at"}`, donde `estado` es el estado en que queda la cama. Cada 25 segundos se envía un evento `ping` para que proxies y navegadores no cierren la conexión.
+- **Implementación.** `BedEventsStreamService.stream()` combina los cinco tipos de evento del `EventBus` en un `Observable`; el controlador lo devuelve con `@Sse()` y NestJS cancela la suscripción cuando el cliente se desconecta. No agrega dependencias.
+- **Ruta.** Está declarada antes de `GET /camas/:id` para que `eventos` no se interprete como un id.
+- **Autenticación.** Usa el mismo `AuthGuard` con token Bearer. El `EventSource` del navegador no puede enviar el header `Authorization`, por lo que el frontend debe consumirlo con `fetch` leyendo el cuerpo. El token no se acepta por query string, porque quedaría en logs e historial.
+- **Límites.** No hay historial: solo se entregan los cambios ocurridos con la conexión abierta, así que el cliente carga primero el mapa con `GET /camas`. Como el bus es en memoria, con más de una instancia de la API cada cliente vería solo los eventos de su instancia.
+
 ## Persistencia
 
 - PostgreSQL alojado en Supabase; no se adopta SQLite de la referencia.
 - `synchronize: false`; el esquema se modifica con migraciones versionadas.
+- El código TypeScript usa `camelCase`; los nombres de tablas y columnas en PostgreSQL usan `snake_case`, mediante `SnakeNamingStrategy`, configurada tanto en `app.module.ts` como en `data-source.ts`.
+- Los nombres explícitos de entidades y columnas deben respetar `snake_case`. Los cambios en una base existente se hacen con migraciones revisadas; activar la estrategia no renombra columnas por sí solo.
 - `DATABASE_URL` es secreto y solo se usa en backend.
 - `DATABASE_SSL=false` permite desactivar SSL solo en entornos locales que lo requieran; por defecto se utiliza SSL.
 
@@ -82,6 +117,10 @@ Convención: nombres de eventos en pasado, nombres estables y payloads versionab
   producción. Las contraseñas históricas se conservan y, en desarrollo, se
   convierten a scrypt luego de un login válido.
 - Las cuentas deshabilitadas no pueden iniciar sesión y sus sesiones se revocan.
+- Baja lógica: solo el superadmin puede dar de baja (estado `BAJA`) y restaurar cuentas. Una cuenta
+  dada de baja no inicia sesión ni aparece en listados, pero se conservan sus turnos y su historial
+  (los datos clínicos y de facturación no se borran). Un médico con turnos futuros activos no se da
+  de baja hasta resolverlos. Los administrativos comunes no pueden gestionar a otros administrativos.
 - La contraseña requiere 8 caracteres, una mayúscula, un dígito y no permite
   dígitos consecutivos ascendentes ni descendentes.
 - La agenda utiliza turnos regulares de 30 minutos y turnos urgentes de 15. La
@@ -111,3 +150,38 @@ Convención: nombres de eventos en pasado, nombres estables y payloads versionab
 - Incluye migraciones si cambia el esquema.
 - Respeta los límites de módulo y contratos acordados.
 - Las reglas críticas se validan en backend/base de datos, no solo en frontend.
+
+
+## Patrón reutilizable de historia vertical
+
+### Objetivo
+
+Implementar una funcionalidad completa de extremo a extremo antes de replicar el enfoque en otros módulos del HIS.
+
+### Pasos de implementación
+
+1. **Contrato:** definir criterios de aceptación, DTO, endpoint, permisos y errores esperados.
+2. **Validación:** validar los datos de entrada en la API; no depender únicamente de la interfaz.
+3. **Caso de uso:** implementar las reglas de negocio en la capa de aplicación.
+4. **Persistencia:** utilizar repositorios y transacciones cuando la operación requiera atomicidad.
+5. **Interfaz:** conectar la acción de Vue con la API y mostrar estados de éxito y error cuando corresponda.
+6. **Pruebas:** cubrir reglas de negocio, errores, integración con PostgreSQL y concurrencia cuando corresponda.
+7. **Entrega:** ejecutar las pruebas y la compilación, revisar Git y documentar las decisiones relevantes.
+
+### Aplicación al alta de pacientes
+
+El endpoint `POST /pacientes` recibe los datos definidos por `CrearPacienteDto`. La API valida nombre, apellido, documento, fecha de nacimiento y teléfono opcional. Un documento duplicado debe producir un conflicto HTTP `409`; los datos inválidos deben producir un error HTTP `400`.
+
+### Aplicación a la reserva de turnos
+
+El endpoint `PATCH /turnos/:id/reservar` requiere autenticación y autorización según el controlador. La solicitud incluye `pacienteId`, que debe ser un UUID válido.
+
+La reserva debe protegerse en el backend mediante una transacción y mecanismos de concurrencia en PostgreSQL. No alcanza con comprobar disponibilidad desde Vue. Ante dos solicitudes incompatibles, solo una debe confirmar la reserva y la otra debe recibir un conflicto adecuado.
+
+### Criterios de finalización
+
+- Se cumplen los criterios de aceptación de la historia.
+- Las capas necesarias están integradas.
+- La persistencia conserva la integridad de los datos.
+- Las pruebas pertinentes pasan, incluidas las de concurrencia cuando correspondan.
+- La compilación pasa y los cambios están documentados.

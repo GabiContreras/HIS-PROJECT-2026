@@ -17,6 +17,8 @@ export enum EstadoCuenta {
   PENDIENTE_HABILITACION = 'PENDIENTE_HABILITACION',
   ACTIVO = 'ACTIVO',
   DESHABILITADO = 'DESHABILITADO',
+  /** Baja lógica: archivada por el superadmin. No inicia sesión ni aparece en listados; conserva su historial. */
+  BAJA = 'BAJA',
 }
 
 @Entity('usuarios')
@@ -45,8 +47,18 @@ export class Usuario {
   @Column({ type: 'boolean', default: false })
   emailVerificado: boolean;
 
+  /** Horario laboral (HH:MM:SS, hora de la clínica). Solo se usa para médicos. */
+  @Column({ type: 'time', default: '08:00' })
+  horaInicio: string;
+
+  @Column({ type: 'time', default: '20:00' })
+  horaFin: string;
+
   @Column({ type: 'boolean', default: false })
   esSuperadmin: boolean;
+
+  @Column({ name: 'dado_de_baja_en', type: 'timestamptz', nullable: true })
+  dadoDeBajaEn: Date | null;
 
   @Column({ type: 'integer', default: 0 })
   intentosFallidos: number;
