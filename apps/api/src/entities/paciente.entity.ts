@@ -1,5 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { CoverageType } from '../shared/events/coverage-type.js';
+import { Financiador } from './financiador.entity.js';
+import { Plan } from './plan.entity.js';
 
 @Entity('pacientes')
 export class Paciente {
@@ -33,4 +35,21 @@ export class Paciente {
   /** Nombre de la prepaga u obra social. Obligatorio en prepaga; el copago depende de ella. */
   @Column({ name: 'entidad_cobertura', type: 'varchar', length: 100, nullable: true })
   entidadCobertura: string | null;
+
+  @Column({ name: 'financiador_id', type: 'uuid', nullable: true })
+  financiadorId: string | null;
+
+  @Column({ name: 'plan_id', type: 'uuid', nullable: true })
+  planId: string | null;
+
+  @Column({ name: 'numero_afiliado', type: 'varchar', length: 30, nullable: true })
+  numeroAfiliado: string | null;
+
+  @ManyToOne(() => Financiador, { nullable: true, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'financiador_id' })
+  financiador: Financiador | null;
+
+  @ManyToOne(() => Plan, { nullable: true, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'plan_id' })
+  plan: Plan | null;
 }
