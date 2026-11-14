@@ -18,6 +18,8 @@ import { TareaProtocolo } from './entities/tarea-protocolo.entity.js';
 import { RegistroClinico } from './entities/registro-clinico.entity.js';
 import { NotificacionEntity } from './entities/notificacion.entity.js';
 import { TriajeRegistro } from './entities/triaje.entity.js';
+import { Financiador } from './entities/financiador.entity.js';
+import { Plan } from './entities/plan.entity.js';
 
 export default new DataSource({
   type: 'postgres',
@@ -41,6 +43,8 @@ export default new DataSource({
     RegistroClinico,
     NotificacionEntity,
     TriajeRegistro,
+    Financiador,
+    Plan,
   ],
   migrations: ['src/migrations/*.ts'],
   synchronize: false,
