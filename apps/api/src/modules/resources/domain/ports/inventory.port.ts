@@ -9,6 +9,17 @@ export interface DescontarStockResult {
   cantidadRestante: number;
 }
 
+export interface ReponerStockInput {
+  insumoId: string;
+  cantidad: number;
+}
+
+export interface ReponerStockResult {
+  insumoId: string;
+  cantidadRepuesta: number;
+  cantidadActual: number;
+}
+
 export interface InsumoStock {
   id: string;
   nombre: string;
@@ -44,4 +55,5 @@ export interface InventoryPort {
   descontarStock(
     input: DescontarStockInput,
   ): Promise<DescontarStockResult>;
+  reponerStock(input: ReponerStockInput): Promise<ReponerStockResult>;
 }

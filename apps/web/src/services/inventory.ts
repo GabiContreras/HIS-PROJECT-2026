@@ -25,6 +25,16 @@ export interface UpdateInventoryItemInput {
   stockMinimo?: number;
 }
 
+export interface ReplenishStockInput {
+  cantidad: number;
+}
+
+export interface ReplenishStockResult {
+  insumoId: string;
+  cantidadRepuesta: number;
+  cantidadActual: number;
+}
+
 export const LOW_STOCK_THRESHOLD = 10;
 
 /** El stock lo descuenta el backend al registrarse una administración (evento medication.administered). */
