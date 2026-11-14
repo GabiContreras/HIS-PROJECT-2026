@@ -9,6 +9,7 @@ import {
 export enum RolUsuario {
   MEDICO = 'MEDICO',
   ENFERMERO = 'ENFERMERO',
+  RECEPCIONISTA = 'RECEPCIONISTA',
   ADMINISTRATIVO = 'ADMINISTRATIVO',
 }
 

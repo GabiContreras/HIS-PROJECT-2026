@@ -150,7 +150,7 @@ describe('TokenService — configuración y validación de tokens', () => {
   it.each([
     ['sin sub', { sub: undefined }],
     ['sin sid', { sid: undefined }],
-    ['con un rol inexistente', { rol: 'RECEPCIONISTA' }],
+    ['con un rol inexistente', { rol: 'LIMPIEZA' }],
     ['con superadmin que no es booleano', { superadmin: 'true' }],
     ['sin exp', { exp: undefined }],
   ])('rechaza claims %s', (_caso, over) => {
