@@ -1,5 +1,16 @@
-
-import {Body,Controller,Delete,Get,HttpCode,Param,Patch,Post,Query,UseGuards,} from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -49,7 +60,11 @@ export class TurnosController {
     description:
       'Obtiene los horarios libres de los médicos activos dentro del período indicado.',
   })
-  @ApiOkResponse({type: SlotDisponibleResponseDto,isArray: true,description: 'Listado de horarios disponibles.' })
+  @ApiOkResponse({
+    type: SlotDisponibleResponseDto,
+    isArray: true,
+    description: 'Listado de horarios disponibles.',
+  })
   @ApiBadRequestResponse({ description: 'El rango de fechas no es válido.' })
   @ApiUnauthorizedResponse({ description: 'Autenticación no válida.' })
   @ApiForbiddenResponse({ description: 'El usuario no tiene permisos.' })
@@ -68,7 +83,11 @@ export class TurnosController {
     description:
       'Obtiene los turnos del período solicitado. Los médicos solo pueden consultar su propia agenda.',
   })
-  @ApiOkResponse({type: TurnoAgendaResponseDto,isArray: true,description: 'Agenda obtenida correctamente.' })
+  @ApiOkResponse({
+    type: TurnoAgendaResponseDto,
+    isArray: true,
+    description: 'Agenda obtenida correctamente.',
+  })
   @ApiBadRequestResponse({ description: 'El rango de fechas no es válido.' })
   @ApiUnauthorizedResponse({ description: 'Autenticación no válida.' })
   @ApiForbiddenResponse({
@@ -89,23 +108,31 @@ export class TurnosController {
       'Devuelve los estados a los que puede avanzar un turno según su estado actual.',
   })
   @ApiOkResponse({
-   schema: {
-     type: 'object',
-     description: 'Tabla que indica los estados a los que puede avanzar cada estado actual del turno.',
-     additionalProperties: {
-       type: 'array',
-       items: {
-         type: 'string',
-         enum: ['DISPONIBLE', 'RESERVADO', 'CONFIRMADO', 'EN_SALA_DE_ESPERA', 'ATENDIDO', 'CANCELADO'],
-       },
+    schema: {
+      type: 'object',
+      description:
+        'Tabla que indica los estados a los que puede avanzar cada estado actual del turno.',
+      additionalProperties: {
+        type: 'array',
+        items: {
+          type: 'string',
+          enum: [
+            'DISPONIBLE',
+            'RESERVADO',
+            'CONFIRMADO',
+            'EN_SALA_DE_ESPERA',
+            'ATENDIDO',
+            'CANCELADO',
+          ],
+        },
       },
-     example: {
-       RESERVADO: ['CONFIRMADO', 'CANCELADO'],
-       CONFIRMADO: ['EN_SALA_DE_ESPERA', 'CANCELADO'],
+      example: {
+        RESERVADO: ['CONFIRMADO', 'CANCELADO'],
+        CONFIRMADO: ['EN_SALA_DE_ESPERA', 'CANCELADO'],
       },
     },
-   description: 'Tabla de transiciones permitidas obtenida correctamente.',
-})  
+    description: 'Tabla de transiciones permitidas obtenida correctamente.',
+  })
   @ApiUnauthorizedResponse({ description: 'Autenticación no válida.' })
   @ApiForbiddenResponse({ description: 'El usuario no tiene permisos.' })
   getTransitions() {
@@ -118,10 +145,17 @@ export class TurnosController {
     summary: 'Reservar un turno',
     description: 'Reserva un horario regular para un paciente y un médico.',
   })
-  @ApiCreatedResponse({ type: TurnoSummaryResponseDto,description: 'Turno reservado correctamente.' })
-  @ApiBadRequestResponse({ description: 'La fecha o el horario no son válidos.' })
+  @ApiCreatedResponse({
+    type: TurnoSummaryResponseDto,
+    description: 'Turno reservado correctamente.',
+  })
+  @ApiBadRequestResponse({
+    description: 'La fecha o el horario no son válidos.',
+  })
   @ApiUnauthorizedResponse({ description: 'Autenticación no válida.' })
-  @ApiForbiddenResponse({ description: 'El usuario no puede gestionar esa agenda.' })
+  @ApiForbiddenResponse({
+    description: 'El usuario no puede gestionar esa agenda.',
+  })
   @ApiNotFoundResponse({ description: 'No se encontró el paciente.' })
   @ApiConflictResponse({ description: 'El horario ya está ocupado.' })
   reserve(
@@ -138,7 +172,11 @@ export class TurnosController {
     description:
       'Obtiene las personas en espera del día indicado. Si no se especifica una fecha, consulta el día actual.',
   })
-  @ApiOkResponse({ type: EsperaSummaryResponseDto,isArray: true,description: 'Lista de espera obtenida correctamente.' })
+  @ApiOkResponse({
+    type: EsperaSummaryResponseDto,
+    isArray: true,
+    description: 'Lista de espera obtenida correctamente.',
+  })
   @ApiUnauthorizedResponse({ description: 'Autenticación no válida.' })
   @ApiForbiddenResponse({
     description: 'El médico intenta consultar la lista de otro médico.',
@@ -157,10 +195,15 @@ export class TurnosController {
     description:
       'Incorpora un paciente a la cola de espera de un médico para una fecha determinada.',
   })
-  @ApiCreatedResponse({ type: EsperaSummaryResponseDto,description: 'Paciente agregado a la lista de espera.' })
+  @ApiCreatedResponse({
+    type: EsperaSummaryResponseDto,
+    description: 'Paciente agregado a la lista de espera.',
+  })
   @ApiBadRequestResponse({ description: 'La fecha indicada ya pasó.' })
   @ApiUnauthorizedResponse({ description: 'Autenticación no válida.' })
-  @ApiForbiddenResponse({ description: 'El usuario no puede gestionar esa agenda.' })
+  @ApiForbiddenResponse({
+    description: 'El usuario no puede gestionar esa agenda.',
+  })
   @ApiNotFoundResponse({ description: 'No se encontró el paciente.' })
   @ApiConflictResponse({
     description:
@@ -181,9 +224,13 @@ export class TurnosController {
     description: 'Retira una inscripción activa de la lista de espera.',
   })
   @ApiParam({ name: 'id', description: 'Identificador de la inscripción.' })
-  @ApiNoContentResponse({ description: 'Paciente eliminado de la lista de espera correctamente.' })
+  @ApiNoContentResponse({
+    description: 'Paciente eliminado de la lista de espera correctamente.',
+  })
   @ApiUnauthorizedResponse({ description: 'Autenticación no válida.' })
-  @ApiForbiddenResponse({ description: 'El usuario no puede gestionar esa agenda.' })
+  @ApiForbiddenResponse({
+    description: 'El usuario no puede gestionar esa agenda.',
+  })
   @ApiNotFoundResponse({ description: 'No se encontró la inscripción activa.' })
   leaveWaitlist(
     @Param('id') id: string,
@@ -199,10 +246,17 @@ export class TurnosController {
     description:
       'Reserva un horario urgente de 15 minutos en los minutos :15 o :45.',
   })
-  @ApiCreatedResponse({ type: TurnoSummaryResponseDto,description: 'Entreturno reservado correctamente.' })
-  @ApiBadRequestResponse({ description: 'La fecha o el horario no son válidos.' })
+  @ApiCreatedResponse({
+    type: TurnoSummaryResponseDto,
+    description: 'Entreturno reservado correctamente.',
+  })
+  @ApiBadRequestResponse({
+    description: 'La fecha o el horario no son válidos.',
+  })
   @ApiUnauthorizedResponse({ description: 'Autenticación no válida.' })
-  @ApiForbiddenResponse({ description: 'El usuario no puede gestionar esa agenda.' })
+  @ApiForbiddenResponse({
+    description: 'El usuario no puede gestionar esa agenda.',
+  })
   @ApiNotFoundResponse({ description: 'No se encontró el paciente.' })
   @ApiConflictResponse({
     description: 'No existe disponibilidad para reservar el entreturno.',
@@ -222,13 +276,20 @@ export class TurnosController {
       'Realiza una transición válida del estado del turno. Al cancelar, puede promover a una persona de la lista de espera.',
   })
   @ApiParam({ name: 'id', description: 'Identificador del turno.' })
-  @ApiOkResponse({ type: TurnoTransitionResponseDto,description: 'Transición de estado del turno realizada correctamente.', })
+  @ApiOkResponse({
+    type: TurnoTransitionResponseDto,
+    description: 'Transición de estado del turno realizada correctamente.',
+  })
   @ApiUnauthorizedResponse({ description: 'Autenticación no válida.' })
-  @ApiForbiddenResponse({ description: 'El usuario no puede gestionar esa agenda.' })
+  @ApiForbiddenResponse({
+    description: 'El usuario no puede gestionar esa agenda.',
+  })
   @ApiNotFoundResponse({ description: 'No se encontró el turno.' })
-  @ApiConflictResponse({ description: 'La transición de estado no está permitida.' })
+  @ApiConflictResponse({
+    description: 'La transición de estado no está permitida.',
+  })
   transition(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: TransicionTurnoDto,
     @CurrentIdentity() identity: SessionIdentity,
   ) {

@@ -6,9 +6,10 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
+import { EstadoCargo } from '../modules/billing/domain/estado-cargo.js';
 import { TipoAtencionFacturable } from '../modules/billing/domain/tipo-atencion-facturable.js';
 
-export { TipoAtencionFacturable };
+export { EstadoCargo, TipoAtencionFacturable };
 
 @Entity('cargos')
 export class Cargo {
@@ -44,6 +45,9 @@ export class Cargo {
 
   @Column({ name: 'importe_tercero_pesos', type: 'integer', nullable: true })
   importeTerceroPesos: number | null;
+
+  @Column({ name: 'estado', type: 'varchar', length: 20, default: EstadoCargo.PENDIENTE })
+  estado: EstadoCargo;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

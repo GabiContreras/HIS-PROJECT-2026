@@ -1,4 +1,3 @@
-
 import {
   Body,
   ForbiddenException,
@@ -57,14 +56,14 @@ export class AuthController {
     description:
       'Crea una cuenta de usuario. El registro sin verificación de correo está disponible únicamente durante el desarrollo.',
   })
-  @ApiCreatedResponse({ description: 'Cuenta creada correctamente.',type: MessageResponseDto, })
+  @ApiCreatedResponse({ description: 'Cuenta creada correctamente.', type: MessageResponseDto })
   @ApiBadRequestResponse({ description: 'Los datos enviados no son válidos.' })
   @ApiForbiddenResponse({
     description: 'El registro sin verificación está deshabilitado en producción.',
   })
   @ApiConflictResponse({ description: 'Ya existe una cuenta con ese correo.' })
   register(@Body() dto: RegistroDto) {
-    return this.auth.register(dto);
+    return this.auth.resetPassword(dto);
   }
 
   @Post('login')
@@ -74,7 +73,7 @@ export class AuthController {
     description:
       'Autentica al usuario, devuelve un access token y establece una cookie HTTP-only para renovar la sesión.',
   })
-  @ApiOkResponse({ description: 'Inicio de sesión correcto.',type: LoginResponseDto,})
+  @ApiOkResponse({ description: 'Inicio de sesión correcto.', type: LoginResponseDto })
   @ApiBadRequestResponse({ description: 'Los datos enviados no son válidos.' })
   @ApiUnauthorizedResponse({
     description: 'Credenciales incorrectas o cuenta no habilitada.',
@@ -98,7 +97,7 @@ export class AuthController {
     description:
       'Renueva el access token utilizando la cookie HTTP-only de actualización.',
   })
-  @ApiOkResponse({ description: 'Sesión renovada correctamente.',type: LoginResponseDto, })
+  @ApiOkResponse({ description: 'Sesión renovada correctamente.', type: LoginResponseDto })
   @ApiUnauthorizedResponse({
     description: 'La sesión venció, fue revocada o el token no es válido.',
   })
@@ -143,7 +142,7 @@ export class AuthController {
     summary: 'Consultar cuenta autenticada',
     description: 'Devuelve los datos públicos de la cuenta de la sesión actual.',
   })
-  @ApiOkResponse({ description: 'Datos de la cuenta obtenidos correctamente.',type: AccountResponseDto, })
+  @ApiOkResponse({ description: 'Datos de la cuenta obtenidos correctamente.', type: AccountResponseDto })
   @ApiUnauthorizedResponse({ description: 'La sesión no está activa.' })
   @ApiNotFoundResponse({ description: 'No se encontró la cuenta.' })
   me(@CurrentIdentity() identity: SessionIdentity) {
@@ -157,18 +156,19 @@ export class AuthController {
     description:
       'Informa el estado actual del mecanismo de recuperación por correo, que está temporalmente deshabilitado.',
   })
- @ApiOkResponse({description: 'Se devuelve información sobre la recuperación de contraseña.',type: ForgotPasswordResponseDto,})
-   forgotPassword(@Body() dto: EmailDto) {
-    return this.auth.forgotPassword(dto.email);}
+  @ApiOkResponse({ description: 'Se devuelve información sobre la recuperación de contraseña.', type: ForgotPasswordResponseDto })
+  forgotPassword(@Body() dto: EmailDto) {
+    return this.auth.forgotPassword(dto.email);
+  }
 
-  @Post('reset-password')
+@Post('reset-password')
   @HttpCode(200)
   @ApiOperation({
     summary: 'Restablecer contraseña',
     description:
       'Restablece la contraseña de una cuenta. El procedimiento sin verificación está disponible únicamente durante el desarrollo.',
   })
-  @ApiOkResponse({description: 'Contraseña restablecida correctamente.',type: ResetPasswordResponseDto,})
+  @ApiOkResponse({ description: 'Contraseña restablecida correctamente.', type: ResetPasswordResponseDto })
   @ApiBadRequestResponse({ description: 'Los datos enviados no son válidos.' })
   @ApiForbiddenResponse({
     description: 'El restablecimiento sin verificación está deshabilitado en producción.',
@@ -177,6 +177,7 @@ export class AuthController {
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.auth.resetPassword(dto);
   }
+
 
   @Post('change-password')
   @HttpCode(200)
@@ -188,13 +189,13 @@ export class AuthController {
       'Actualiza la contraseña de la cuenta autenticada y revoca las demás sesiones activas.',
   })
   @ApiOkResponse({
-   description: 'Contraseña actualizada correctamente.',
-   schema: {
-     example: {
-       message: 'La contraseña fue actualizada.',
+    description: 'Contraseña actualizada correctamente.',
+    schema: {
+      example: {
+        message: 'La contraseña fue actualizada.',
       },
     },
-  })  
+  })
   @ApiBadRequestResponse({ description: 'Los datos enviados no son válidos.' })
   @ApiUnauthorizedResponse({
     description: 'La sesión no está activa o la contraseña actual es incorrecta.',

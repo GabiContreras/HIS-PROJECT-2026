@@ -74,6 +74,33 @@ describe('InventoryService', () => {
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
+  it('usa el repositorio del manager recibido para descontar dentro de su transacción', async () => {
+    const transactionalExecute = vi.fn().mockResolvedValue({
+      affected: 1,
+      raw: [{ id: 'insumo-1', cantidad_disponible: 4 }],
+    });
+    const transactionalBuilder: Record<string, ReturnType<typeof vi.fn>> = {
+      update: vi.fn(),
+      set: vi.fn(),
+      where: vi.fn(),
+      andWhere: vi.fn(),
+      setParameters: vi.fn(),
+      returning: vi.fn(),
+      execute: transactionalExecute,
+    };
+    Object.entries(transactionalBuilder).forEach(([name, method]) => {
+      if (name !== 'execute') method.mockReturnValue(transactionalBuilder);
+    });
+    const manager = {
+      getRepository: vi.fn(() => ({ createQueryBuilder: () => transactionalBuilder })),
+    };
+
+    await service.descontarStock({ insumoId: 'insumo-1', cantidad: 1 }, manager as never);
+
+    expect(transactionalExecute).toHaveBeenCalledTimes(1);
+    expect(queryBuilder.execute).not.toHaveBeenCalled();
+  });
+
   it('rechaza cantidades no positivas o no enteras', async () => {
   await expect(
     service.descontarStock({ insumoId: 'insumo-1', cantidad: 0 }),
