@@ -3,11 +3,14 @@ import type { TipoCobertura } from './patients';
 
 export type TipoAtencion = 'REGULAR' | 'URGENCIA';
 
+export type EstadoCargo = 'PENDIENTE' | 'FACTURADO' | 'PAGADO' | 'ANULADO';
+
 export interface Charge {
   id: string;
   turnoId: string;
   importePesos: number;
   tipoAtencion: TipoAtencion;
+  estado: EstadoCargo;
   createdAt: string;
   /** Cobertura del paciente al facturar y cómo se repartió el valor base. null en cargos anteriores al registro de coberturas. */
   cobertura: {

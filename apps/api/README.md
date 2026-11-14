@@ -90,10 +90,11 @@ $ npm run test:cov
    `DATABASE_SSL=true` for Supabase; set it to `false` only for local PostgreSQL
    without TLS. Set `FRONTEND_ORIGINS` to the exact frontend origin(s), separated
    by commas if there is more than one.
-4. Set `NODE_ENV=development` for local work. Email-code flows are intentionally
-   disabled during development: account registration needs no email, and
-   `POST /auth/reset-password` accepts `email` plus `password`. These shortcuts
-   are rejected when `NODE_ENV=production`.
+4. Set `NODE_ENV=development` for local work. Email-code flows are not
+   implemented: staff accounts are created by an administrator through
+   `POST /usuarios`, and a forgotten password is reset by an administrator with
+   `PATCH /usuarios/:id/restablecer-clave` (temporary password). No endpoint's
+   authorization depends on `NODE_ENV`.
 5. Configure token lifetimes:
 
    | Variable | Default | Limit | Meaning |
@@ -122,8 +123,9 @@ $ npm run test:cov
 Existing legacy passwords are upgraded to scrypt after a successful
 non-production login.
 
-IAM endpoints include registration, login, refresh, logout, `/auth/me`, and
-password recovery/change. The short-lived access JWT is returned in the response
+IAM endpoints include login, refresh, logout, `/auth/me`, and password change.
+There is no public registration or unauthenticated password reset; accounts are
+created and reset through the administrator-only `/usuarios` routes. The short-lived access JWT is returned in the response
 body; send it on protected requests as `Authorization: Bearer <accessToken>`.
 The rotating refresh token is only set in an HttpOnly cookie. The frontend
 origin must be listed in `FRONTEND_ORIGINS`.

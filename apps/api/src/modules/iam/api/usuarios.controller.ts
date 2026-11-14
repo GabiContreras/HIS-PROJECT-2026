@@ -1,4 +1,3 @@
-
 import {
   Body,
   Controller,
@@ -34,6 +33,7 @@ import { SuperadminGuard } from './superadmin.guard.js';
 import { Roles } from './roles.decorator.js';
 import { RegistroDto } from './dto/registro.dto.js';
 import { CreateAdminDto } from './dto/create-admin.dto.js';
+import { RestablecerClaveDto } from './dto/restablecer-clave.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
 import { HorarioMedicoDto } from './dto/horario-medico.dto.js';
 import { AccountResponseDto } from './dto/account-response.dto.js';
@@ -55,13 +55,13 @@ export class UsuariosController {
     summary: 'Crear cuenta de personal',
     description: 'Registra una cuenta de personal desde el área administrativa.',
   })
-  @ApiCreatedResponse({ description: 'Cuenta creada correctamente.',type: MessageResponseDto, })
+  @ApiCreatedResponse({ description: 'Cuenta creada correctamente.', type: MessageResponseDto })
   @ApiBadRequestResponse({ description: 'Los datos enviados no son válidos.' })
   @ApiUnauthorizedResponse({ description: 'Autenticación no válida.' })
   @ApiForbiddenResponse({ description: 'Se requiere el rol administrativo.' })
   @ApiConflictResponse({ description: 'Ya existe una cuenta con ese correo.' })
   createStaff(@Body() dto: RegistroDto) {
-    return this.auth.register(dto);
+    return this.auth.createStaff(dto);
   }
 
   @Post('administrativos')
@@ -71,9 +71,9 @@ export class UsuariosController {
     description: 'Permite al superadministrador crear otra cuenta administrativa.',
   })
   @ApiCreatedResponse({
-   description: 'Cuenta administrativa creada correctamente.',
-   type: AccountResponseDto,
- })
+    description: 'Cuenta administrativa creada correctamente.',
+    type: AccountResponseDto,
+  })
   @ApiBadRequestResponse({ description: 'Los datos enviados no son válidos.' })
   @ApiUnauthorizedResponse({ description: 'Autenticación no válida.' })
   @ApiForbiddenResponse({ description: 'Se requiere una cuenta superadministradora.' })
@@ -97,9 +97,9 @@ export class UsuariosController {
     description: 'Indica si se deben incluir las cuentas dadas de baja.',
   })
   @ApiOkResponse({
-   description: 'Listado de usuarios obtenido correctamente.',
-   type: AccountResponseDto,
-   isArray: true,
+    description: 'Listado de usuarios obtenido correctamente.',
+    type: AccountResponseDto,
+    isArray: true,
   })
   @ApiUnauthorizedResponse({ description: 'Autenticación no válida.' })
   @ApiForbiddenResponse({ description: 'El usuario no tiene permisos.' })
@@ -118,7 +118,7 @@ export class UsuariosController {
     description: 'Obtiene los datos públicos de una cuenta por su identificador.',
   })
   @ApiParam({ name: 'id', description: 'Identificador de la cuenta.' })
-  @ApiOkResponse({ description: 'Usuario obtenido correctamente.',type: AccountResponseDto,})
+  @ApiOkResponse({ description: 'Usuario obtenido correctamente.', type: AccountResponseDto })
   @ApiUnauthorizedResponse({ description: 'Autenticación no válida.' })
   @ApiForbiddenResponse({ description: 'El usuario no tiene permisos.' })
   @ApiNotFoundResponse({ description: 'No se encontró la cuenta.' })
@@ -134,7 +134,7 @@ export class UsuariosController {
     description: 'Modifica el nombre o apellido de una cuenta.',
   })
   @ApiParam({ name: 'id', description: 'Identificador de la cuenta.' })
-  @ApiOkResponse({description: 'Perfil actualizado correctamente.',type: AccountResponseDto,})
+  @ApiOkResponse({ description: 'Perfil actualizado correctamente.', type: AccountResponseDto })
   @ApiBadRequestResponse({ description: 'No se indicaron datos válidos para actualizar.' })
   @ApiUnauthorizedResponse({ description: 'Autenticación no válida.' })
   @ApiForbiddenResponse({ description: 'El usuario no puede modificar ese perfil.' })
@@ -156,7 +156,7 @@ export class UsuariosController {
     description: 'Define el horario de atención de un médico.',
   })
   @ApiParam({ name: 'id', description: 'Identificador de la cuenta médica.' })
-  @ApiOkResponse({description: 'Horario actualizado correctamente.',type: AccountResponseDto,})
+  @ApiOkResponse({ description: 'Horario actualizado correctamente.', type: AccountResponseDto })
   @ApiBadRequestResponse({ description: 'El horario indicado no es válido.' })
   @ApiUnauthorizedResponse({ description: 'Autenticación no válida.' })
   @ApiForbiddenResponse({ description: 'El usuario no puede modificar esa cuenta.' })
@@ -178,7 +178,7 @@ export class UsuariosController {
     description: 'Activa una cuenta verificada pendiente de habilitación o deshabilitada.',
   })
   @ApiParam({ name: 'id', description: 'Identificador de la cuenta.' })
-  @ApiOkResponse({description: 'Cuenta habilitada correctamente.',type: AccountResponseDto,})
+  @ApiOkResponse({ description: 'Cuenta habilitada correctamente.', type: AccountResponseDto })
   @ApiUnauthorizedResponse({ description: 'Autenticación no válida.' })
   @ApiForbiddenResponse({ description: 'El usuario no puede gestionar esa cuenta.' })
   @ApiNotFoundResponse({ description: 'No se encontró la cuenta.' })
@@ -198,7 +198,7 @@ export class UsuariosController {
     description: 'Deshabilita una cuenta y revoca sus sesiones activas.',
   })
   @ApiParam({ name: 'id', description: 'Identificador de la cuenta.' })
-  @ApiOkResponse({description: 'Cuenta deshabilitada correctamente.',type: AccountResponseDto,})
+  @ApiOkResponse({ description: 'Cuenta deshabilitada correctamente.', type: AccountResponseDto })
   @ApiUnauthorizedResponse({ description: 'Autenticación no válida.' })
   @ApiForbiddenResponse({ description: 'El usuario no puede gestionar esa cuenta.' })
   @ApiNotFoundResponse({ description: 'No se encontró la cuenta.' })
@@ -210,6 +210,26 @@ export class UsuariosController {
     return this.accounts.deactivate(id, identity);
   }
 
+  @Patch(':id/restablecer-clave')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(RolUsuario.ADMINISTRATIVO)
+  @ApiOperation({
+    summary: 'Restablecer clave temporal',
+    description: 'Asigna una contraseña temporal a una cuenta existente y revoca sus sesiones.',
+  })
+  @ApiParam({ name: 'id', description: 'Identificador de la cuenta.' })
+  @ApiOkResponse({ description: 'Contraseña temporal asignada correctamente.' })
+  @ApiUnauthorizedResponse({ description: 'Autenticación no válida.' })
+  @ApiForbiddenResponse({ description: 'El usuario no puede gestionar esa cuenta.' })
+  @ApiNotFoundResponse({ description: 'No se encontró la cuenta.' })
+  resetPassword(
+    @Param('id') id: string,
+    @Body() dto: RestablecerClaveDto,
+    @CurrentIdentity() identity: SessionIdentity,
+  ) {
+    return this.accounts.resetPassword(id, dto, identity);
+  }
+
   @Patch(':id/baja')
   @UseGuards(AuthGuard, SuperadminGuard)
   @ApiOperation({
@@ -218,7 +238,7 @@ export class UsuariosController {
       'Realiza una baja lógica. Conserva el historial y requiere resolver los turnos futuros activos de un médico.',
   })
   @ApiParam({ name: 'id', description: 'Identificador de la cuenta.' })
-  @ApiOkResponse({description: 'Cuenta dada de baja correctamente.',type: AccountResponseDto,})
+  @ApiOkResponse({ description: 'Cuenta dada de baja correctamente.', type: AccountResponseDto })
   @ApiUnauthorizedResponse({ description: 'Autenticación no válida.' })
   @ApiForbiddenResponse({ description: 'Se requiere una cuenta superadministradora.' })
   @ApiNotFoundResponse({ description: 'No se encontró la cuenta.' })
@@ -239,7 +259,7 @@ export class UsuariosController {
     description: 'Restaura la cuenta en estado deshabilitado para su posterior habilitación.',
   })
   @ApiParam({ name: 'id', description: 'Identificador de la cuenta.' })
-  @ApiOkResponse({description: 'Cuenta restaurada correctamente.',type: AccountResponseDto,})
+  @ApiOkResponse({ description: 'Cuenta restaurada correctamente.', type: AccountResponseDto })
   @ApiUnauthorizedResponse({ description: 'Autenticación no válida.' })
   @ApiForbiddenResponse({ description: 'Se requiere una cuenta superadministradora.' })
   @ApiNotFoundResponse({ description: 'No se encontró la cuenta.' })

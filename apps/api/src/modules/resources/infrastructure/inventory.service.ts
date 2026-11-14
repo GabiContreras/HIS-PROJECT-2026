@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { QueryFailedError, Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { Insumo } from '../../../entities/insumo.entity.js';
 import {
   ActualizarInsumoInput,
@@ -127,6 +128,7 @@ export class InventoryService implements InventoryPort {
 
   async descontarStock(
     input: DescontarStockInput,
+    manager?: EntityManager,
   ): Promise<DescontarStockResult> {
     const { insumoId, cantidad } = input;
 
@@ -136,7 +138,8 @@ export class InventoryService implements InventoryPort {
       );
     }
 
-    const result = await this.insumoRepository
+    const insumos = manager ? manager.getRepository(Insumo) : this.insumoRepository;
+    const result = await insumos
       .createQueryBuilder()
       .update(Insumo)
       .set({
@@ -149,7 +152,7 @@ export class InventoryService implements InventoryPort {
       .execute();
 
     if (result.affected !== 1 || !result.raw?.[0]) {
-      const insumo = await this.insumoRepository.findOneBy({
+      const insumo = await insumos.findOneBy({
         id: insumoId,
       });
 

@@ -20,16 +20,20 @@ datos básicos de la cuenta se devuelven en el body.
 
 | Método y ruta | Acceso | Uso |
 | --- | --- | --- |
-| `POST /auth/register` | Público | Alta de médico/enfermero sin verificación por correo durante desarrollo; el médico queda pendiente de habilitación. |
 | `POST /auth/login` | Origen frontend permitido | Inicio de sesión y emisión de access/refresh. |
 | `POST /auth/refresh` | Cookie + origen permitido | Rota el refresh token y revoca el anterior. |
 | `POST /auth/logout` | Cookie + origen permitido | Revoca la sesión actual. |
 | `GET /auth/me` | Autenticado | Devuelve datos básicos, rol y estado de la cuenta. |
-| `POST /auth/forgot-password` | Público | Informa que la recuperación por correo está temporalmente deshabilitada. |
-| `POST /auth/reset-password` | Público solo en desarrollo | Actualiza contraseña con email y contraseña nueva; sin código de correo. Deshabilitado en producción. |
+| `POST /auth/forgot-password` | Público | Informa que la recuperación por correo no está disponible y que debe pedirse a un administrativo. |
 | `POST /auth/change-password` | Autenticado | Cambia contraseña y revoca las demás sesiones. |
-| `POST /usuarios` | Administrativo | Alta de personal médico/enfermería sin códigos de correo durante desarrollo. |
+| `POST /usuarios` | Administrativo | Alta de personal médico/enfermería sin códigos de correo; el médico queda pendiente de habilitación. Única vía de alta de personal. |
 | `POST /usuarios/administrativos` | Solo superadmin | Alta directa de otro administrativo. |
+| `GET /usuarios`, `GET /usuarios/:id` | Administrativo | Consulta de cuentas, sin hashes ni credenciales. |
+| `PATCH /usuarios/:id` | Administrativo (cuentas administrativas: solo superadmin) | Modifica nombre/apellido. |
+| `PATCH /usuarios/:id/habilitar` | Administrativo (cuentas administrativas: solo superadmin) | Habilita cuentas verificadas pendientes o deshabilitadas. |
+| `PATCH /usuarios/:id/deshabilitar` | Administrativo (cuentas administrativas: solo superadmin) | Deshabilita cuenta y revoca sus sesiones. No permite autodeshabilitarse. |
+| `PATCH /usuarios/:id/restablecer-clave` | Administrativo (cuentas administrativas: solo superadmin) | Asigna una contraseña temporal (`passwordTemporal`) y revoca todas las sesiones de la cuenta. No aplica a la propia cuenta ni al superadmin raíz. |
+| `GET /turnos/disponibles` | Autenticado | Consulta turnos libres próximos. |
 | `GET /usuarios`, `GET /usuarios/:id` | Administrativo | Consulta de cuentas, sin hashes ni credenciales. `GET /usuarios?incluirBajas=true` incluye las dadas de baja, solo si quien consulta es superadmin. |
 | `PATCH /usuarios/:id` | Administrativo | Modifica nombre/apellido. Sobre otro administrativo, solo el superadmin; cada uno puede corregir el suyo. |
 | `PATCH /usuarios/:id/habilitar` | Administrativo | Habilita cuentas verificadas pendientes o deshabilitadas. Sobre administrativos, solo el superadmin. |
@@ -58,6 +62,14 @@ datos básicos de la cuenta se devuelven en el body.
 | Evento `admissions.patient-waiting` (suscriptor de Admisión) | Interno, sin endpoint | Se publica cuando un turno pasa a `EN_SALA_DE_ESPERA`; payload `{ appointmentId, doctorId, patientId }`. El suscriptor crea una notificación `PACIENTE_EN_SALA_DE_ESPERA` de prioridad `MEDIA` para el médico del turno, con el nombre del paciente. Si falla solo se registra un log: no se propaga al bus. |
 | Evento `admissions.standby-promoted` (suscriptor de Admisión) | Interno, sin endpoint | Se publica cuando al cancelar un turno se promueve al primero de la lista de espera; payload `{ appointmentId, doctorId, patientId, scheduledAt }` (`scheduledAt` en formato ISO). El suscriptor crea una notificación `ESPERA_PROMOVIDA` de prioridad `MEDIA` para todos los administrativos activos, con paciente, médico y horario en hora de la clínica. Si falla solo se registra un log. |
 | `GET /billing/cargos` | Administrativo | Cargos con el turno, paciente, médico y el reparto paciente / tercero según la cobertura. |
+| `GET /billing/financiadores` | Administrativo | Catálogo de coberturas: `[{ id, nombre, tipo, activo, createdAt, planes: [{ id, financiadorId, nombre, activo, createdAt }] }]`, ordenado por nombre. Incluye los dados de baja para poder reactivarlos. |
+| `POST /billing/financiadores` | Administrativo | Crea un financiador `{ nombre, tipo }` con `tipo` `OBRA_SOCIAL_PUBLICA` o `MEDICINA_PREPAGA` (`PARTICULAR` no tiene financiador). `400` por validación, `409` si ya existe un financiador con ese nombre (sin distinguir mayúsculas). |
+| `PATCH /billing/financiadores/:id` | Administrativo | Edita `{ nombre?, tipo?, activo? }`; `activo: false` es la baja lógica (no hay `DELETE`). `404` si no existe, `409` por nombre duplicado. |
+| `POST /billing/financiadores/:id/planes` | Administrativo | Crea un plan `{ nombre }` del financiador. `404` si el financiador no existe, `409` si ya tiene un plan con ese nombre. |
+| `PATCH /billing/planes/:id` | Administrativo | Edita `{ nombre?, activo? }`; `activo: false` es la baja lógica. `404` si no existe, `409` por nombre duplicado en el financiador. |
+| `GET /billing/cargos` | Administrativo | Cargos con el turno, paciente, médico, el reparto paciente / tercero según la cobertura y el `estado` (`PENDIENTE`, `FACTURADO`, `PAGADO` o `ANULADO`; los cargos nuevos y los existentes arrancan en `PENDIENTE`). |
+| `PATCH /billing/cargos/:id/pagar` | Administrativo | Pasa el cargo a `PAGADO` desde `PENDIENTE` o `FACTURADO`. Responde `{ id, estado }`. `404` si no existe, `409` si ya está pagado o anulado. |
+| `PATCH /billing/cargos/:id/anular` | Administrativo | Pasa el cargo a `ANULADO` desde `PENDIENTE` o `FACTURADO`. Responde `{ id, estado }`. `404` si no existe, `409` si ya está pagado o anulado. |
 | `GET /signos-vitales/tipos` | Enfermero o médico | Tipos de signo vital (`PRESION_ARTERIAL` = sistólica, `PRESION_DIASTOLICA`, `TEMPERATURA`, `FRECUENCIA_CARDIACA`, `FRECUENCIA_RESPIRATORIA`, `SATURACION_O2`) con unidad, rango normal y límites de plausibilidad. |
 | `GET /signos-vitales?pacienteId=` | Enfermero o médico | Últimos 100 registros, del más nuevo al más viejo; filtro opcional por paciente. Cada registro trae `unidad`, `fueraDeRango` y `registradoPor` ("Apellido, Nombre"). |
 | `POST /signos-vitales` | Enfermero o médico | Registra `{ pacienteId, tipo, valor }` con autor y fecha del servidor; `400` por validación o valor implausible, `404` si el paciente no existe. Si queda fuera de rango (por ejemplo temperatura mayor a 39 °C) publica el evento `vital-sign.alert-raised`. |
@@ -84,6 +96,8 @@ datos básicos de la cuenta se devuelven en el body.
 | `POST /historia-clinica/:pacienteId/estudios` | Médico | Registra un estudio para su visualización `{ tipo (2-120), resultado (2-4000) }` (texto; no hay carga de archivos). Mismos errores que alergias. |
 
 La historia clínica es inmutable: no existen endpoints de modificación ni borrado, y la tabla `registros_clinicos` rechaza `UPDATE` y `DELETE` con un trigger. Los textos se guardan sin espacios en los extremos. Las lecturas excluyen al administrativo porque los datos clínicos no forman parte de su función; la ficha demográfica sigue disponible para él en `GET /pacientes/:id`.
+
+Los `:id` de `/usuarios` y `/turnos` deben ser UUID; si no lo son, la API responde `400`.
 
 Las contraseñas requieren 8 caracteres, una mayúscula y un dígito; se rechazan
 pares de dígitos consecutivos ascendentes o descendentes. Los endpoints devuelven

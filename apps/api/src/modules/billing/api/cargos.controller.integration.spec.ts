@@ -8,6 +8,9 @@ import { Turno } from '../../../entities/turno.entity.js';
 import { AuthGuard } from '../../iam/api/auth.guard.js';
 import { RolesGuard } from '../../iam/api/roles.guard.js';
 import { EventBus } from '../../../shared/events/event-bus.service.js';
+import { InMemoryOutboxStore } from '../../../shared/events/outbox/in-memory-outbox.store.js';
+import { OutboxService } from '../../../shared/events/outbox/outbox.service.js';
+import { OUTBOX_STORE } from '../../../shared/events/outbox/outbox.types.js';
 import {
   APPOINTMENT_ATTENDED_EVENT,
   AppointmentAttendedSubscriber,
@@ -66,6 +69,8 @@ describe('Billing integration', () => {
     const module = await Test.createTestingModule({
       controllers: [CargosController],
       providers: [
+        { provide: OUTBOX_STORE, useValue: new InMemoryOutboxStore() },
+        OutboxService,
         EventBus,
         BillingService,
         ConsultaRegularStrategy,
