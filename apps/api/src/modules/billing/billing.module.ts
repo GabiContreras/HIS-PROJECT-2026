@@ -17,6 +17,8 @@ import { Prestacion } from '../../entities/prestacion.entity.js';
 import { Tarifa } from '../../entities/tarifa.entity.js';
 import { CoverageCatalogService } from './application/coverage-catalog.service.js';
 import { MedicationAdministeredSubscriber } from './application/medication-administered.subscriber.js';
+import { BedReleasedSubscriber } from './application/bed-released.subscriber.js';
+import { Paciente } from '../../entities/paciente.entity.js';
 import { NomencladorService } from './application/nomenclador.service.js';
 import { NOMENCLADOR_REPOSITORY } from './domain/nomenclador.repository.js';
 import { TypeOrmNomencladorRepository } from './infrastructure/typeorm-nomenclador.repository.js';
@@ -24,7 +26,7 @@ import { COVERAGE_VERIFIER } from './domain/ports/coverage-verifier.port.js';
 import { SimulatedCoverageVerifier } from './infrastructure/simulated-coverage-verifier.js';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Cargo, Turno, Insumo, AdministracionMedicacion, Financiador, Plan, Prestacion, Tarifa]), IamModule],
+  imports: [TypeOrmModule.forFeature([Cargo, Turno, Insumo, AdministracionMedicacion, Financiador, Plan, Prestacion, Tarifa, Paciente]), IamModule],
   controllers: [CargosController, CoverageCatalogController],
   providers: [
     BillingService,
@@ -35,6 +37,7 @@ import { SimulatedCoverageVerifier } from './infrastructure/simulated-coverage-v
     ConsultaUrgenciaStrategy,
     AppointmentAttendedSubscriber,
     MedicationAdministeredSubscriber,
+    BedReleasedSubscriber,
     { provide: COVERAGE_VERIFIER, useClass: SimulatedCoverageVerifier },
   ],
   exports: [BillingService, CoverageCatalogService, COVERAGE_VERIFIER],

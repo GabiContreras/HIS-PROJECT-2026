@@ -1,6 +1,7 @@
 
 import { ApiProperty } from '@nestjs/swagger';
 import { EstadoCargo } from '../../domain/estado-cargo.js';
+import { TipoAtencionFacturable } from '../../domain/tipo-atencion-facturable.js';
 import type { Cargo } from '../../../../entities/cargo.entity.js';
 import type { CoverageType } from '../../../../shared/events/coverage-type.js';
 
@@ -149,7 +150,8 @@ export class CargoDetalleDto {
   importePesos: number;
 
   @ApiProperty({
-    example: 'CONSULTA',
+    enum: TipoAtencionFacturable,
+    example: TipoAtencionFacturable.REGULAR,
     description: 'Tipo de atención facturada.',
   })
   tipoAtencion: Cargo['tipoAtencion'];

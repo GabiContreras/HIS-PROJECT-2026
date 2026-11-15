@@ -1,7 +1,7 @@
 import { http } from '../shared/http';
 import type { TipoCobertura } from './patients';
 
-export type TipoAtencion = 'REGULAR' | 'URGENCIA';
+export type TipoAtencion = 'REGULAR' | 'URGENCIA' | 'INTERNACION';
 
 export type EstadoCargo = 'PENDIENTE' | 'FACTURADO' | 'PAGADO' | 'ANULADO';
 

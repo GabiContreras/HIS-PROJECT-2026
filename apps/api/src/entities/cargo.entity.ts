@@ -22,6 +22,9 @@ export class Cargo {
   @Column({name: 'administration_id',type: 'uuid',nullable: true,})
   administrationId: string | null;
 
+  @Column({ name: 'internacion_id', type: 'uuid', nullable: true })
+  internacionId: string | null;
+
   @Column({ name: 'concepto', type: 'varchar', length: 100, nullable: true })
   concepto: string | null;
 
