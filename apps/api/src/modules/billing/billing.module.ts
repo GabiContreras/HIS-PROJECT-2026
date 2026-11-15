@@ -4,8 +4,10 @@ import { Cargo } from '../../entities/cargo.entity.js';
 import { Turno } from '../../entities/turno.entity.js';
 import { CargosController } from './api/cargos.controller.js';
 import { CoverageCatalogController } from './api/coverage-catalog.controller.js';
+import { ReportesController } from './api/reportes.controller.js';
 import { AppointmentAttendedSubscriber } from './application/appointment-attended.subscriber.js';
 import { BillingService } from './application/billing.service.js';
+import { ReportesService } from './application/reportes.service.js';
 import { ConsultaRegularStrategy } from './domain/consulta-regular.strategy.js';
 import { ConsultaUrgenciaStrategy } from './domain/consulta-urgencia.strategy.js';
 import { IamModule } from '../iam/iam.module.js';
@@ -19,6 +21,8 @@ import { CoverageCatalogService } from './application/coverage-catalog.service.j
 import { MedicationAdministeredSubscriber } from './application/medication-administered.subscriber.js';
 import { BedReleasedSubscriber } from './application/bed-released.subscriber.js';
 import { Paciente } from '../../entities/paciente.entity.js';
+import { MovimientoInventario } from '../../entities/movimiento-inventario.entity.js';
+import { ResourcesModule } from '../resources/resources.module.js';
 import { NomencladorService } from './application/nomenclador.service.js';
 import { NOMENCLADOR_REPOSITORY } from './domain/nomenclador.repository.js';
 import { TypeOrmNomencladorRepository } from './infrastructure/typeorm-nomenclador.repository.js';
@@ -26,10 +30,11 @@ import { COVERAGE_VERIFIER } from './domain/ports/coverage-verifier.port.js';
 import { SimulatedCoverageVerifier } from './infrastructure/simulated-coverage-verifier.js';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Cargo, Turno, Insumo, AdministracionMedicacion, Financiador, Plan, Prestacion, Tarifa, Paciente]), IamModule],
-  controllers: [CargosController, CoverageCatalogController],
+  imports: [TypeOrmModule.forFeature([Cargo, Turno, Insumo, AdministracionMedicacion, Financiador, Plan, Prestacion, Tarifa, Paciente, MovimientoInventario]), IamModule, ResourcesModule],
+  controllers: [CargosController, CoverageCatalogController, ReportesController],
   providers: [
     BillingService,
+    ReportesService,
     CoverageCatalogService,
     NomencladorService,
     { provide: NOMENCLADOR_REPOSITORY, useClass: TypeOrmNomencladorRepository },
