@@ -21,7 +21,7 @@ import type { SessionIdentity } from '../../iam/application/auth.service.js';
 import { TriageService } from '../application/triage.service.js';
 import { CrearTriageDto } from './dto/crear-triage.dto.js';
 import { TriageResponseDto } from './dto/triage-response.dto.js';
-
+import { TriageAtencionResponseDto } from './dto/triage-atencion-response.dto.js';
 @Controller('triaje')
 @UseGuards(AuthGuard, RolesGuard)
 @ApiTags('Triaje')
@@ -58,20 +58,26 @@ export class TriajeController {
     return this.triage.obtenerCola();
   }
 
-  @Patch(':id/atender')
+    @Patch(':id/atender')
   @Roles(RolUsuario.MEDICO)
   @ApiOperation({
-    summary: 'Marcar un triaje como atendido',
-    description: 'Saca al paciente de la cola de espera.',
+    summary: 'Atender un triaje',
+    description:
+      'Saca al paciente de la cola de espera y registra la atención como un turno urgente ya atendido, que genera el cargo de urgencia.',
   })
   @ApiParam({ name: 'id', format: 'uuid', description: 'Identificador del triaje.' })
-  @ApiOkResponse({ type: TriageResponseDto, description: 'Triaje marcado como atendido.' })
+  @ApiOkResponse({ type: TriageAtencionResponseDto, description: 'Triaje atendido y turno urgente registrado.' })
   @ApiBadRequestResponse({ description: 'El identificador no es un UUID válido.' })
   @ApiUnauthorizedResponse({ description: 'Autenticación no válida.' })
-  @ApiForbiddenResponse({ description: 'Solo el médico puede marcar un triaje como atendido.' })
+  @ApiForbiddenResponse({ description: 'Solo el médico puede atender un triaje.' })
   @ApiNotFoundResponse({ description: 'El triaje no existe.' })
-  @ApiConflictResponse({ description: 'El triaje ya estaba atendido.' })
-  atender(@Param('id', ParseUUIDPipe) id: string) {
-    return this.triage.atender(id);
+  @ApiConflictResponse({
+    description: 'El triaje ya estaba atendido o el médico no tiene lugar en su agenda para registrar la atención.',
+  })
+  atender(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentIdentity() identity: SessionIdentity,
+  ) {
+    return this.triage.atender(id, identity);
   }
 }

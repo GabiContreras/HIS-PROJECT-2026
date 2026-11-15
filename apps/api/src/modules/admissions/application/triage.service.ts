@@ -1,13 +1,15 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { EstadoTriaje, TriajeRegistro } from '../../../entities/triaje.entity.js';
 import { EstadoCuenta, RolUsuario, Usuario } from '../../../entities/usuario.entity.js';
 import { CrearTriageDto, NivelTriage } from '../api/dto/crear-triage.dto.js';
 import type { TriageResponseDto } from '../api/dto/triage-response.dto.js';
 import { NotificacionesService } from './notificaciones.service.js';
 import { PacientesService } from './pacientes.service.js';
-
+import { DataSource, Repository } from 'typeorm';
+import type { SessionIdentity } from '../../iam/application/auth.service.js';
+import type { TriageAtencionResponseDto } from '../api/dto/triage-atencion-response.dto.js';
+import { TurnosService } from './turnos.service.js';
 @Injectable()
 export class TriageService {
   constructor(
@@ -17,6 +19,8 @@ export class TriageService {
     private readonly usuarioRepo: Repository<Usuario>,
     private readonly pacientesService: PacientesService,
     private readonly notificacionesService: NotificacionesService,
+    private readonly dataSource: DataSource,
+    private readonly turnos: TurnosService,
   ) {}
 
   async registrarTriage(dto: CrearTriageDto, registradoPorId: string): Promise<TriageResponseDto> {
@@ -70,16 +74,43 @@ export class TriageService {
     return registros.map((r) => this.aRespuesta(r, `${r.paciente.apellido}, ${r.paciente.nombre}`));
   }
 
-  async atender(id: string): Promise<TriageResponseDto> {
-    const registro = await this.triajeRepo.findOne({ where: { id }, relations: { paciente: true } });
-    if (!registro) throw new NotFoundException('No se encontró el registro de triaje.');
-    if (registro.estado === EstadoTriaje.ATENDIDO) {
-      throw new ConflictException('El paciente ya fue atendido.');
-    }
-    registro.estado = EstadoTriaje.ATENDIDO;
-    registro.atendidoAt = new Date();
-    await this.triajeRepo.save(registro);
-    return this.aRespuesta(registro, `${registro.paciente.apellido}, ${registro.paciente.nombre}`);
+    async atender(
+    id: string,
+    identity: SessionIdentity,
+  ): Promise<TriageAtencionResponseDto> {
+    const { registro, turno } = await this.dataSource.transaction(
+      async (manager) => {
+        const repository = manager.getRepository(TriajeRegistro);
+        const registro = await repository.findOne({
+          where: { id },
+          relations: { paciente: true },
+          lock: { mode: 'pessimistic_write', tables: ['triajes'] },
+        });
+        if (!registro) {
+          throw new NotFoundException('No se encontró el registro de triaje.');
+        }
+        if (registro.estado === EstadoTriaje.ATENDIDO) {
+          throw new ConflictException('El paciente ya fue atendido.');
+        }
+        const turno = await this.turnos.createUrgentAttendance(
+          manager,
+          identity.accountId,
+          registro.pacienteId,
+        );
+        registro.estado = EstadoTriaje.ATENDIDO;
+        registro.atendidoAt = new Date();
+        await repository.save(registro);
+        return { registro, turno };
+      },
+    );
+    this.turnos.publishAttended(turno.id, true);
+    return {
+      ...this.aRespuesta(
+        registro,
+        `${registro.paciente.apellido}, ${registro.paciente.nombre}`,
+      ),
+      turnoId: turno.id,
+    };
   }
 
   private aRespuesta(registro: TriajeRegistro, paciente: string): TriageResponseDto {
