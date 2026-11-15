@@ -10,6 +10,7 @@ import {
   Post,
   Query,
   UseGuards,
+  Res,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
@@ -43,6 +44,8 @@ import { TurnoSummaryResponseDto } from './dto/turno-summary-response.dto.js';
 import { TurnoTransitionResponseDto } from './dto/turno-transition-response.dto.js';
 import { EsperaSummaryResponseDto } from './dto/espera-summary-response.dto.js';
 import { ReprogramarTurnoDto } from './dto/reprogramar-turno.dto.js';
+import type { Response } from 'express';
+import { AgendaFiltroDto } from './dto/agenda-filtro.dto.js';
 
 @Controller('turnos')
 @UseGuards(AuthGuard, RolesGuard)
@@ -95,11 +98,14 @@ export class TurnosController {
   @ApiForbiddenResponse({
     description: 'El médico intenta consultar la agenda de otro médico.',
   })
-  listAgenda(
-    @Query() filters: TurnosFiltroDto,
+    async listAgenda(
+    @Query() filters: AgendaFiltroDto,
     @CurrentIdentity() identity: SessionIdentity,
+    @Res({ passthrough: true }) res: Response,
   ) {
-    return this.turnos.listAgenda(filters, identity);
+    const { items, total } = await this.turnos.listAgendaPage(filters, identity);
+    res.setHeader('X-Total-Count', String(total));
+    return items;
   }
 
   @Get('transiciones')

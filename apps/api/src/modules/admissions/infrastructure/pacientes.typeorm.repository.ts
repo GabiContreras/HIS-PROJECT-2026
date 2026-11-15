@@ -6,6 +6,7 @@ import { CoverageType } from '../../../shared/events/coverage-type.js';
 import {
   type ActualizacionPaciente,
   DocumentoDuplicadoError,
+  FiltroPacientes,
   type NuevoPaciente,
   type PacienteData,
   type PacientesRepository,
@@ -41,18 +42,33 @@ export class PacientesTypeOrmRepository implements PacientesRepository {
     private readonly pacientes: Repository<Paciente>,
   ) {}
 
-  async search(
+   async search(
     term: string | undefined,
     limit: number,
   ): Promise<PacienteData[]> {
+    const rows = await this.buildQuery({ term }).limit(limit).getMany();
+    return rows.map(toData);
+  }
+
+  async searchPage(
+    filtro: FiltroPacientes,
+    skip: number,
+    take: number,
+  ): Promise<{ items: PacienteData[]; total: number }> {
+    const [rows, total] = await this.buildQuery(filtro)
+      .offset(skip)
+      .limit(take)
+      .getManyAndCount();
+    return { items: rows.map(toData), total };
+  }
+
+  private buildQuery(filtro: FiltroPacientes) {
     const query = this.pacientes
       .createQueryBuilder('paciente')
       .orderBy('paciente.apellido', 'ASC')
-      .addOrderBy('paciente.nombre', 'ASC')
-      .limit(limit);
-
-    if (term) {
-      const pattern = `%${term.replace(/[\\%_]/g, '\\$&')}%`;
+      .addOrderBy('paciente.nombre', 'ASC');
+    if (filtro.term) {
+      const pattern = `%${filtro.term.replace(/[\\%_]/g, '\\$&')}%`;
       query.andWhere(
         new Brackets((qb) => {
           qb.where(
@@ -67,7 +83,12 @@ export class PacientesTypeOrmRepository implements PacientesRepository {
         }),
       );
     }
-    return (await query.getMany()).map(toData);
+    if (filtro.tipoCobertura) {
+      query.andWhere('paciente.tipoCobertura = :tipoCobertura', {
+        tipoCobertura: filtro.tipoCobertura,
+      });
+    }
+    return query;
   }
 
   async findById(id: string): Promise<PacienteData | null> {

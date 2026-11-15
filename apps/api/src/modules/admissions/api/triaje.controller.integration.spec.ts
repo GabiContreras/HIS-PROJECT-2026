@@ -16,7 +16,7 @@ describe('TriajeController: autorización por rol y validación de entrada', () 
 
   const service = {
     registrarTriage: vi.fn(async () => ({ id: 't1' })),
-    obtenerCola: vi.fn(async () => []),
+    listar: vi.fn(async () => []),
     atender: vi.fn(async () => ({ id: 't1' })),
   };
 
@@ -46,7 +46,7 @@ describe('TriajeController: autorización por rol y validación de entrada', () 
       metodo: 'get',
       ruta: '/triaje',
       ok: 200,
-      caso: 'obtenerCola',
+      caso: 'listar',
       permitidos: [RolUsuario.ENFERMERO, RolUsuario.MEDICO, RolUsuario.ADMINISTRATIVO],
     },
     {

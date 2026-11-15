@@ -550,5 +550,65 @@ describe('TurnosService', () => {
       );
     });
   });
+  
+    describe('listAgendaPage (ADM-9)', () => {
+    const chain = (rows: unknown[], total: number) => {
+      const query: Record<string, ReturnType<typeof vi.fn>> = {};
+      for (const method of [
+        'innerJoin',
+        'leftJoin',
+        'select',
+        'orderBy',
+        'andWhere',
+        'offset',
+        'limit',
+      ]) {
+        query[method] = vi.fn().mockReturnValue(query);
+      }
+      query.getManyAndCount = vi.fn().mockResolvedValue([rows, total]);
+      return query;
+    };
+
+    it('sin page ni limit no pagina', async () => {
+      const { service, turnoRepository } = setup();
+      const query = chain([], 0);
+      turnoRepository.createQueryBuilder.mockReturnValue(query);
+      const result = await service.listAgendaPage({}, admin);
+      expect(query.limit).not.toHaveBeenCalled();
+      expect(result).toEqual({ items: [], total: 0 });
+    });
+
+    it('aplica filtros y paginación', async () => {
+      const { service, turnoRepository } = setup();
+      const query = chain([], 25);
+      turnoRepository.createQueryBuilder.mockReturnValue(query);
+      const result = await service.listAgendaPage(
+        { page: 3, limit: 10, estado: EstadoTurno.CONFIRMADO, urgente: true },
+        admin,
+      );
+      expect(query.offset).toHaveBeenCalledWith(20);
+      expect(query.limit).toHaveBeenCalledWith(10);
+      expect(query.andWhere).toHaveBeenCalledWith('turno.estado = :estado', {
+        estado: EstadoTurno.CONFIRMADO,
+      });
+      expect(query.andWhere).toHaveBeenCalledWith('turno.urgente = :urgente', {
+        urgente: true,
+      });
+      expect(result.total).toBe(25);
+    });
+
+    it('un médico no puede pedir la agenda de otro', async () => {
+      const { service } = setup();
+      const doctorIdentity = {
+        accountId: 'doctor-1',
+        sessionId: 's1',
+        rol: RolUsuario.MEDICO,
+        esSuperadmin: false,
+      };
+      await expect(
+        service.listAgendaPage({ medicoId: 'otro' }, doctorIdentity),
+      ).rejects.toThrow('propia agenda');
+    });
+  });
 
 });

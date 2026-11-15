@@ -25,6 +25,11 @@ export class DocumentoDuplicadoError extends Error {
 
 export interface PacientesRepository {
   search(term: string | undefined, limit: number): Promise<PacienteData[]>;
+    searchPage(
+    filtro: FiltroPacientes,
+    skip: number,
+    take: number,
+  ): Promise<{ items: PacienteData[]; total: number }>;
   findById(id: string): Promise<PacienteData | null>;
   findByDocumento(documento: string): Promise<PacienteData | null>;
   create(data: NuevoPaciente): Promise<PacienteData>;
@@ -36,4 +41,8 @@ export interface PacientesRepository {
   ): Promise<PacienteData | null>;
 }
 
+export interface FiltroPacientes {
+  term?: string;
+  tipoCobertura?: CoverageType;
+}
 export const PACIENTES_REPOSITORY = Symbol('PACIENTES_REPOSITORY');
