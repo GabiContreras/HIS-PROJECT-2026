@@ -103,6 +103,7 @@ describe('InventoryService movimientos', () => {
     service = new InventoryService(
       { ...db.insumos, manager: db.manager } as never,
       db.movimientoRepository as never,
+      { publish: vi.fn() } as never,
     );
   });
 
@@ -138,7 +139,7 @@ describe('InventoryService movimientos', () => {
     });
 
     it('con manager recibido registra en ese manager y no abre otra transacción', async () => {
-      await service.descontarStock(
+      await service.descontarStockEnTransaccion(
         {
           insumoId: 'insumo-1',
           cantidad: 2,

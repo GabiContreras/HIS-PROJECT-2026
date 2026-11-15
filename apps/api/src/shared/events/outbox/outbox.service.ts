@@ -90,10 +90,13 @@ export class OutboxService {
     consumer: OutboxConsumer,
     expectedConsumers: string[],
   ): Promise<string | null> {
+    const afterCommit: { run?: () => void } = {};
     try {
-      await this.store.deliverOnce(record.id, consumer.name, expectedConsumers, (manager) =>
-        consumer.handle(record.event, manager),
-      );
+      const outcome = await this.store.deliverOnce(record.id, consumer.name, expectedConsumers, async (manager) => {
+        const result = await consumer.handle(record.event, manager);
+        if (typeof result === 'function') afterCommit.run = result;
+      });
+      if (outcome === 'DELIVERED') this.runAfterCommit(consumer, afterCommit.run);
       return null;
     } catch (error) {
       this.logger.error(
@@ -101,6 +104,18 @@ export class OutboxService {
         error instanceof Error ? error.stack : undefined,
       );
       return `${consumer.name}: ${error instanceof Error ? error.message : String(error)}`;
+    }
+  }
+
+  private runAfterCommit(consumer: OutboxConsumer, run?: () => void): void {
+    if (!run) return;
+    try {
+      run();
+    } catch (error) {
+      this.logger.error(
+        `Falló la acción posterior a la entrega de ${consumer.name}.`,
+        error instanceof Error ? error.stack : undefined,
+      );
     }
   }
 
@@ -124,7 +139,8 @@ export class OutboxService {
   private async deliverWithoutPersistence(event: DomainEvent): Promise<void> {
     for (const consumer of this.consumersFor(event.type)) {
       try {
-        await consumer.handle(event);
+        const result = await consumer.handle(event);
+        if (typeof result === 'function') this.runAfterCommit(consumer, result);
       } catch (error) {
         this.logger.error(
           `Falló la entrega en memoria de ${event.type} a ${consumer.name}.`,

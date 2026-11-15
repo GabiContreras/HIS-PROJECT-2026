@@ -21,6 +21,11 @@ export interface DescontarStockResult {
   cantidadRestante: number;
 }
 
+export interface DescontarStockDiferido {
+  resultado: DescontarStockResult;
+  publicarAlerta: () => void;
+}
+
 export interface ReponerStockInput extends MovimientoContexto {
   insumoId: string;
   cantidad: number;

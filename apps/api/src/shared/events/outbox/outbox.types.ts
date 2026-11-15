@@ -27,7 +27,7 @@ export type DeliveryOutcome = 'DELIVERED' | 'ALREADY_DELIVERED';
 export interface OutboxConsumer {
   name: string;
   eventType: string;
-  handle: (event: DomainEvent, manager?: EntityManager) => Promise<void>;
+  handle: (event: DomainEvent, manager?: EntityManager) => Promise<(() => void) | void>;
 }
 
 export interface OutboxStore {

@@ -44,7 +44,7 @@ describe('InventoryService', () => {
     manager.transaction = vi.fn((work: (m: unknown) => unknown) => work(manager));
     Object.assign(repository, { manager });
 
-    service = new InventoryService(repository as never, movimientos as never);
+    service = new InventoryService(repository as never, movimientos as never, { publish: vi.fn() } as never);
   });
 
   it('descuenta stock y devuelve el saldo restante', async () => {
@@ -108,7 +108,7 @@ describe('InventoryService', () => {
       ),
     };
 
-    await service.descontarStock({ insumoId: 'insumo-1', cantidad: 1 }, manager as never);
+    await service.descontarStockEnTransaccion({ insumoId: 'insumo-1', cantidad: 1 }, manager as never);
 
     expect(transactionalExecute).toHaveBeenCalledTimes(1);
     expect(queryBuilder.execute).not.toHaveBeenCalled();
