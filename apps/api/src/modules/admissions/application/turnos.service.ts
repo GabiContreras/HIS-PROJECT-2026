@@ -28,6 +28,7 @@ import {
 import { TransicionTurnoInvalidaError } from '../domain/states/turno-state.interface.js';
 import { AgendaService } from './agenda.service.js';
 import { entraEnAgenda } from '../domain/agenda.rules.js';
+import { ReprogramarTurnoDto } from '../api/dto/reprogramar-turno.dto.js';
 
 const STANDARD_DURATION_MINUTES = 30;
 const URGENT_DURATION_MINUTES = 15;
@@ -100,7 +101,7 @@ export class TurnosService {
     private readonly events: EventBus,
     @Optional()
     private readonly agenda?: AgendaService,
-  ) {}
+  ) { }
 
   async listAvailable(
     medicoId?: string,
@@ -130,13 +131,13 @@ export class TurnosService {
       order: { apellido: 'ASC', nombre: 'ASC' },
     });
     if (doctors.length === 0) return [];
-    
+
     const cargada = this.agenda
       ? await this.agenda.cargarParaDisponibilidad(
-          doctors.map((doctor) => doctor.id),
-          clinicDateOf(new Date(from)),
-          clinicDateOf(new Date(to)),
-        )
+        doctors.map((doctor) => doctor.id),
+        clinicDateOf(new Date(from)),
+        clinicDateOf(new Date(to)),
+      )
       : null;
 
     const occupiedRows = await this.turnos
@@ -167,7 +168,7 @@ export class TurnosService {
 
     const slots: SlotDisponible[] = [];
     for (let time = from; time < to; time += SLOT_MS) {
-            const minutes = clinicMinutesOfDay(new Date(time));
+      const minutes = clinicMinutesOfDay(new Date(time));
       const fecha = clinicDateOf(new Date(time));
       for (const doctor of doctors) {
         if (
@@ -250,10 +251,10 @@ export class TurnosService {
       ...this.toSummary(turno),
       paciente: turno.paciente
         ? {
-            id: turno.paciente.id,
-            nombre: turno.paciente.nombre,
-            apellido: turno.paciente.apellido,
-          }
+          id: turno.paciente.id,
+          nombre: turno.paciente.nombre,
+          apellido: turno.paciente.apellido,
+        }
         : null,
     }));
   }
@@ -286,7 +287,7 @@ export class TurnosService {
           'Este turno acaba de ser ocupado. Elegí otro horario.',
         );
       }
-     
+
       const secondHalf = new Date(start.getTime() + URGENT_DURATION_MINUTES * 60_000);
       const duration = (await this.hasOverlap(
         repository,
@@ -469,7 +470,7 @@ export class TurnosService {
     return null;
   }
 
-    async getById(
+  async getById(
     id: string,
     identity: SessionIdentity,
   ): Promise<TurnoAgendaSummary> {
@@ -510,6 +511,121 @@ export class TurnosService {
     }
     const rows = await query.getMany();
     return rows.map((turno) => this.toAgendaSummary(turno));
+  }
+
+  async reschedule(
+    id: string,
+    dto: ReprogramarTurnoDto,
+    identity: SessionIdentity,
+  ): Promise<TurnoSummary> {
+    const start = this.parseDate(dto.fechaHora);
+    return this.dataSource.transaction(async (manager) => {
+      const repository = manager.getRepository(Turno);
+      const initial = await repository.findOne({
+        where: { id },
+        relations: { medico: true },
+      });
+      if (!initial) throw new NotFoundException('No se encontró el turno.');
+      const targetDoctorId = dto.medicoId ?? initial.medico.id;
+      this.assertCanManageDoctor(identity, initial.medico.id);
+      this.assertCanManageDoctor(identity, targetDoctorId);
+      if (!this.isAligned(start, initial.urgente ? 15 : 0)) {
+        throw new BadRequestException(
+          initial.urgente
+            ? 'Los entreturnos deben comenzar a los :15 o :45.'
+            : 'Los turnos regulares deben comenzar cada 30 minutos.',
+        );
+      }
+
+      const doctorIds = [...new Set([initial.medico.id, targetDoctorId])].sort();
+      const doctors = new Map<string, Usuario>();
+      for (const doctorId of doctorIds) {
+        doctors.set(doctorId, await this.lockDoctor(manager, doctorId));
+      }
+      const target = doctors.get(targetDoctorId) as Usuario;
+
+      const turno = await repository.findOne({
+        where: { id },
+        relations: { medico: true, paciente: true },
+        lock: { mode: 'pessimistic_write', tables: ['turnos'] },
+      });
+      if (!turno) throw new NotFoundException('No se encontró el turno.');
+      if (
+        turno.estado !== EstadoTurno.RESERVADO &&
+        turno.estado !== EstadoTurno.CONFIRMADO
+      ) {
+        throw new ConflictException(
+          'Solo se pueden reprogramar turnos reservados o confirmados.',
+        );
+      }
+
+      this.assertNotPast(start);
+      const slotStart = turno.urgente
+        ? new Date(start.getTime() - URGENT_DURATION_MINUTES * 60_000)
+        : start;
+      await this.assertWithinAgenda(target, slotStart);
+
+      if (
+        await this.hasOverlap(
+          repository,
+          target.id,
+          start,
+          URGENT_DURATION_MINUTES,
+          turno.id,
+        )
+      ) {
+        throw new ConflictException(
+          'Este turno acaba de ser ocupado. Elegí otro horario.',
+        );
+      }
+      let duration = turno.urgente
+        ? URGENT_DURATION_MINUTES
+        : STANDARD_DURATION_MINUTES;
+      if (!turno.urgente) {
+        const secondHalf = new Date(
+          start.getTime() + URGENT_DURATION_MINUTES * 60_000,
+        );
+        if (
+          await this.hasOverlap(
+            repository,
+            target.id,
+            secondHalf,
+            URGENT_DURATION_MINUTES,
+            turno.id,
+          )
+        ) {
+          duration = URGENT_DURATION_MINUTES;
+        }
+      }
+      if (
+        turno.paciente &&
+        (await this.patientHasOverlap(
+          repository,
+          turno.paciente.id,
+          start,
+          duration,
+          turno.id,
+        ))
+      ) {
+        throw new ConflictException(
+          'El paciente ya tiene un turno reservado en ese horario.',
+        );
+      }
+
+      turno.medico = target;
+      turno.fechaHora = start;
+      turno.duracionMinutos = duration;
+      try {
+        return this.toSummary(await repository.save(turno));
+      } catch (error) {
+        if (this.isUniqueViolation(error)) {
+          throw new ConflictException(
+            'Este turno acaba de ser ocupado. Elegí otro horario.',
+          );
+        }
+        throw error;
+      }
+    });
   }
 
   getTransitionTable(): Record<string, EstadoTurno[]> {
@@ -582,23 +698,23 @@ export class TurnosService {
     doctorId: string,
     start: Date,
     durationMinutes: number,
+    excludeId?: string,
   ): Promise<boolean> {
     const end = new Date(start.getTime() + durationMinutes * 60_000);
-    return (
-      (await repository
-        .createQueryBuilder('turno')
-        .innerJoin('turno.medico', 'medico')
-        .where('medico.id = :doctorId', { doctorId })
-        .andWhere('turno.fechaHora < :end', { end })
-        .andWhere(
-          `turno.fechaHora + turno.duracionMinutos * INTERVAL '1 minute' > :start`,
-          { start },
-        )
-        .andWhere('turno.estado NOT IN (:...inactive)', {
-          inactive: NON_OCCUPYING_STATES,
-        })
-        .getCount()) > 0
-    );
+    const query = repository
+      .createQueryBuilder('turno')
+      .innerJoin('turno.medico', 'medico')
+      .where('medico.id = :doctorId', { doctorId })
+      .andWhere('turno.fechaHora < :end', { end })
+      .andWhere(
+        `turno.fechaHora + turno.duracionMinutos * INTERVAL '1 minute' > :start`,
+        { start },
+      )
+      .andWhere('turno.estado NOT IN (:...inactive)', {
+        inactive: NON_OCCUPYING_STATES,
+      });
+    if (excludeId) query.andWhere('turno.id != :excludeId', { excludeId });
+    return (await query.getCount()) > 0;
   }
 
   private async patientHasOverlap(
@@ -606,23 +722,23 @@ export class TurnosService {
     patientId: string,
     start: Date,
     durationMinutes: number,
+    excludeId?: string,
   ): Promise<boolean> {
     const end = new Date(start.getTime() + durationMinutes * 60_000);
-    return (
-      (await repository
-        .createQueryBuilder('turno')
-        .innerJoin('turno.paciente', 'paciente')
-        .where('paciente.id = :patientId', { patientId })
-        .andWhere('turno.estado IN (:...states)', {
-          states: PATIENT_ACTIVE_STATES,
-        })
-        .andWhere('turno.fechaHora < :end', { end })
-        .andWhere(
-          `turno.fechaHora + turno.duracionMinutos * INTERVAL '1 minute' > :start`,
-          { start },
-        )
-        .getCount()) > 0
-    );
+    const query = repository
+      .createQueryBuilder('turno')
+      .innerJoin('turno.paciente', 'paciente')
+      .where('paciente.id = :patientId', { patientId })
+      .andWhere('turno.estado IN (:...states)', {
+        states: PATIENT_ACTIVE_STATES,
+      })
+      .andWhere('turno.fechaHora < :end', { end })
+      .andWhere(
+        `turno.fechaHora + turno.duracionMinutos * INTERVAL '1 minute' > :start`,
+        { start },
+      );
+    if (excludeId) query.andWhere('turno.id != :excludeId', { excludeId });
+    return (await query.getCount()) > 0;
   }
 
   private parseDate(value: string): Date {
@@ -648,7 +764,7 @@ export class TurnosService {
     );
   }
 
-    private async assertWithinAgenda(
+  private async assertWithinAgenda(
     doctor: Usuario,
     slotStart: Date,
   ): Promise<void> {
@@ -704,15 +820,15 @@ export class TurnosService {
     }
   }
 
-    private toAgendaSummary(turno: Turno): TurnoAgendaSummary {
+  private toAgendaSummary(turno: Turno): TurnoAgendaSummary {
     return {
       ...this.toSummary(turno),
       paciente: turno.paciente
         ? {
-            id: turno.paciente.id,
-            nombre: turno.paciente.nombre,
-            apellido: turno.paciente.apellido,
-          }
+          id: turno.paciente.id,
+          nombre: turno.paciente.nombre,
+          apellido: turno.paciente.apellido,
+        }
         : null,
     };
   }
@@ -731,5 +847,5 @@ export class TurnosService {
       },
     };
   }
-  
+
 }
