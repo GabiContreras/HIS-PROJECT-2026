@@ -37,6 +37,7 @@ import { CurrentIdentity } from './auth.decorator.js';
 import { MessageResponseDto } from './dto/message-response.dto.js';
 import { ForgotPasswordResponseDto } from './dto/forgot-password-response.dto.js';
 import { AccountResponseDto } from './dto/account-response.dto.js';
+import { Throttle } from '@nestjs/throttler';
 
 const REFRESH_COOKIE = 'his_refresh';
 
@@ -48,7 +49,7 @@ export class AuthController {
     private readonly tokens: TokenService,
   ) {}
 
-
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Post('login')
   @HttpCode(200)
   @ApiOperation({

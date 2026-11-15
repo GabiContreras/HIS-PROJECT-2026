@@ -50,7 +50,7 @@ Idioma: explicaciones en español; código, commits y nombres en inglés.
 - Todo cambio en dominio o servicios lleva tests unitarios.
 - Los flujos con concurrencia (turnos, camas, inventario, medicación) deben testear el 409.
 - Antes de dar una tarea por terminada: correr build, tests y lint, y reportar el resultado.
-- Línea base: 577 tests pasando, 7 omitidos; lint con 3 warnings. No debe empeorar.
+- Línea base: 579 tests pasando, 7 omitidos; lint con 3 warnings. No debe empeorar.
 - Los 7 omitidos necesitan una base real y solo corren contra PostgreSQL local (README, sección 14). Nunca apuntarlos a la base compartida.
 
 ## Estado del proyecto

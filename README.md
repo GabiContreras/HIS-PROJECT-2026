@@ -503,7 +503,7 @@ npm --prefix apps/api run test:cov                # con cobertura
 npm --prefix apps/api run test:e2e                # e2e (requiere base de datos configurada)
 ```
 
-Estado actual: **577 pruebas pasan y 7 se omiten** (las que necesitan una base real). Cubren IAM (autenticación, tokens, política de contraseñas, guards, administración de cuentas y autorización de `/usuarios`), admisión (turnos, entreturnos, pacientes, estados, triaje, notificaciones), enfermería (signos vitales, medicación, protocolos), recursos (camas, tiempo real, inventario), facturación e historia clínica. La cobertura de líneas de `modules/iam` es 94,68 %.
+Estado actual: **579 pruebas pasan y 7 se omiten** (las que necesitan una base real). Cubren IAM (autenticación, tokens, política de contraseñas, guards, administración de cuentas y autorización de `/usuarios`), admisión (turnos, entreturnos, pacientes, estados, triaje, notificaciones), enfermería (signos vitales, medicación, protocolos), recursos (camas, tiempo real, inventario), facturación e historia clínica. La cobertura de líneas de `modules/iam` es 94,68 %.
 
 Pruebas que requieren una base real, deshabilitadas por defecto. **Corren solo contra PostgreSQL local**; cada archivo valida el host y el nombre de la base antes de escribir:
 
