@@ -47,7 +47,18 @@ describe('Billing integration', () => {
       charges.unshift(charge);
       return charge;
     }),
-    find: vi.fn(async () => [...charges]),
+    createQueryBuilder: vi.fn(() => {
+      const query = {
+        andWhere: vi.fn().mockReturnThis(),
+        orderBy: vi.fn().mockReturnThis(),
+        addOrderBy: vi.fn().mockReturnThis(),
+        offset: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockReturnThis(),
+        getMany: vi.fn(async () => [...charges]),
+        getCount: vi.fn(async () => charges.length),
+      };
+      return query;
+    }),
     findOneByOrFail: vi.fn(async ({ turnoId }: { turnoId: string }) => {
       const charge = charges.find((item) => item.turnoId === turnoId);
       if (!charge) throw new Error('Charge not found');
@@ -135,7 +146,8 @@ describe('Billing integration', () => {
       .get('/billing/cargos')
       .expect(200);
 
-    expect(response.body).toEqual([
+    expect(response.body.total).toBe(2);
+    expect(response.body.items).toEqual([
       expect.objectContaining({
         turnoId: 'appointment-urgent',
         importePesos: 25_000,
@@ -182,11 +194,12 @@ describe('Billing integration', () => {
       .get('/billing/cargos')
       .expect(200);
 
-    expect(response.body).toEqual([
+    expect(response.body.items).toEqual([
       // El turno no se pudo leer: el cargo igual se lista.
-      expect.objectContaining({ turnoId: 'appointment-gone', turno: null }),
+      expect.objectContaining({ turnoId: 'appointment-gone', turno: null, paciente: null }),
       expect.objectContaining({
         turnoId: 'appointment-regular',
+        paciente: expect.objectContaining({ id: 'patient-1', apellido: 'Rojas' }),
         turno: expect.objectContaining({
           duracionMinutos: 30,
           medico: expect.objectContaining({ apellido: 'Lovelace' }),
@@ -225,7 +238,7 @@ describe('Billing integration', () => {
 
     const response = await request(app.getHttpServer()).get('/billing/cargos').expect(200);
 
-    expect(response.body[0]).toMatchObject({
+    expect(response.body.items[0]).toMatchObject({
       importePesos: 15_000,
       cobertura: { tipo, entidad, pacientePesos: paciente, terceroPesos: tercero },
     });
@@ -259,7 +272,7 @@ describe('Billing integration', () => {
     const response = await request(app.getHttpServer()).get('/billing/cargos').expect(200);
 
     expect(nomenclador.findTarifaActiva).toHaveBeenCalledWith('financiador-1', 'prestacion-regular');
-    expect(response.body[0]).toMatchObject({
+    expect(response.body.items[0]).toMatchObject({
       importePesos: 18_000,
       cobertura: { pacientePesos: 2_000, terceroPesos: 16_000 },
     });

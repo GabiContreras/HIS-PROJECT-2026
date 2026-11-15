@@ -1,6 +1,6 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, In, QueryFailedError, Repository } from 'typeorm';
+import { EntityManager, In, QueryFailedError, Repository, SelectQueryBuilder } from 'typeorm';
 
 import {Cargo,EstadoCargo,TipoAtencionFacturable,} from '../../../entities/cargo.entity.js';
 import { Turno } from '../../../entities/turno.entity.js';
@@ -22,9 +22,49 @@ import { MedicationAdministeredPayload } from '../../../shared/events/medication
 import { AdministracionMedicacion } from '../../../entities/administracion-medicacion.entity.js';
 import { TipoIndicacion } from '../../../entities/indicacion-medica.entity.js';
 import { Paciente } from '../../../entities/paciente.entity.js';
+import { Internacion } from '../../../entities/internacion.entity.js';
 import { BedReleasedPayload } from '../../../shared/events/bed-released.event.js';
 import { calcularDiasCama } from '../domain/dias-cama.js';
 import { PrestacionCodigo } from '../domain/nomenclador.js';
+import { cabeceraCsvCargos, filaCsvCargo } from '../domain/csv-cargos.js';
+import {
+  armarFiltroCargos,
+  FiltroCargos,
+  FiltroCargosEntrada,
+} from '../domain/filtro-cargos.js';
+import { PeriodoInvalidoError } from '../domain/periodo-reporte.js';
+
+const LOTE_EXPORTACION = 500;
+
+const CARGOS_DEL_PACIENTE = `
+  SELECT cp.id FROM cargos cp
+  JOIN turnos t ON t.id = cp.turno_id
+  WHERE t.paciente_id = :pacienteId
+  UNION ALL
+  SELECT cp.id FROM cargos cp
+  JOIN internaciones i ON i.id = cp.internacion_id
+  WHERE i.paciente_id = :pacienteId
+  UNION ALL
+  SELECT cp.id FROM cargos cp
+  JOIN administraciones_medicacion a ON a.id = cp.administration_id
+  JOIN indicaciones_medicas im ON im.id = a.indicacion_id
+  WHERE im.paciente_id = :pacienteId
+`;
+
+export interface PaginaCargos {
+  items: CargoDetalle[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface PacienteDetalle {
+  id: string;
+  nombre: string;
+  apellido: string;
+  documento: string;
+}
+
 export interface CargoDetalle {
   id: string;
   turnoId: string | null;
@@ -41,6 +81,8 @@ export interface CargoDetalle {
     pacientePesos: number | null;
     terceroPesos: number | null;
   } | null;
+
+  paciente: PacienteDetalle | null;
 
   turno: {
     fechaHora: Date;
@@ -252,11 +294,92 @@ if (
     }
   }
 
-  async list(): Promise<CargoDetalle[]> {
-    const cargos = await this.cargos.find({
-      order: { createdAt: 'DESC' },
-    });
+  async list(
+    entrada: FiltroCargosEntrada,
+    limit: number,
+    offset: number,
+  ): Promise<PaginaCargos> {
+    const filtro = this.armarFiltro(entrada);
 
+    const [cargos, total] = await Promise.all([
+      this.cargosFiltrados(filtro).offset(offset).limit(limit).getMany(),
+      this.cargosFiltrados(filtro).getCount(),
+    ]);
+
+    return { items: await this.detallar(cargos), total, limit, offset };
+  }
+
+  exportarCsv(entrada: FiltroCargosEntrada): AsyncGenerator<string> {
+    return this.generarCsv(this.armarFiltro(entrada));
+  }
+
+  private async *generarCsv(filtro: FiltroCargos): AsyncGenerator<string> {
+    yield cabeceraCsvCargos();
+
+    let cursor: { creado: string; id: string } | null = null;
+    for (;;) {
+      const consulta = this.cargosFiltrados(filtro)
+        .addSelect('CAST(c.createdAt AS text)', 'cursor_creado')
+        .limit(LOTE_EXPORTACION);
+      if (cursor) {
+        consulta.andWhere(
+          '(c.createdAt, c.id) < (CAST(:cursorCreado AS timestamptz), CAST(:cursorId AS uuid))',
+          { cursorCreado: cursor.creado, cursorId: cursor.id },
+        );
+      }
+
+      const { entities, raw } = await consulta.getRawAndEntities<{ cursor_creado: string }>();
+      if (entities.length === 0) {
+        return;
+      }
+
+      const detalles = await this.detallar(entities);
+      yield detalles.map(filaCsvCargo).join('');
+
+      if (entities.length < LOTE_EXPORTACION) {
+        return;
+      }
+      cursor = {
+        creado: raw[raw.length - 1].cursor_creado,
+        id: entities[entities.length - 1].id,
+      };
+    }
+  }
+
+  private armarFiltro(entrada: FiltroCargosEntrada): FiltroCargos {
+    try {
+      return armarFiltroCargos(entrada);
+    } catch (error) {
+      if (error instanceof PeriodoInvalidoError) {
+        throw new BadRequestException(error.message);
+      }
+      throw error;
+    }
+  }
+
+  private cargosFiltrados(filtro: FiltroCargos): SelectQueryBuilder<Cargo> {
+    const consulta = this.cargos.createQueryBuilder('c');
+
+    if (filtro.inicio) {
+      consulta.andWhere('c.createdAt >= :inicio', { inicio: filtro.inicio });
+    }
+    if (filtro.finExclusivo) {
+      consulta.andWhere('c.createdAt < :finExclusivo', { finExclusivo: filtro.finExclusivo });
+    }
+    if (filtro.estado) {
+      consulta.andWhere('c.estado = :estado', { estado: filtro.estado });
+    }
+    if (filtro.tipoAtencion) {
+      consulta.andWhere('c.tipoAtencion = :tipoAtencion', { tipoAtencion: filtro.tipoAtencion });
+    }
+    if (filtro.pacienteId) {
+      consulta.andWhere(`c.id IN (${CARGOS_DEL_PACIENTE})`, { pacienteId: filtro.pacienteId });
+    }
+
+    return consulta.orderBy('c.createdAt', 'DESC').addOrderBy('c.id', 'DESC');
+  }
+
+  private async detallar(cargos: Cargo[]): Promise<CargoDetalle[]> {
     if (cargos.length === 0) {
       return [];
     }
@@ -276,6 +399,8 @@ if (
     const byId = new Map(
       turnos.map((turno) => [turno.id, turno]),
     );
+
+    const pacientesDeOtrosCargos = await this.pacientesSinTurno(cargos);
 
     return cargos.map((cargo) => {
       const turno = cargo.turnoId
@@ -301,6 +426,10 @@ if (
             }
           : null,
 
+        paciente: turno
+          ? this.aPacienteDetalle(turno.paciente)
+          : this.pacienteDeCargoSinTurno(cargo, pacientesDeOtrosCargos),
+
         turno: turno
           ? {
               fechaHora: turno.fechaHora,
@@ -325,6 +454,89 @@ if (
           : null,
       };
     });
+  }
+
+  private aPacienteDetalle(paciente: Paciente | null | undefined): PacienteDetalle | null {
+    return paciente
+      ? {
+          id: paciente.id,
+          nombre: paciente.nombre,
+          apellido: paciente.apellido,
+          documento: paciente.documento,
+        }
+      : null;
+  }
+
+  private pacienteDeCargoSinTurno(
+    cargo: Cargo,
+    resueltos: { porInternacion: Map<string, PacienteDetalle>; porAdministracion: Map<string, PacienteDetalle> },
+  ): PacienteDetalle | null {
+    if (cargo.internacionId) {
+      return resueltos.porInternacion.get(cargo.internacionId) ?? null;
+    }
+    if (cargo.administrationId) {
+      return resueltos.porAdministracion.get(cargo.administrationId) ?? null;
+    }
+    return null;
+  }
+
+  private async pacientesSinTurno(cargos: Cargo[]): Promise<{
+    porInternacion: Map<string, PacienteDetalle>;
+    porAdministracion: Map<string, PacienteDetalle>;
+  }> {
+    const internacionIds = cargos
+      .map((cargo) => cargo.internacionId)
+      .filter((id): id is string => Boolean(id));
+    const administracionIds = cargos
+      .map((cargo) => cargo.administrationId)
+      .filter((id): id is string => Boolean(id));
+
+    const internaciones = internacionIds.length
+      ? await this.cargos.manager.getRepository(Internacion).find({
+          select: { id: true, pacienteId: true },
+          where: { id: In(internacionIds) },
+        })
+      : [];
+
+    const administraciones = administracionIds.length
+      ? await this.administraciones
+          .createQueryBuilder('a')
+          .innerJoin('a.indicacion', 'im')
+          .select('a.id', 'administrationId')
+          .addSelect('im.paciente_id', 'pacienteId')
+          .where('a.id IN (:...administracionIds)', { administracionIds })
+          .getRawMany<{ administrationId: string; pacienteId: string }>()
+      : [];
+
+    const pacienteIds = [
+      ...new Set([
+        ...internaciones.map((internacion) => internacion.pacienteId),
+        ...administraciones.map((administracion) => administracion.pacienteId),
+      ]),
+    ];
+
+    const pacientes = pacienteIds.length
+      ? await this.pacientes.find({
+          select: { id: true, nombre: true, apellido: true, documento: true },
+          where: { id: In(pacienteIds) },
+        })
+      : [];
+    const porId = new Map(
+      pacientes.map((paciente) => [paciente.id, this.aPacienteDetalle(paciente) as PacienteDetalle]),
+    );
+
+    const porInternacion = new Map<string, PacienteDetalle>();
+    for (const internacion of internaciones) {
+      const paciente = porId.get(internacion.pacienteId);
+      if (paciente) porInternacion.set(internacion.id, paciente);
+    }
+    const porAdministracion = new Map<string, PacienteDetalle>();
+    for (const administracion of administraciones) {
+      const paciente = porId.get(administracion.pacienteId);
+      if (paciente) porAdministracion.set(administracion.administrationId, paciente);
+    }
+
+    return { porInternacion, porAdministracion };
   }
 
   pagar(id: string): Promise<Cargo> {

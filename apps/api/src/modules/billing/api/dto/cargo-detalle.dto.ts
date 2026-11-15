@@ -178,6 +178,14 @@ export class CargoDetalleDto {
   cobertura: CoberturaCargoDto | null;
 
   @ApiProperty({
+    type: PacienteCargoDto,
+    nullable: true,
+    description:
+      'Paciente del cargo, resuelto por el turno (consultas), la internación o la indicación de la medicación administrada (farmacia). Null si no se puede resolver.',
+  })
+  paciente: PacienteCargoDto | null;
+
+  @ApiProperty({
     type: TurnoCargoDto,
     nullable: true,
     description: 'Información del turno asociado al cargo.',

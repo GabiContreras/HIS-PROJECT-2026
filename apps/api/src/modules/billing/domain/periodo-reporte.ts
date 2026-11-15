@@ -77,3 +77,26 @@ export function armarPeriodo(desde: string, hasta: string): PeriodoReporte {
     finExclusivo: inicioDelDia(anioHasta, mesHasta, diaHasta + 1),
   };
 }
+
+export interface RangoFechas {
+  inicio: Date | null;
+  finExclusivo: Date | null;
+}
+
+export function armarRango(desde?: string, hasta?: string): RangoFechas {
+  if (desde !== undefined && hasta !== undefined) {
+    const { inicio, finExclusivo } = armarPeriodo(desde, hasta);
+    return { inicio, finExclusivo };
+  }
+  let inicio: Date | null = null;
+  let finExclusivo: Date | null = null;
+  if (desde !== undefined) {
+    const [anio, mes, dia] = parsearDia(desde, 'desde');
+    inicio = inicioDelDia(anio, mes, dia);
+  }
+  if (hasta !== undefined) {
+    const [anio, mes, dia] = parsearDia(hasta, 'hasta');
+    finExclusivo = inicioDelDia(anio, mes, dia + 1);
+  }
+  return { inicio, finExclusivo };
+}
