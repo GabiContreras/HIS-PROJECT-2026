@@ -32,12 +32,10 @@ import { EmailDto } from './dto/email.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import { LoginResponseDto } from './dto/login-response.dto.js';
 import { RegistroDto } from './dto/registro.dto.js';
-import { ResetPasswordDto } from './dto/reset-password.dto.js';
 import { AuthGuard } from './auth.guard.js';
 import { CurrentIdentity } from './auth.decorator.js';
 import { MessageResponseDto } from './dto/message-response.dto.js';
 import { ForgotPasswordResponseDto } from './dto/forgot-password-response.dto.js';
-import { ResetPasswordResponseDto } from './dto/reset-password-response.dto.js';
 import { AccountResponseDto } from './dto/account-response.dto.js';
 
 const REFRESH_COOKIE = 'his_refresh';
@@ -50,21 +48,6 @@ export class AuthController {
     private readonly tokens: TokenService,
   ) {}
 
-  @Post('register')
-  @ApiOperation({
-    summary: 'Registrar una cuenta',
-    description:
-      'Crea una cuenta de usuario. El registro sin verificación de correo está disponible únicamente durante el desarrollo.',
-  })
-  @ApiCreatedResponse({ description: 'Cuenta creada correctamente.', type: MessageResponseDto })
-  @ApiBadRequestResponse({ description: 'Los datos enviados no son válidos.' })
-  @ApiForbiddenResponse({
-    description: 'El registro sin verificación está deshabilitado en producción.',
-  })
-  @ApiConflictResponse({ description: 'Ya existe una cuenta con ese correo.' })
-  register(@Body() dto: RegistroDto) {
-    return this.auth.resetPassword(dto);
-  }
 
   @Post('login')
   @HttpCode(200)
@@ -160,25 +143,7 @@ export class AuthController {
   forgotPassword(@Body() dto: EmailDto) {
     return this.auth.forgotPassword(dto.email);
   }
-
-@Post('reset-password')
-  @HttpCode(200)
-  @ApiOperation({
-    summary: 'Restablecer contraseña',
-    description:
-      'Restablece la contraseña de una cuenta. El procedimiento sin verificación está disponible únicamente durante el desarrollo.',
-  })
-  @ApiOkResponse({ description: 'Contraseña restablecida correctamente.', type: ResetPasswordResponseDto })
-  @ApiBadRequestResponse({ description: 'Los datos enviados no son válidos.' })
-  @ApiForbiddenResponse({
-    description: 'El restablecimiento sin verificación está deshabilitado en producción.',
-  })
-  @ApiNotFoundResponse({ description: 'No se encontró una cuenta habilitada.' })
-  resetPassword(@Body() dto: ResetPasswordDto) {
-    return this.auth.resetPassword(dto);
-  }
-
-
+  
   @Post('change-password')
   @HttpCode(200)
   @UseGuards(AuthGuard)

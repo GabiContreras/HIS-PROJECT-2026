@@ -342,13 +342,11 @@ Todos los endpoints, salvo los marcados como públicos, requieren `Authorization
 
 | Método y ruta | Acceso |
 | --- | --- |
-| `POST /auth/register` | Público (alta de médico o enfermero; solo desarrollo) |
 | `POST /auth/login` | Origen del frontend permitido |
 | `POST /auth/refresh` | Cookie `his_refresh` y origen permitido |
 | `POST /auth/logout` | Cookie `his_refresh` y origen permitido |
 | `GET /auth/me` | Autenticado |
 | `POST /auth/forgot-password` | Público |
-| `POST /auth/reset-password` | Público, solo fuera de producción |
 | `POST /auth/change-password` | Autenticado |
 
 **Usuarios (`/usuarios`)**
@@ -445,6 +443,7 @@ Todos los endpoints, salvo los marcados como públicos, requieren `Authorization
 | `/enfermeria` | `ENFERMERO`, `MEDICO` | Contenedor con vistas anidadas: `signos-vitales`, `medicaciones`, `protocolos` |
 | `/insumos` | `ENFERMERO`, `ADMINISTRATIVO` | Insumos |
 | `/facturacion` | `ADMINISTRATIVO` | Cargos |
+| `PATCH /usuarios/:id/restablecer-clave` | Administrativo (asigna una contraseña temporal) |
 
 Las vistas se cargan de forma diferida. Un `beforeEach` restaura la sesión, redirige a `/login` conservando la ruta de destino en `redirect`, y bloquea el acceso por rol enviando al panel. Un `afterEach` actualiza el título del documento.
 
