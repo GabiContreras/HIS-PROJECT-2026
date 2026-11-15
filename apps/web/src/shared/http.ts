@@ -17,6 +17,12 @@ type Method = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
 interface RequestOptions {
   method?: Method;
   body?: unknown;
+  responseType?: 'blob';
+}
+
+export interface Download {
+  blob: Blob;
+  filename: string | null;
 }
 
 let accessToken: string | null = null;
@@ -65,8 +71,17 @@ function readMessage(data: unknown, status: number): string {
   return 'No se pudo completar la operación.';
 }
 
-async function parse<T>(response: Response): Promise<T> {
+function filenameFrom(disposition: string | null): string | null {
+  const match = /filename="?([^";]+)"?/i.exec(disposition ?? '');
+  return match?.[1] ?? null;
+}
+
+async function parse<T>(response: Response, responseType?: 'blob'): Promise<T> {
   if (response.status === 204) return undefined as T;
+  if (responseType === 'blob' && response.ok) {
+    const blob = await response.blob();
+    return { blob, filename: filenameFrom(response.headers.get('Content-Disposition')) } as T;
+  }
   const text = await response.text();
   let data: unknown = undefined;
   if (text) {
@@ -102,11 +117,12 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
       onSessionExpired?.();
     }
   }
-  return parse<T>(response);
+  return parse<T>(response, options.responseType);
 }
 
 export const http = {
   get: <T>(path: string) => request<T>(path),
+  download: (path: string) => request<Download>(path, { responseType: 'blob' }),
   post: <T>(path: string, body?: unknown) => request<T>(path, { method: 'POST', body }),
   patch: <T>(path: string, body?: unknown) => request<T>(path, { method: 'PATCH', body }),
   delete: <T = void>(path: string) => request<T>(path, { method: 'DELETE' }),
