@@ -4,6 +4,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { Insumo } from '../../../entities/insumo.entity.js';
+import { MovimientoInventario } from '../../../entities/movimiento-inventario.entity.js';
 import { AuthGuard } from '../../iam/api/auth.guard.js';
 import { RolesGuard } from '../../iam/api/roles.guard.js';
 import { InventoryController } from './inventory.controller.js';
@@ -72,6 +73,14 @@ describe('InventoryController integration', () => {
     }),
   };
 
+  const movimientoRepository = { insert: vi.fn().mockResolvedValue(undefined), find: vi.fn() };
+  const manager: Record<string, unknown> = {};
+  manager.getRepository = vi.fn((entity: unknown) =>
+    entity === Insumo ? repository : movimientoRepository,
+  );
+  manager.transaction = vi.fn((work: (m: unknown) => unknown) => work(manager));
+  Object.assign(repository, { manager });
+
   beforeEach(async () => {
     rolUsuario = RolUsuario.MEDICO;
     stock.clear();
@@ -83,6 +92,7 @@ describe('InventoryController integration', () => {
       providers: [
         InventoryService,
         { provide: getRepositoryToken(Insumo), useValue: repository },
+        { provide: getRepositoryToken(MovimientoInventario), useValue: movimientoRepository },
       ],
     })
       .overrideGuard(AuthGuard)

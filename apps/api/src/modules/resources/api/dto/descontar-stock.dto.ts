@@ -1,5 +1,6 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsInt, IsUUID, Min } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsInt, IsOptional, IsString, IsUUID, MaxLength, Min } from 'class-validator';
+import { MOTIVO_MOVIMIENTO_MAX_LENGTH } from '../../domain/inventory-movement.js';
 
 export class DescontarStockDto {
   @ApiProperty({
@@ -17,4 +18,16 @@ export class DescontarStockDto {
   @IsInt({ message: 'La cantidad debe ser un número entero.' })
   @Min(1, { message: 'La cantidad debe ser mayor que cero.' })
   cantidad: number;
+
+  @ApiPropertyOptional({
+    example: 'Uso en curación',
+    maxLength: MOTIVO_MOVIMIENTO_MAX_LENGTH,
+    description: 'Motivo del descuento, opcional.',
+  })
+  @IsOptional()
+  @IsString({ message: 'El motivo debe ser un texto.' })
+  @MaxLength(MOTIVO_MOVIMIENTO_MAX_LENGTH, {
+    message: `El motivo no puede superar ${MOTIVO_MOVIMIENTO_MAX_LENGTH} caracteres.`,
+  })
+  motivo?: string;
 }

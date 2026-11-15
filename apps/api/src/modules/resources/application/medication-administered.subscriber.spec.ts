@@ -4,6 +4,7 @@ import { EventBus } from '../../../shared/events/event-bus.service.js';
 import { InMemoryOutboxStore } from '../../../shared/events/outbox/in-memory-outbox.store.js';
 import { OutboxService } from '../../../shared/events/outbox/outbox.service.js';
 import { MedicationAdministered } from '../../../shared/events/medication-administered.event.js';
+import { OrigenMovimientoInventario } from '../domain/inventory-movement.js';
 import { MedicationAdministeredSubscriber } from './medication-administered.subscriber.js';
 
 const evento = (administrationId?: string) =>
@@ -38,7 +39,16 @@ describe('MedicationAdministeredSubscriber', () => {
     bus.publish(evento('adm-1'));
 
     await vi.waitFor(() => expect(inventory.descontarStock).toHaveBeenCalledTimes(1));
-    expect(inventory.descontarStock).toHaveBeenCalledWith({ insumoId: 'supply-1', cantidad: 2 }, undefined);
+    expect(inventory.descontarStock).toHaveBeenCalledWith(
+      {
+        insumoId: 'supply-1',
+        cantidad: 2,
+        usuarioId: null,
+        origen: OrigenMovimientoInventario.ADMINISTRACION_MEDICACION,
+        referenciaId: 'adm-1',
+      },
+      undefined,
+    );
   });
 
   it('entrega el manager de la transacción para que el descuento y la marca de entrega sean atómicos', async () => {
@@ -46,7 +56,10 @@ describe('MedicationAdministeredSubscriber', () => {
 
     await subscriber.handle(evento('adm-1'), manager);
 
-    expect(inventory.descontarStock).toHaveBeenCalledWith({ insumoId: 'supply-1', cantidad: 2 }, manager);
+    expect(inventory.descontarStock).toHaveBeenCalledWith(
+      expect.objectContaining({ insumoId: 'supply-1', cantidad: 2 }),
+      manager,
+    );
   });
 
   it('es idempotente: el mismo evento persistido no descuenta dos veces', async () => {
@@ -57,6 +70,35 @@ describe('MedicationAdministeredSubscriber', () => {
     await outbox.processDue(new Date(Date.now() + 3_600_000));
 
     expect(inventory.descontarStock).toHaveBeenCalledTimes(1);
+  });
+
+  it('la reentrega del mismo evento no registra un segundo movimiento', async () => {
+    const movimientos: Array<Record<string, unknown>> = [];
+    inventory.descontarStock.mockImplementation(async (input: Record<string, unknown>) => {
+      movimientos.push(input);
+    });
+
+    bus.publish(evento('adm-1'));
+    await vi.waitFor(() => expect(movimientos).toHaveLength(1));
+    store.records[0].pending = true;
+
+    await outbox.processDue(new Date(Date.now() + 3_600_000));
+
+    expect(movimientos).toHaveLength(1);
+    expect(movimientos[0]).toMatchObject({
+      usuarioId: null,
+      origen: OrigenMovimientoInventario.ADMINISTRACION_MEDICACION,
+      referenciaId: 'adm-1',
+    });
+  });
+
+  it('sin administrationId en el evento la referencia es null', async () => {
+    await subscriber.handle(evento());
+
+    expect(inventory.descontarStock).toHaveBeenCalledWith(
+      expect.objectContaining({ referenciaId: null }),
+      undefined,
+    );
   });
 
   it('administraciones distintas descuentan cada una', async () => {

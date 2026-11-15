@@ -27,12 +27,35 @@ export interface UpdateInventoryItemInput {
 
 export interface ReplenishStockInput {
   cantidad: number;
+  motivo?: string;
 }
 
 export interface ReplenishStockResult {
   insumoId: string;
   cantidadRepuesta: number;
   cantidadActual: number;
+}
+
+export interface DiscountStockInput {
+  insumoId: string;
+  cantidad: number;
+  motivo?: string;
+}
+
+export type StockMovementType = 'DESCUENTO' | 'REPOSICION';
+
+export type StockMovementOrigin = 'MANUAL' | 'ADMINISTRACION_MEDICACION';
+
+export interface StockMovement {
+  id: string;
+  tipo: StockMovementType;
+  cantidad: number;
+  stockResultante: number;
+  usuarioId: string | null;
+  origen: StockMovementOrigin;
+  referenciaId: string | null;
+  motivo: string | null;
+  fecha: string;
 }
 
 export const LOW_STOCK_THRESHOLD = 10;

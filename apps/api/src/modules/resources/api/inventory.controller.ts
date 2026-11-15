@@ -6,6 +6,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -27,10 +28,18 @@ import { ActualizarInsumoDto } from './dto/actualizar-insumo.dto.js';
 import { CrearInsumoDto } from './dto/crear-insumo.dto.js';
 import { InsumoResponseDto } from './dto/insumo-response.dto.js';
 import { DescontarStockDto } from './dto/descontar-stock.dto.js';
+import {
+  ListarMovimientosQueryDto,
+  MOVIMIENTOS_LIMIT_DEFAULT,
+} from './dto/listar-movimientos-query.dto.js';
+import { MovimientoResponseDto } from './dto/movimiento-response.dto.js';
 import { ReponerStockDto } from './dto/reponer-stock.dto.js';
 import { InventoryService } from '../infrastructure/inventory.service.js';
 import { Roles } from '../../iam/api/roles.decorator.js';
 import { RolUsuario } from '../../../entities/usuario.entity.js';
+import { CurrentIdentity } from '../../iam/api/auth.decorator.js';
+import type { SessionIdentity } from '../../iam/application/auth.service.js';
+import { OrigenMovimientoInventario } from '../domain/inventory-movement.js';
 
 @Controller('resources/inventory')
 @UseGuards(AuthGuard, RolesGuard)
@@ -105,10 +114,16 @@ export class InventoryController {
   @ApiConflictResponse({
     description: 'No hay stock suficiente para realizar el descuento.',
   })
-  descontarStock(@Body() dto: DescontarStockDto) {
+  descontarStock(
+    @Body() dto: DescontarStockDto,
+    @CurrentIdentity() identity: SessionIdentity,
+  ) {
     return this.inventoryService.descontarStock({
       insumoId: dto.insumoId,
       cantidad: dto.cantidad,
+      motivo: dto.motivo,
+      usuarioId: identity.accountId,
+      origen: OrigenMovimientoInventario.MANUAL,
     });
   }
 
@@ -138,10 +153,33 @@ export class InventoryController {
   reponerStock(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: ReponerStockDto,
+    @CurrentIdentity() identity: SessionIdentity,
   ) {
     return this.inventoryService.reponerStock({
       insumoId: id,
       cantidad: dto.cantidad,
+      motivo: dto.motivo,
+      usuarioId: identity.accountId,
+      origen: OrigenMovimientoInventario.MANUAL,
+    });
+  }
+
+  @Get(':id/movimientos')
+  @Roles(RolUsuario.ADMINISTRATIVO)
+  @ApiOperation({
+    summary: 'Historial de movimientos de stock de un insumo',
+    description: 'Lista los descuentos y reposiciones del insumo, del más reciente al más antiguo, con paginación por limit y offset. Solo pueden realizar esta operación los usuarios con rol administrativo.',
+  })
+  @ApiOkResponse({ description: 'Movimientos del insumo.', type: MovimientoResponseDto, isArray: true })
+  @ApiBadRequestResponse({ description: 'El id no es un UUID o limit u offset no son válidos.' })
+  @ApiNotFoundResponse({ description: 'El insumo indicado no existe.' })
+  listarMovimientos(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: ListarMovimientosQueryDto,
+  ) {
+    return this.inventoryService.listarMovimientos(id, {
+      limit: query.limit ?? MOVIMIENTOS_LIMIT_DEFAULT,
+      offset: query.offset ?? 0,
     });
   }
 }

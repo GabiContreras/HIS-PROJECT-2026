@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Cama } from '../../entities/cama.entity.js';
 import { Insumo } from '../../entities/insumo.entity.js';
 import { Internacion } from '../../entities/internacion.entity.js';
+import { MovimientoInventario } from '../../entities/movimiento-inventario.entity.js';
 import { Paciente } from '../../entities/paciente.entity.js';
 import { Usuario } from '../../entities/usuario.entity.js';
 import { Sector } from '../../entities/sector.entity.js';
@@ -19,7 +20,7 @@ import { InventoryService } from './infrastructure/inventory.service.js';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Cama, Insumo, Internacion, Paciente, Usuario, Sector, Habitacion]),
+    TypeOrmModule.forFeature([Cama, Insumo, Internacion, MovimientoInventario, Paciente, Usuario, Sector, Habitacion]),
     IamModule,
   ],
   controllers: [InventoryController, CamasController, InternacionesController, UbicacionesController],

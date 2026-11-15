@@ -8,6 +8,11 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, QueryFailedError, Repository } from 'typeorm';
 import { Insumo } from '../../../entities/insumo.entity.js';
+import { MovimientoInventario } from '../../../entities/movimiento-inventario.entity.js';
+import {
+  OrigenMovimientoInventario,
+  TipoMovimientoInventario,
+} from '../domain/inventory-movement.js';
 import {
   ActualizarInsumoInput,
   CrearInsumoInput,
@@ -16,6 +21,8 @@ import {
   InsumoDetalle,
   InsumoStock,
   InventoryPort,
+  ListarMovimientosInput,
+  MovimientoDetalle,
   ReponerStockInput,
   ReponerStockResult,
 } from '../domain/ports/inventory.port.js';
@@ -39,6 +46,11 @@ function isNumericOutOfRange(error: unknown): boolean {
   );
 }
 
+function normalizarMotivo(motivo?: string | null): string | null {
+  const limpio = motivo?.trim();
+  return limpio ? limpio : null;
+}
+
 function toInsumoDetalle(insumo: Insumo): InsumoDetalle {
   return {
     id: insumo.id,
@@ -55,6 +67,8 @@ export class InventoryService implements InventoryPort {
   constructor(
     @InjectRepository(Insumo)
     private readonly insumoRepository: Repository<Insumo>,
+    @InjectRepository(MovimientoInventario)
+    private readonly movimientoRepository: Repository<MovimientoInventario>,
   ) {}
 
   async listar(): Promise<InsumoStock[]> {
@@ -140,7 +154,7 @@ export class InventoryService implements InventoryPort {
     input: DescontarStockInput,
     manager?: EntityManager,
   ): Promise<DescontarStockResult> {
-    const { insumoId, cantidad } = input;
+    const { cantidad } = input;
 
     if (!Number.isInteger(cantidad) || cantidad <= 0) {
       throw new BadRequestException(
@@ -148,7 +162,64 @@ export class InventoryService implements InventoryPort {
       );
     }
 
-    const insumos = manager ? manager.getRepository(Insumo) : this.insumoRepository;
+    if (manager) {
+      return this.descontarEn(manager, input);
+    }
+    return this.insumoRepository.manager.transaction((transaccion) =>
+      this.descontarEn(transaccion, input),
+    );
+  }
+
+  async reponerStock(input: ReponerStockInput): Promise<ReponerStockResult> {
+    const { cantidad } = input;
+
+    if (!Number.isInteger(cantidad) || cantidad <= 0) {
+      throw new BadRequestException(
+        'La cantidad debe ser un entero positivo',
+      );
+    }
+
+    return this.insumoRepository.manager.transaction((transaccion) =>
+      this.reponerEn(transaccion, input),
+    );
+  }
+
+  async listarMovimientos(
+    insumoId: string,
+    input: ListarMovimientosInput,
+  ): Promise<MovimientoDetalle[]> {
+    const insumo = await this.insumoRepository.findOneBy({ id: insumoId });
+    if (!insumo) {
+      throw new NotFoundException('El insumo no existe');
+    }
+
+    const movimientos = await this.movimientoRepository.find({
+      where: { insumoId },
+      order: { createdAt: 'DESC', id: 'DESC' },
+      take: input.limit,
+      skip: input.offset,
+    });
+
+    return movimientos.map((m) => ({
+      id: m.id,
+      tipo: m.tipo,
+      cantidad: m.cantidad,
+      stockResultante: m.stockResultante,
+      usuarioId: m.usuarioId,
+      origen: m.origen,
+      referenciaId: m.referenciaId,
+      motivo: m.motivo,
+      fecha: m.createdAt.toISOString(),
+    }));
+  }
+
+  private async descontarEn(
+    manager: EntityManager,
+    input: DescontarStockInput,
+  ): Promise<DescontarStockResult> {
+    const { insumoId, cantidad } = input;
+
+    const insumos = manager.getRepository(Insumo);
     const result = await insumos
       .createQueryBuilder()
       .update(Insumo)
@@ -177,26 +248,32 @@ export class InventoryService implements InventoryPort {
       id: string;
       cantidad_disponible: number | string;
     };
+    const cantidadRestante = Number(actualizado.cantidad_disponible);
+
+    await this.registrarMovimiento(
+      manager,
+      TipoMovimientoInventario.DESCUENTO,
+      input,
+      cantidadRestante,
+    );
 
     return {
       insumoId: actualizado.id,
       cantidadDescontada: cantidad,
-      cantidadRestante: Number(actualizado.cantidad_disponible),
+      cantidadRestante,
     };
   }
 
-  async reponerStock(input: ReponerStockInput): Promise<ReponerStockResult> {
+  private async reponerEn(
+    manager: EntityManager,
+    input: ReponerStockInput,
+  ): Promise<ReponerStockResult> {
     const { insumoId, cantidad } = input;
-
-    if (!Number.isInteger(cantidad) || cantidad <= 0) {
-      throw new BadRequestException(
-        'La cantidad debe ser un entero positivo',
-      );
-    }
 
     let result;
     try {
-      result = await this.insumoRepository
+      result = await manager
+        .getRepository(Insumo)
         .createQueryBuilder()
         .update(Insumo)
         .set({
@@ -223,11 +300,37 @@ export class InventoryService implements InventoryPort {
       id: string;
       cantidad_disponible: number | string;
     };
+    const cantidadActual = Number(actualizado.cantidad_disponible);
+
+    await this.registrarMovimiento(
+      manager,
+      TipoMovimientoInventario.REPOSICION,
+      input,
+      cantidadActual,
+    );
 
     return {
       insumoId: actualizado.id,
       cantidadRepuesta: cantidad,
-      cantidadActual: Number(actualizado.cantidad_disponible),
+      cantidadActual,
     };
+  }
+
+  private async registrarMovimiento(
+    manager: EntityManager,
+    tipo: TipoMovimientoInventario,
+    input: DescontarStockInput | ReponerStockInput,
+    stockResultante: number,
+  ): Promise<void> {
+    await manager.getRepository(MovimientoInventario).insert({
+      insumoId: input.insumoId,
+      tipo,
+      cantidad: input.cantidad,
+      stockResultante,
+      usuarioId: input.usuarioId ?? null,
+      origen: input.origen ?? OrigenMovimientoInventario.MANUAL,
+      referenciaId: input.referenciaId ?? null,
+      motivo: normalizarMotivo(input.motivo),
+    });
   }
 }
