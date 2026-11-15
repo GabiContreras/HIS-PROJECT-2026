@@ -27,10 +27,19 @@ import { AgendaMedico } from '../../entities/agenda-medico.entity.js';
 import { AgendaExcepcion } from '../../entities/agenda-excepcion.entity.js';
 import { AgendaMedicaController } from './api/agenda-medica.controller.js';
 import { AgendaService } from './application/agenda.service.js';
+import { Especialidad } from '../../entities/especialidad.entity.js';
+import { MedicoEspecialidad } from '../../entities/medico-especialidad.entity.js';
+import { EspecialidadesController } from './api/especialidades-controller.js';
+import { EspecialidadesService } from './application/especialidades.service.js';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Paciente, Turno, Usuario, EntreturnoStandby, NotificacionEntity, TriajeRegistro, Internacion, AgendaMedico, AgendaExcepcion]), IamModule],
-  controllers: [TurnosController, PacientesController, NotificacionesController, TriajeController, AgendaMedicaController],
+  imports: [TypeOrmModule.forFeature([Paciente, Turno, Usuario, EntreturnoStandby, NotificacionEntity, TriajeRegistro, Internacion, AgendaMedico, AgendaExcepcion, Especialidad, MedicoEspecialidad]), IamModule],
+  controllers: [TurnosController, 
+    PacientesController, 
+    NotificacionesController, 
+    TriajeController, 
+    AgendaMedicaController, 
+    EspecialidadesController],
   providers: [
     TurnosService,
     EntreturnoStandbyService,
@@ -40,8 +49,13 @@ import { AgendaService } from './application/agenda.service.js';
     VitalSignAlertSubscriber,
     PatientWaitingSubscriber,
     StandbyPromotedSubscriber,
-    { provide: PACIENTES_REPOSITORY, useClass: PacientesTypeOrmRepository },
+    AgendaService,
+    EspecialidadesService,
+    { provide: PACIENTES_REPOSITORY, useClass: 
+      PacientesTypeOrmRepository },
   ],
-  exports: [TurnosService, PacientesService, NotificacionesService],
+  exports: [TurnosService, 
+    PacientesService, 
+    NotificacionesService],
 })
 export class AdmissionsModule {}
