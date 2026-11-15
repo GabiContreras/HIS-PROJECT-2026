@@ -23,10 +23,14 @@ import { PatientWaitingSubscriber } from './application/patient-waiting.subscrib
 import { StandbyPromotedSubscriber } from './application/standby-promoted.subscriber.js';
 import { PACIENTES_REPOSITORY } from './domain/ports/pacientes.repository.js';
 import { PacientesTypeOrmRepository } from './infrastructure/pacientes.typeorm.repository.js';
+import { AgendaMedico } from '../../entities/agenda-medico.entity.js';
+import { AgendaExcepcion } from '../../entities/agenda-excepcion.entity.js';
+import { AgendaMedicaController } from './api/agenda-medica.controller.js';
+import { AgendaService } from './application/agenda.service.js';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Paciente, Turno, Usuario, EntreturnoStandby, NotificacionEntity, TriajeRegistro, Internacion]), IamModule],
-  controllers: [TurnosController, PacientesController, NotificacionesController, TriajeController],
+  imports: [TypeOrmModule.forFeature([Paciente, Turno, Usuario, EntreturnoStandby, NotificacionEntity, TriajeRegistro, Internacion, AgendaMedico, AgendaExcepcion]), IamModule],
+  controllers: [TurnosController, PacientesController, NotificacionesController, TriajeController, AgendaMedicaController],
   providers: [
     TurnosService,
     EntreturnoStandbyService,

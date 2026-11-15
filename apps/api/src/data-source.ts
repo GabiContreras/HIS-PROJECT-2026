@@ -24,6 +24,8 @@ import { OutboxEvent } from './entities/outbox-event.entity.js';
 import { Estudio } from './entities/estudio.entity.js';
 import { Sector } from './entities/sector.entity.js';
 import { Habitacion } from './entities/habitacion.entity.js';
+import { AgendaMedico } from './entities/agenda-medico.entity.js';
+import { AgendaExcepcion } from './entities/agenda-excepcion.entity.js';
 
 export default new DataSource({
   type: 'postgres',
@@ -53,6 +55,8 @@ export default new DataSource({
     Estudio,
     Sector,
     Habitacion,
+    AgendaMedico,
+    AgendaExcepcion,
   ],
   migrations: ['src/migrations/*.ts'],
   synchronize: false,
