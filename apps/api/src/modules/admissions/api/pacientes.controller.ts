@@ -23,6 +23,7 @@ import {
 } from '@nestjs/swagger';
 import { RolUsuario } from '../../../entities/usuario.entity.js';
 import { AuthGuard } from '../../iam/api/auth.guard.js';
+import { Auditar } from '../../iam/api/auditar.decorator.js';
 import { CurrentIdentity } from '../../iam/api/auth.decorator.js';
 import { Roles } from '../../iam/api/roles.decorator.js';
 import { RolesGuard } from '../../iam/api/roles.guard.js';
@@ -63,6 +64,7 @@ export class PacientesController {
 
   @Get(':id')
   @Roles(RolUsuario.MEDICO, RolUsuario.ENFERMERO, RolUsuario.ADMINISTRATIVO)
+  @Auditar('LEER_PACIENTE', 'pacientes', 'id')
   @ApiOperation({
     summary: 'Obtener un paciente',
     description: 'Obtiene los datos de un paciente mediante su identificador.',
@@ -95,6 +97,7 @@ export class PacientesController {
 
   @Post()
   @Roles(RolUsuario.ADMINISTRATIVO)
+  @Auditar('CREAR_PACIENTE', 'pacientes')
   @ApiOperation({
     summary: 'Registrar un paciente',
     description: 'Registra un nuevo paciente con sus datos y cobertura médica.',
@@ -129,6 +132,7 @@ export class PacientesController {
 
   @Patch(':id/cobertura')
   @Roles(RolUsuario.ADMINISTRATIVO)
+  @Auditar('MODIFICAR_COBERTURA', 'pacientes', 'id')
   @ApiOperation({
     summary: 'Actualizar la cobertura de un paciente',
     description: 'Modifica el tipo y la entidad de cobertura médica del paciente.',

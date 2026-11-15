@@ -37,7 +37,7 @@ import { CurrentIdentity } from './auth.decorator.js';
 import { MessageResponseDto } from './dto/message-response.dto.js';
 import { ForgotPasswordResponseDto } from './dto/forgot-password-response.dto.js';
 import { AccountResponseDto } from './dto/account-response.dto.js';
-
+import { Auditar } from './auditar.decorator.js';
 const REFRESH_COOKIE = 'his_refresh';
 
 @Controller('auth')
@@ -48,7 +48,7 @@ export class AuthController {
     private readonly tokens: TokenService,
   ) {}
 
-
+  @Auditar('LOGIN', 'auth')
   @Post('login')
   @HttpCode(200)
   @ApiOperation({
@@ -144,6 +144,7 @@ export class AuthController {
     return this.auth.forgotPassword(dto.email);
   }
   
+  @Auditar('CAMBIO_PASSWORD', 'auth')
   @Post('change-password')
   @HttpCode(200)
   @UseGuards(AuthGuard)
