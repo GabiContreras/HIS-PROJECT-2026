@@ -8,7 +8,7 @@ import {
   Matches,
   MaxLength,
 } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, OmitType, PartialType } from '@nestjs/swagger';
 import { CoverageType } from '../../../../shared/events/coverage-type.js';
 import { FechaNoFutura } from './fecha-no-futura.validator.js';
 
@@ -79,3 +79,6 @@ export class ActualizarCoberturaDto {
   @MaxLength(100)
   entidadCobertura?: string;
 }
+export class ActualizarPacienteDto extends PartialType(
+  OmitType(CrearPacienteDto, ['tipoCobertura', 'entidadCobertura'] as const),
+) {}

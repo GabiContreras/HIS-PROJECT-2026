@@ -16,6 +16,8 @@ import {
   AppointmentAttendedSubscriber,
 } from '../application/appointment-attended.subscriber.js';
 import { BillingService } from '../application/billing.service.js';
+import { NomencladorService } from '../application/nomenclador.service.js';
+import { NOMENCLADOR_REPOSITORY } from '../domain/nomenclador.repository.js';
 import { ConsultaRegularStrategy } from '../domain/consulta-regular.strategy.js';
 import { ConsultaUrgenciaStrategy } from '../domain/consulta-urgencia.strategy.js';
 import { CargosController } from './cargos.controller.js';
@@ -62,10 +64,20 @@ describe('Billing integration', () => {
     ),
   };
 
+  const nomenclador = {
+    findPrestacionActiva: vi.fn(async (codigo: string) =>
+      codigo === 'CONSULTA_URGENCIA'
+        ? { id: 'prestacion-urgencia', codigo, valorBasePesos: 25_000, copagoPesos: 3_000 }
+        : { id: 'prestacion-regular', codigo, valorBasePesos: 15_000, copagoPesos: 3_000 },
+    ),
+    findTarifaActiva: vi.fn(async () => null as { valorPesos: number; copagoPesos: number | null } | null),
+  };
+
   beforeEach(async () => {
     charges.length = 0;
     appointments.length = 0;
     vi.clearAllMocks();
+    nomenclador.findTarifaActiva.mockResolvedValue(null);
     const module = await Test.createTestingModule({
       controllers: [CargosController],
       providers: [
@@ -73,6 +85,8 @@ describe('Billing integration', () => {
         OutboxService,
         EventBus,
         BillingService,
+        NomencladorService,
+        { provide: NOMENCLADOR_REPOSITORY, useValue: nomenclador },
         ConsultaRegularStrategy,
         ConsultaUrgenciaStrategy,
         AppointmentAttendedSubscriber,
@@ -213,5 +227,52 @@ describe('Billing integration', () => {
       importePesos: 15_000,
       cobertura: { tipo, entidad, pacientePesos: paciente, terceroPesos: tercero },
     });
+  });
+
+  it('usa la tarifa del financiador del paciente cuando existe', async () => {
+    appointments.push({
+      id: 'appointment-tarifa',
+      fechaHora: new Date('2030-01-01T12:00:00.000Z'),
+      duracionMinutos: 30,
+      urgente: false,
+      medico: { id: 'doctor-1', nombre: 'Ada', apellido: 'Lovelace' },
+      paciente: {
+        id: 'patient-1',
+        nombre: 'Ana',
+        apellido: 'Rojas',
+        documento: '28456921',
+        tipoCobertura: 'MEDICINA_PREPAGA',
+        entidadCobertura: 'Medicina Prepaga Premium',
+        financiadorId: 'financiador-1',
+      },
+    } as unknown as Partial<Turno>);
+    nomenclador.findTarifaActiva.mockResolvedValue({ valorPesos: 18_000, copagoPesos: 2_000 });
+    events.publish({
+      type: APPOINTMENT_ATTENDED_EVENT,
+      occurredAt: '2030-01-01T00:00:00.000Z',
+      payload: { appointmentId: 'appointment-tarifa', urgente: false },
+    });
+    await vi.waitFor(() => expect(charges).toHaveLength(1));
+
+    const response = await request(app.getHttpServer()).get('/billing/cargos').expect(200);
+
+    expect(nomenclador.findTarifaActiva).toHaveBeenCalledWith('financiador-1', 'prestacion-regular');
+    expect(response.body[0]).toMatchObject({
+      importePesos: 18_000,
+      cobertura: { pacientePesos: 2_000, terceroPesos: 16_000 },
+    });
+  });
+
+  it('no crea el cargo si la prestación no existe en el nomenclador', async () => {
+    nomenclador.findPrestacionActiva.mockResolvedValue(null as never);
+    events.publish({
+      type: APPOINTMENT_ATTENDED_EVENT,
+      occurredAt: '2030-01-01T00:00:00.000Z',
+      payload: { appointmentId: 'appointment-sin-prestacion', urgente: false },
+    });
+    await vi.waitFor(() => expect(nomenclador.findPrestacionActiva).toHaveBeenCalled());
+
+    expect(charges).toHaveLength(0);
+    expect(repository.save).not.toHaveBeenCalled();
   });
 });

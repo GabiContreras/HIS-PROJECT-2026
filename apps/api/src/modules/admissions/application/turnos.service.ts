@@ -469,6 +469,49 @@ export class TurnosService {
     return null;
   }
 
+    async getById(
+    id: string,
+    identity: SessionIdentity,
+  ): Promise<TurnoAgendaSummary> {
+    const turno = await this.turnos.findOne({
+      where: { id },
+      relations: { medico: true, paciente: true },
+    });
+    if (!turno) throw new NotFoundException('No se encontró el turno.');
+    this.assertCanManageDoctor(identity, turno.medico.id);
+    return this.toAgendaSummary(turno);
+  }
+
+  async listByPatient(
+    patientId: string,
+    identity: SessionIdentity,
+  ): Promise<TurnoAgendaSummary[]> {
+    const query = this.turnos
+      .createQueryBuilder('turno')
+      .innerJoin('turno.medico', 'medico')
+      .innerJoin('turno.paciente', 'paciente')
+      .select([
+        'turno.id',
+        'turno.fechaHora',
+        'turno.duracionMinutos',
+        'turno.estado',
+        'turno.urgente',
+        'medico.id',
+        'medico.nombre',
+        'medico.apellido',
+        'paciente.id',
+        'paciente.nombre',
+        'paciente.apellido',
+      ])
+      .where('paciente.id = :patientId', { patientId })
+      .orderBy('turno.fechaHora', 'DESC');
+    if (identity.rol === RolUsuario.MEDICO) {
+      query.andWhere('medico.id = :doctorId', { doctorId: identity.accountId });
+    }
+    const rows = await query.getMany();
+    return rows.map((turno) => this.toAgendaSummary(turno));
+  }
+
   getTransitionTable(): Record<string, EstadoTurno[]> {
     return tablaTransiciones();
   }
@@ -659,6 +702,19 @@ export class TurnosService {
     if (identity.rol === RolUsuario.MEDICO && identity.accountId !== doctorId) {
       throw new ForbiddenException('Solo podés gestionar tu propia agenda.');
     }
+  }
+
+    private toAgendaSummary(turno: Turno): TurnoAgendaSummary {
+    return {
+      ...this.toSummary(turno),
+      paciente: turno.paciente
+        ? {
+            id: turno.paciente.id,
+            nombre: turno.paciente.nombre,
+            apellido: turno.paciente.apellido,
+          }
+        : null,
+    };
   }
 
   private toSummary(turno: Turno): TurnoSummary {

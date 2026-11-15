@@ -10,14 +10,8 @@ export interface CoverageBreakdown {
 
 export interface CoverageStrategy {
   readonly tipo: CoverageType;
-  split(valorBasePesos: number): CoverageBreakdown;
+  split(valorBasePesos: number, copagoPesos: number): CoverageBreakdown;
 }
-
-/**
- * Copago fijo por consulta de la prepaga (ejemplo de la HU: Medicina Prepaga Premium, $3.000).
- * PENDIENTE: el nomenclador real define el copago por prepaga; hasta tenerlo se usa uno solo.
- */
-export const COPAGO_PREPAGA_PESOS = 3_000;
 
 /** Obra social pública: subsidia el 100%; el paciente abona cero. */
 export class ObraSocialPublicaStrategy implements CoverageStrategy {
@@ -27,11 +21,11 @@ export class ObraSocialPublicaStrategy implements CoverageStrategy {
   }
 }
 
-/** Medicina prepaga: copago fijo para el paciente; el resto se le reclama a la prepaga. */
+/** Medicina prepaga: copago del nomenclador para el paciente; el resto se le reclama a la prepaga. */
 export class MedicinaPrepagaStrategy implements CoverageStrategy {
   readonly tipo = CoverageType.PREPAID;
-  split(valorBasePesos: number): CoverageBreakdown {
-    const copago = Math.min(COPAGO_PREPAGA_PESOS, valorBasePesos);
+  split(valorBasePesos: number, copagoPesos: number): CoverageBreakdown {
+    const copago = Math.min(copagoPesos, valorBasePesos);
     return { pacientePesos: copago, terceroPesos: valorBasePesos - copago };
   }
 }
