@@ -115,6 +115,21 @@ datos básicos de la cuenta se devuelven en el body.
 | `POST /historia-clinica/:pacienteId/evoluciones` | Médico | Registra la evolución médica `{ nota (3-4000) }`. Mismos errores que alergias. |
 | `POST /historia-clinica/:pacienteId/estudios` | Médico | Registra un estudio para su visualización `{ tipo (2-120), resultado (2-4000) }` (texto; no hay carga de archivos). Mismos errores que alergias. |
 
+Contrato INT-8, validación de cobertura (Facturación entrega el puerto y el adaptador simulado; Admisión lo invoca al reservar o atender un turno):
+
+| Elemento | Detalle |
+| --- | --- |
+| Token | `COVERAGE_VERIFIER`, exportado por `BillingModule`. Se inyecta con `@Inject(COVERAGE_VERIFIER)` importando `BillingModule`; el tipo es `CoverageVerifier`, de `modules/billing/domain/ports/coverage-verifier.port.ts`. |
+| Firma | `verify(input: CoverageCheckInput): Promise<CoverageCheckResult>` con `input = { tipoCobertura, financiadorId, planId, numeroAfiliado, prestacion? }` (los datos de afiliación del paciente; `prestacion` es opcional y hoy el adaptador simulado la ignora). Devuelve `{ cubierta: boolean, motivo? }`. |
+| Errores | No lanza excepciones por rechazo: devuelve `cubierta: false` con un `motivo`. Quien invoca traduce el rechazo a su error HTTP. |
+| `AFILIACION_INCOMPLETA` | Obra social pública o prepaga sin `financiadorId`, `planId` o `numeroAfiliado` (nulos o vacíos). |
+| `FINANCIADOR_INEXISTENTE` / `FINANCIADOR_INACTIVO` | El financiador no existe o está dado de baja. |
+| `PLAN_INEXISTENTE` / `PLAN_INACTIVO` | El plan no existe o está dado de baja. |
+| `PLAN_NO_PERTENECE_AL_FINANCIADOR` | El plan pertenece a otro financiador. |
+| Particular | `PARTICULAR` siempre devuelve `cubierta: true` sin consultar nada. |
+
+Uso desde Admisión: `const r = await this.coverageVerifier.verify({ tipoCobertura, financiadorId, planId, numeroAfiliado });` y, si `!r.cubierta`, rechazar según `r.motivo`. La afiliación se considera vigente cuando está completa y el financiador y el plan siguen activos; el modelo no tiene fechas de vigencia.
+
 La historia clínica es inmutable: no existen endpoints de modificación ni borrado, y la tabla `registros_clinicos` rechaza `UPDATE` y `DELETE` con un trigger. Los textos se guardan sin espacios en los extremos. Las lecturas excluyen al administrativo porque los datos clínicos no forman parte de su función; la ficha demográfica sigue disponible para él en `GET /pacientes/:id`.
 
 Los `:id` de `/usuarios` y `/turnos` deben ser UUID; si no lo son, la API responde `400`.
