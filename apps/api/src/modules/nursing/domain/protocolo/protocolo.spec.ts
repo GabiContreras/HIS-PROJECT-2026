@@ -2,6 +2,7 @@ import { PreOpProtocolBuilder } from './pre-op-protocol-builder.js';
 import { ProtocolDirector } from './protocol-director.js';
 import { Protocolo, TipoIngreso } from './protocolo.js';
 import { RespiratoryProtocolBuilder } from './respiratory-protocol-builder.js';
+import { GeneralProtocolBuilder } from './general-protocol-builder.js';
 
 describe('PreOpProtocolBuilder', () => {
   it('arma las tareas exactas de la HU 2.1 (escenario 1)', () => {
@@ -45,6 +46,14 @@ describe('RespiratoryProtocolBuilder', () => {
       'Indicación de aislamiento de contacto y gotas',
     ]);
   });
+
+  describe('GeneralProtocolBuilder', () => {
+    it('genera tareas base para un motivo sin protocolo específico', () => {
+      const protocolo = new GeneralProtocolBuilder().agregarTareasBase().construir();
+      expect(protocolo.tipo).toBe(TipoIngreso.GENERAL);
+      expect(protocolo.tareas.length).toBeGreaterThan(0);
+    });
+  });
 });
 
 describe('Protocolo', () => {
@@ -71,10 +80,11 @@ describe('ProtocolDirector', () => {
     expect(director.resolverTipo(motivo)).toBe(tipo);
   });
 
-  it('devuelve null para motivos sin protocolo', () => {
-    expect(director.resolverTipo('Fractura de fémur')).toBeNull();
+  it('usa el protocolo general para motivos desconocidos y rechaza un motivo vacío', () => {
+    expect(director.resolverTipo('Fractura de fémur')).toBe(TipoIngreso.GENERAL);
     expect(director.resolverTipo('')).toBeNull();
-    expect(director.construirPorMotivo('Fractura de fémur')).toBeNull();
+    expect(director.construirPorMotivo('Fractura de fémur')?.tipo).toBe(TipoIngreso.GENERAL);
+    expect(director.construirPorMotivo('')).toBeNull();
   });
 
   it('construye el protocolo con el builder que corresponde', () => {

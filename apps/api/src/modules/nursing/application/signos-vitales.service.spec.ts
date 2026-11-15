@@ -26,10 +26,13 @@ describe('SignosVitalesService', () => {
         fechaHora: new Date('2030-01-01T10:00:00.000Z'),
         registradoPor: 'Torres, Martín',
         controlId: null,
+        internacionId: null,
       })),
       list: vi.fn(),
       createControl: vi.fn(),
       listControles: vi.fn(),
+      listSerie: vi.fn(),
+      internacionPertenece: vi.fn(async () => true),
     };
     const pacientes = {
       get: vi.fn(async () => {
@@ -58,6 +61,7 @@ describe('SignosVitalesService', () => {
       registradoPorId: 'nurse-1',
       tipo: 'TEMPERATURA',
       valor: 36.8,
+      internacionId: null,
     });
     expect(result).toMatchObject({ valor: 36.8, unidad: '°C', fueraDeRango: false, paciente: 'López, Carlos' });
     expect(published).toHaveLength(0);
@@ -116,12 +120,13 @@ describe('SignosVitalesService', () => {
         fechaHora: new Date('2030-01-01T10:00:00.000Z'),
         registradoPor: 'Torres, Martín',
         controlId: null,
+        internacionId: null,
       },
     ]);
 
     const [row] = await service.listar();
 
-    expect(repository.list).toHaveBeenCalledWith(undefined, 100);
+    expect(repository.list).toHaveBeenCalledWith(undefined, undefined, 100);
     expect(row).toMatchObject({ valor: 130, unidad: 'lpm', fueraDeRango: true });
   });
 
@@ -136,6 +141,7 @@ describe('SignosVitalesService', () => {
       fechaHora: fecha,
       registradoPor: 'Torres, Martín',
       controlId,
+      internacionId: null,
     });
     const filasControl = (temperatura: number, controlId = 'control-1') => [
       fila('PRESION_ARTERIAL', 120, controlId),
@@ -167,6 +173,7 @@ describe('SignosVitalesService', () => {
           { tipo: 'FRECUENCIA_CARDIACA', valor: 76 },
           { tipo: 'TEMPERATURA', valor: 36.8 },
         ],
+        internacionId: null,
       });
       expect(result).toMatchObject({
         id: 'control-1',

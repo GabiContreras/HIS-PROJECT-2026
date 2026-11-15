@@ -2,18 +2,43 @@ import { http } from '../shared/http';
 import type { Patient } from './patients';
 
 export type ClinicalSectionKey = 'alergias' | 'antecedentesFamiliares' | 'evoluciones' | 'estudios';
+export type ClinicalRecordCategory =
+  | 'ALERGIA'
+  | 'ANTECEDENTE_FAMILIAR'
+  | 'EVOLUCION'
+  | 'ESTUDIO'
+  | 'NOTA_ENFERMERIA'
+  | 'RECTIFICACION';
 
 export interface ClinicalRecord {
   id: string;
-  categoria: 'ALERGIA' | 'ANTECEDENTE_FAMILIAR' | 'EVOLUCION' | 'ESTUDIO';
+  categoria: ClinicalRecordCategory;
   titulo: string | null;
   detalle: string;
   registradoPor: string;
   fechaHora: string; // ISO
+  corrigeA: string | null;
+  rectificado: boolean;
+  turnoId: string | null;
+  internacionId: string | null;
 }
 
-export interface ClinicalHistory extends Record<ClinicalSectionKey, ClinicalRecord[]> {
+export interface ClinicalHistory {
   paciente: Patient;
+  alergias: ClinicalRecord[];
+  antecedentesFamiliares: ClinicalRecord[];
+  evoluciones: ClinicalRecord[];
+  estudios: ClinicalRecord[];
+  notasEnfermeria: ClinicalRecord[];
+  rectificaciones: ClinicalRecord[];
+}
+
+export interface ClinicalTimelineItem {
+  id: string;
+  tipo: string;
+  fechaHora: string;
+  titulo: string;
+  detalle: string;
 }
 
 /** Cada sección de la historia: ruta de alta y nombre de los campos que espera la API. */
@@ -37,6 +62,12 @@ export const CLINICAL_SECTIONS: ClinicalSection[] = [
 
 export function getClinicalHistory(pacienteId: string): Promise<ClinicalHistory> {
   return http.get<ClinicalHistory>(`/historia-clinica/${encodeURIComponent(pacienteId)}`);
+}
+
+export function getClinicalTimeline(pacienteId: string): Promise<ClinicalTimelineItem[]> {
+  return http.get<ClinicalTimelineItem[]>(
+    `/historia-clinica/${encodeURIComponent(pacienteId)}/timeline`,
+  );
 }
 
 export function addClinicalRecord(

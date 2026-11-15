@@ -4,8 +4,12 @@ export interface IndicacionData {
   /** "Apellido, Nombre" del paciente. */
   paciente: string;
   medicoId: string;
-  insumoId: string;
-  insumo: string;
+  insumoId: string | null;
+  insumo: string | null;
+  tipo: string;
+  estado: string;
+  internacionId: string | null;
+  motivoSuspension: string | null;
   dosis: string;
   /** Texto legible (ej. "cada 8 horas"). */
   frecuencia: string;
@@ -23,12 +27,17 @@ export interface AdministracionData {
   enfermero: string;
   fechaHoraAdministracion: Date;
   observaciones: string | null;
+  dosisProgramadaPara: Date | null;
+  resultado: 'ADMINISTRADA' | 'OMITIDA';
+  motivoOmision: string | null;
 }
 
 export interface NuevaIndicacion {
   pacienteId: string;
   medicoId: string;
-  insumoId: string;
+  insumoId: string | null;
+  tipo: string;
+  internacionId: string | null;
   dosis: string;
   frecuencia: string;
   frecuenciaHoras: number;
@@ -39,6 +48,14 @@ export interface NuevaAdministracion {
   enfermeroId: string;
   fechaHoraAdministracion: Date;
   observaciones: string | null;
+  dosisProgramadaPara: Date | null;
+  resultado: 'ADMINISTRADA' | 'OMITIDA';
+  motivoOmision: string | null;
+}
+
+export interface DecisionAdministracion {
+  nueva?: NuevaAdministracion;
+  existente?: AdministracionData;
 }
 
 export interface IndicacionConAdministraciones {
@@ -54,6 +71,8 @@ export interface ContextoAdministracion {
 
 export interface IndicacionesRepository {
   insumoExiste(insumoId: string): Promise<boolean>;
+  obtenerNombreInsumo(insumoId: string): Promise<string | null>;
+  internacionPertenece(internacionId: string, pacienteId: string): Promise<boolean>;
   create(data: NuevaIndicacion): Promise<IndicacionData>;
   /**
    * Indicaciones vigentes en `ahora` (iniciadas y sin vencer) con sus administraciones
@@ -72,8 +91,14 @@ export interface IndicacionesRepository {
    */
   administrarBajoBloqueo(
     indicacionId: string,
-    decidir: (contexto: ContextoAdministracion) => NuevaAdministracion,
-  ): Promise<{ indicacion: IndicacionData; administracion: AdministracionData }>;
+    decidir: (contexto: ContextoAdministracion) => DecisionAdministracion,
+  ): Promise<{ indicacion: IndicacionData; administracion: AdministracionData; creada: boolean }>;
+  cambiarEstado(
+    indicacionId: string,
+    estado: 'SUSPENDIDA' | 'FINALIZADA',
+    usuarioId: string,
+    motivo: string,
+  ): Promise<IndicacionData | null>;
 }
 
 export const INDICACIONES_REPOSITORY = Symbol('INDICACIONES_REPOSITORY');

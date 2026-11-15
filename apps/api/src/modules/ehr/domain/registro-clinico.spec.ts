@@ -1,7 +1,18 @@
 import { CategoriaRegistro, armarHistoria, type RegistroClinicoView } from './registro-clinico.js';
 
 function registro(id: string, categoria: CategoriaRegistro): RegistroClinicoView {
-  return { id, categoria, titulo: null, detalle: 'detalle', registradoPor: 'Silva, Ana', fechaHora: '2030-01-01T10:00:00.000Z' };
+  return {
+    id,
+    categoria,
+    titulo: null,
+    detalle: 'detalle',
+    registradoPor: 'Silva, Ana',
+    fechaHora: '2030-01-01T10:00:00.000Z',
+    corrigeA: null,
+    rectificado: false,
+    turnoId: null,
+    internacionId: null,
+  };
 }
 
 describe('armarHistoria', () => {
@@ -29,6 +40,7 @@ describe('armarHistoria', () => {
       evoluciones: [],
       estudios: [],
       notasEnfermeria: [],
+      rectificaciones: [],
     });
   });
 });

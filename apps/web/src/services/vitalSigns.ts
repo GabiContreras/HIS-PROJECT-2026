@@ -4,6 +4,7 @@ import { http } from '../shared/http';
 export interface VitalSign {
   id: string;
   pacienteId: string;
+  internacionId: string | null;
   paciente: string;
   sistolica: number;
   diastolica: number;
@@ -15,10 +16,29 @@ export interface VitalSign {
   nota: string;
 }
 
+export interface VitalSignMeasurement {
+  id: string;
+  pacienteId: string;
+  paciente: string;
+  tipo:
+    | 'PRESION_ARTERIAL'
+    | 'PRESION_DIASTOLICA'
+    | 'TEMPERATURA'
+    | 'FRECUENCIA_CARDIACA'
+    | 'FRECUENCIA_RESPIRATORIA'
+    | 'SATURACION_O2';
+  valor: number;
+  unidad: string;
+  fechaHora: string;
+  internacionId: string | null;
+  registradoPor: string;
+  fueraDeRango: boolean;
+}
+
 export type VitalSignInput = Pick<
   VitalSign,
   'pacienteId' | 'paciente' | 'sistolica' | 'diastolica' | 'frecuenciaCardiaca' | 'temperatura'
->;
+> & { internacionId?: string };
 
 /** Por encima de esta temperatura se destaca en rojo y se avisa al médico de guardia. */
 export const CRITICAL_TEMPERATURE = 39;
@@ -70,12 +90,27 @@ export async function listVitalSigns(): Promise<VitalSign[]> {
   return controls.map(toRecord);
 }
 
+export async function listVitalSignSeries(
+  pacienteId: string,
+  tipo?: string,
+  internacionId?: string,
+): Promise<VitalSignMeasurement[]> {
+  const query = new URLSearchParams();
+  if (tipo) query.set('tipo', tipo);
+  if (internacionId) query.set('internacionId', internacionId);
+  const suffix = query.toString() ? `?${query.toString()}` : '';
+  return http.get<VitalSignMeasurement[]>(
+    `/signos-vitales/${encodeURIComponent(pacienteId)}/serie${suffix}`,
+  );
+}
+
 /** Guarda el control completo con un solo POST; la API valida, marca el estado crítico y arma la nota. */
 export async function addVitalSign(input: VitalSignInput): Promise<VitalSign> {
   const problems = validateInput(input);
   if (problems.length > 0) throw new Error(problems.join(' '));
   const saved = await http.post<ControlDto>('/signos-vitales/controles', {
     pacienteId: input.pacienteId,
+    internacionId: input.internacionId,
     sistolica: input.sistolica,
     diastolica: input.diastolica,
     frecuenciaCardiaca: input.frecuenciaCardiaca,

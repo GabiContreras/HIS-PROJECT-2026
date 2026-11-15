@@ -31,11 +31,18 @@ describe('HistoriaClinicaService', () => {
         detalle: data.detalle,
         registradoPor: 'Silva, Ana',
         fechaHora: fecha,
+        corrigeA: data.corrigeA ?? null,
+        rectificado: false,
+        turnoId: data.turnoId ?? null,
+        internacionId: data.internacionId ?? null,
       })),
       listByPaciente: vi.fn(async () => [
-        { id: 'e1', categoria: 'EVOLUCION', titulo: null, detalle: 'Estable', registradoPor: 'Silva, Ana', fechaHora: fecha },
-        { id: 'a1', categoria: 'ALERGIA', titulo: 'Penicilina', detalle: 'Urticaria', registradoPor: 'Silva, Ana', fechaHora: fecha },
+        { id: 'e1', categoria: 'EVOLUCION', titulo: null, detalle: 'Estable', registradoPor: 'Silva, Ana', fechaHora: fecha, corrigeA: null, rectificado: false, turnoId: null, internacionId: null },
+        { id: 'a1', categoria: 'ALERGIA', titulo: 'Penicilina', detalle: 'Urticaria', registradoPor: 'Silva, Ana', fechaHora: fecha, corrigeA: null, rectificado: false, turnoId: null, internacionId: null },
       ]),
+      validarContexto: vi.fn(async () => true),
+      getByPacienteAndId: vi.fn(),
+      timeline: vi.fn(),
     };
     const pacientes = {
       get: vi.fn(async () => {

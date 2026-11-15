@@ -29,6 +29,7 @@ export interface SignoVitalView {
   valor: number;
   unidad: string;
   fechaHora: string;
+  internacionId: string | null;
   registradoPor: string;
   fueraDeRango: boolean;
 }
@@ -50,6 +51,7 @@ export interface ControlSignosVitalesView {
   fueraDeRango: string[];
   /** Nota de enfermería automática del control. */
   nota: string;
+  internacionId: string | null;
 }
 
 const NOTA_CONTROL_EXITOSO = 'Controles de signos vitales realizados con éxito.';
@@ -81,12 +83,19 @@ export class SignosVitalesService {
     }
     // Admisión es dueño de pacientes: se consulta por su caso de uso (404 si no existe).
     await this.pacientes.get(dto.pacienteId);
+    if (
+      dto.internacionId &&
+      !(await this.repository.internacionPertenece(dto.internacionId, dto.pacienteId))
+    ) {
+      throw new BadRequestException('La internación no pertenece al paciente indicado.');
+    }
 
     const saved = await this.repository.create({
       pacienteId: dto.pacienteId,
       registradoPorId: identity.accountId,
       tipo: dto.tipo,
       valor: dto.valor,
+      internacionId: dto.internacionId ?? null,
     });
 
     const view = this.toView(saved);
@@ -106,8 +115,8 @@ export class SignosVitalesService {
     return view;
   }
 
-  async listar(pacienteId?: string): Promise<SignoVitalView[]> {
-    const rows = await this.repository.list(pacienteId, LIST_LIMIT);
+  async listar(pacienteId?: string, internacionId?: string): Promise<SignoVitalView[]> {
+    const rows = await this.repository.list(pacienteId, internacionId, LIST_LIMIT);
     return rows.map((row) => this.toView(row));
   }
 
@@ -124,11 +133,18 @@ export class SignosVitalesService {
       });
     if (implausibles.length > 0) throw new BadRequestException(implausibles);
     await this.pacientes.get(dto.pacienteId);
+    if (
+      dto.internacionId &&
+      !(await this.repository.internacionPertenece(dto.internacionId, dto.pacienteId))
+    ) {
+      throw new BadRequestException('La internación no pertenece al paciente indicado.');
+    }
 
     const rows = await this.repository.createControl({
       pacienteId: dto.pacienteId,
       registradoPorId: identity.accountId,
       lecturas,
+      internacionId: dto.internacionId ?? null,
     });
 
     // Las alertas se publican recién cuando el control quedó guardado completo.
@@ -158,8 +174,8 @@ export class SignosVitalesService {
     return control;
   }
 
-  async listarControles(pacienteId?: string): Promise<ControlSignosVitalesView[]> {
-    const rows = await this.repository.listControles(pacienteId, LIST_LIMIT * LECTURAS_POR_CONTROL);
+  async listarControles(pacienteId?: string, internacionId?: string): Promise<ControlSignosVitalesView[]> {
+    const rows = await this.repository.listControles(pacienteId, internacionId, LIST_LIMIT * LECTURAS_POR_CONTROL);
     const porControl = new Map<string, SignoVitalData[]>();
     for (const row of rows) {
       const group = porControl.get(row.controlId!) ?? [];
@@ -170,6 +186,22 @@ export class SignosVitalesService {
       .map((group) => this.toControlView(group))
       .filter((view): view is ControlSignosVitalesView => view !== null)
       .slice(0, LIST_LIMIT);
+  }
+
+  async serie(
+    pacienteId: string,
+    tipo?: TipoSignoVital,
+    internacionId?: string,
+  ): Promise<SignoVitalView[]> {
+    await this.pacientes.get(pacienteId);
+    if (
+      internacionId &&
+      !(await this.repository.internacionPertenece(internacionId, pacienteId))
+    ) {
+      throw new BadRequestException('La internación no pertenece al paciente indicado.');
+    }
+    const rows = await this.repository.listSerie(pacienteId, tipo, internacionId, LIST_LIMIT);
+    return rows.map((row) => this.toView(row));
   }
 
   private toControlView(rows: SignoVitalData[]): ControlSignosVitalesView | null {
@@ -194,6 +226,7 @@ export class SignosVitalesService {
       frecuenciaCardiaca,
       temperatura,
       fechaHora: first.fechaHora.toISOString(),
+      internacionId: first.internacionId,
       registradoPor: first.registradoPor,
       critico: temperatura > TEMPERATURA_CRITICA_C,
       fueraDeRango,
@@ -211,6 +244,7 @@ export class SignosVitalesService {
       valor: row.valor,
       unidad: unidadDe(tipo),
       fechaHora: row.fechaHora.toISOString(),
+      internacionId: row.internacionId,
       registradoPor: row.registradoPor,
       fueraDeRango: estaFueraDeRango(tipo, row.valor),
     };

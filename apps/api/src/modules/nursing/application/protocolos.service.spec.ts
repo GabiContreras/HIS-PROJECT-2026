@@ -98,12 +98,15 @@ describe('ProtocolosService', () => {
     expect(guardados.size).toBe(1);
   });
 
-  it('rechaza con 400 un motivo sin protocolo y no persiste nada', async () => {
+  it('usa el protocolo general si el motivo no tiene un builder específico', async () => {
     const { service, repository } = build();
-    await expect(
-      service.generarParaIngreso({ ingresoId: INGRESO, pacienteId: PACIENTE, motivoIngreso: 'Fractura' }),
-    ).rejects.toBeInstanceOf(BadRequestException);
-    expect(repository.crearSiNoExiste).not.toHaveBeenCalled();
+    const { protocolo } = await service.generarParaIngreso({
+      ingresoId: INGRESO,
+      pacienteId: PACIENTE,
+      motivoIngreso: 'Fractura',
+    });
+    expect(protocolo.tipo).toBe('GENERAL');
+    expect(repository.crearSiNoExiste).toHaveBeenCalledOnce();
   });
 
   it('propaga 404 si el paciente no existe', async () => {
@@ -208,11 +211,11 @@ describe('PatientAdmittedSubscriber', () => {
     subscriber.onModuleDestroy();
   });
 
-  it('no propaga errores (motivo sin protocolo) y los registra', async () => {
+  it('no propaga errores de persistencia y los registra', async () => {
     const { service, repository } = build();
     const subscriber = new PatientAdmittedSubscriber(new EventBus(), service);
     const error = vi.spyOn(subscriber['logger'], 'error').mockImplementation(() => undefined);
-    await expect(subscriber.handle(evento('Fractura'))).resolves.toBeUndefined();
+    await expect(subscriber.handle(evento(''))).resolves.toBeUndefined();
     expect(error).toHaveBeenCalledOnce();
     expect(repository.crearSiNoExiste).not.toHaveBeenCalled();
   });

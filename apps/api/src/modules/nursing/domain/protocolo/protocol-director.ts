@@ -2,6 +2,7 @@ import { PreOpProtocolBuilder } from './pre-op-protocol-builder.js';
 import type { ProtocolBuilder } from './protocol-builder.js';
 import { type Protocolo, TipoIngreso } from './protocolo.js';
 import { RespiratoryProtocolBuilder } from './respiratory-protocol-builder.js';
+import { GeneralProtocolBuilder } from './general-protocol-builder.js';
 
 /**
  * Mapeo simple motivo de ingreso (texto libre, sin tildes ni mayúsculas) -> tipo de ingreso.
@@ -10,6 +11,7 @@ import { RespiratoryProtocolBuilder } from './respiratory-protocol-builder.js';
 const MOTIVOS: ReadonlyArray<{ tipo: TipoIngreso; patron: RegExp }> = [
   { tipo: TipoIngreso.PRE_QUIRURGICO, patron: /cirugia programada|pre[- ]?quirurgic/ },
   { tipo: TipoIngreso.RESPIRATORIO, patron: /neumonia|infeccion respiratoria/ },
+  { tipo: TipoIngreso.GENERAL, patron: /.*/ },
 ];
 
 function normalizar(texto: string): string {
@@ -27,12 +29,14 @@ export class ProtocolDirector {
   private readonly builders: Readonly<Record<TipoIngreso, () => ProtocolBuilder>> = {
     [TipoIngreso.PRE_QUIRURGICO]: () => new PreOpProtocolBuilder(),
     [TipoIngreso.RESPIRATORIO]: () => new RespiratoryProtocolBuilder(),
+    [TipoIngreso.GENERAL]: () => new GeneralProtocolBuilder(),
   };
 
   /** Devuelve el tipo de ingreso que corresponde al motivo/diagnóstico, o null si no tiene protocolo. */
   resolverTipo(motivoIngreso: string): TipoIngreso | null {
-    const texto = normalizar(motivoIngreso);
-    return MOTIVOS.find((m) => m.patron.test(texto))?.tipo ?? null;
+    const texto = normalizar(motivoIngreso).trim();
+    if (!texto) return null;
+    return MOTIVOS.find((m) => m.patron.test(texto))?.tipo ?? TipoIngreso.GENERAL;
   }
 
   construir(tipo: TipoIngreso): Protocolo {

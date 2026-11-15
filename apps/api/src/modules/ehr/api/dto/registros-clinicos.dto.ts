@@ -1,6 +1,6 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsString, MaxLength, MinLength } from 'class-validator';
+import { IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 
 /** Quita espacios de los extremos antes de validar, para que "   " no cuente como texto. */
 const Trim = () => Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value));
@@ -44,6 +44,25 @@ export class RegistrarEvolucionDto {
   @MinLength(3)
   @MaxLength(4000)
   nota: string;
+
+  @ApiPropertyOptional({ format: 'uuid', description: 'Turno relacionado con la evolución.' })
+  @IsOptional()
+  @IsUUID()
+  turnoId?: string;
+
+  @ApiPropertyOptional({ format: 'uuid', description: 'Internación relacionada con la evolución.' })
+  @IsOptional()
+  @IsUUID()
+  internacionId?: string;
+}
+
+export class RectificarRegistroDto {
+  @ApiProperty({ example: 'Se corrige la dosis consignada; la dosis correcta es 250 mg.', maxLength: 4000 })
+  @Trim()
+  @IsString()
+  @MinLength(3)
+  @MaxLength(4000)
+  motivo: string;
 }
 
 export class RegistrarEstudioDto {

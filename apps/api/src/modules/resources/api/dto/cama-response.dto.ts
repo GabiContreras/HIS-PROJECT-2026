@@ -15,6 +15,23 @@ export class PacienteResumenDto {
   documento: string;
 }
 
+export class HabitacionResumenDto {
+  @ApiProperty({ format: 'uuid' })
+  id: string;
+
+  @ApiProperty({ example: '101' })
+  numero: string;
+
+  @ApiProperty({ format: 'uuid' })
+  sectorId: string;
+
+  @ApiProperty({ example: 'Clínica Médica' })
+  sector: string;
+
+  @ApiProperty({ example: 4 })
+  capacidad: number;
+}
+
 export class CamaResponseDto {
   @ApiProperty({ example: '9b1d4c7e-2f3a-4e8b-8c55-1a2b3c4d5e6f' })
   id: string;
@@ -25,6 +42,9 @@ export class CamaResponseDto {
   @ApiProperty({ example: 'Clínica Médica', nullable: true, type: String })
   sector: string | null;
 
+  @ApiProperty({ type: HabitacionResumenDto, nullable: true })
+  habitacion: HabitacionResumenDto | null;
+
   @ApiProperty({ enum: EstadoCama, example: EstadoCama.LIBRE })
   estado: EstadoCama;
 
@@ -33,4 +53,10 @@ export class CamaResponseDto {
 
   @ApiProperty({ example: 3, description: 'Versión de la fila (se incrementa en cada cambio)' })
   version: number;
+
+  @ApiProperty({ example: true })
+  activa: boolean;
+
+  @ApiProperty({ nullable: true, type: String })
+  motivoBloqueo: string | null;
 }

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { RolUsuario } from '../../../entities/usuario.entity.js';
 import { CurrentIdentity } from '../../iam/api/auth.decorator.js';
@@ -32,7 +32,18 @@ export class SignosVitalesController {
   @ApiResponse({ status: 400, description: 'pacienteId inválido' })
   @ApiResponse({ status: 403, description: 'Solo médicos y enfermeros' })
   list(@Query() filtro: SignosVitalesFiltroDto) {
-    return this.signos.listar(filtro.pacienteId);
+    return this.signos.listar(filtro.pacienteId, filtro.internacionId);
+  }
+
+  @Get(':pacienteId/serie')
+  @Roles(RolUsuario.ENFERMERO, RolUsuario.MEDICO)
+  @ApiOperation({ summary: 'Serie cronológica de signos vitales por paciente, tipo e internación opcionales' })
+  @ApiResponse({ status: 404, description: 'Paciente inexistente' })
+  serie(
+    @Param('pacienteId', ParseUUIDPipe) pacienteId: string,
+    @Query() filtro: SignosVitalesFiltroDto,
+  ) {
+    return this.signos.serie(pacienteId, filtro.tipo, filtro.internacionId);
   }
 
   @Post()
@@ -51,7 +62,7 @@ export class SignosVitalesController {
   @ApiResponse({ status: 400, description: 'pacienteId inválido' })
   @ApiResponse({ status: 403, description: 'Solo médicos y enfermeros' })
   listControles(@Query() filtro: SignosVitalesFiltroDto) {
-    return this.signos.listarControles(filtro.pacienteId);
+    return this.signos.listarControles(filtro.pacienteId, filtro.internacionId);
   }
 
   @Post('controles')

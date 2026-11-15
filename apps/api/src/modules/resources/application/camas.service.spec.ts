@@ -34,6 +34,14 @@ interface Options {
 /** Arma el servicio con un EntityManager falso: la transacción corre el trabajo y devuelve su resultado. */
 function build(options: Options = {}) {
   const cama = { id: CAMA, numero: '101', sector: 'Piso 1', estado: options.estado ?? EstadoCama.LIBRE, pacienteActual: null };
+  const camaRepository = {
+    findOneOrFail: vi.fn(async () => ({
+      ...cama,
+      activo: true,
+      motivoBloqueo: null,
+      habitacion: null,
+    })),
+  };
   const internacionesGuardadas: Array<Record<string, unknown>> = [];
 
   const manager = {
@@ -67,7 +75,7 @@ function build(options: Options = {}) {
   events.ofType(BED_BLOCKED).subscribe((event) => published.push(event));
   events.ofType(BED_UNBLOCKED).subscribe((event) => published.push(event));
 
-  const service = new CamasService({} as never, dataSource as never, events);
+  const service = new CamasService(camaRepository as never, dataSource as never, events);
   return { service, events, published, internacionesGuardadas, manager };
 }
 
@@ -139,7 +147,7 @@ describe('CamasService.bloquear / desbloquear', () => {
   it('bloquear una cama libre la deja BLOQUEADA y publica bed.blocked', async () => {
     const { service, published } = build({ estado: EstadoCama.LIBRE });
 
-    const cama = await service.bloquear(CAMA);
+    const cama = await service.bloquear(CAMA, { motivo: 'Mantenimiento preventivo' });
 
     expect(cama.estado).toBe(EstadoCama.BLOQUEADA);
     expect(published).toHaveLength(1);
@@ -161,7 +169,7 @@ describe('CamasService.bloquear / desbloquear', () => {
   it('una transición inválida responde 409 y no publica nada', async () => {
     const { service, published } = build({ estado: EstadoCama.OCUPADA });
 
-    await expect(service.bloquear(CAMA)).rejects.toBeInstanceOf(ConflictException);
+    await expect(service.bloquear(CAMA, { motivo: 'Mantenimiento preventivo' })).rejects.toBeInstanceOf(ConflictException);
     expect(published).toHaveLength(0);
   });
 });
@@ -231,7 +239,7 @@ describe('CamasService.asignar + suscriptor de Enfermería (EventBus real)', () 
     subscriber.onModuleDestroy();
   });
 
-  it('un motivo sin protocolo definido no rompe la asignación ni genera protocolo', async () => {
+  it('un motivo sin builder específico genera un protocolo general', async () => {
     const { service, events } = build();
     const { protocolos, subscriber } = conEnfermeria(events);
 
@@ -239,7 +247,9 @@ describe('CamasService.asignar + suscriptor de Enfermería (EventBus real)', () 
     await esperarSuscriptor();
 
     expect(cama.estado).toBe(EstadoCama.OCUPADA);
-    expect(await protocolos.listarPorPaciente(PACIENTE)).toHaveLength(0);
+    const lista = await protocolos.listarPorPaciente(PACIENTE);
+    expect(lista).toHaveLength(1);
+    expect(lista[0].tipo).toBe('GENERAL');
     subscriber.onModuleDestroy();
   });
 });

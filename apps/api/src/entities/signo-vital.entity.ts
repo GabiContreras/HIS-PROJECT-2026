@@ -1,6 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, JoinColumn, ManyToOne, CreateDateColumn } from 'typeorm';
 import { Paciente } from './paciente.entity.js';
 import { Usuario } from './usuario.entity.js';
+import { Internacion } from './internacion.entity.js';
 
 @Entity('signos_vitales')
 export class SignoVital {
@@ -12,7 +13,12 @@ paciente: Paciente;
 
 
   @ManyToOne(() => Usuario, { onDelete: 'RESTRICT' })
-registradoPor: Usuario;
+  @JoinColumn({ name: 'registrado_por_id' })
+  registradoPor: Usuario;
+
+  @ManyToOne(() => Internacion, { nullable: true, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'internacion_id' })
+  internacion: Internacion | null;
 
   @Column()
   tipo: string;

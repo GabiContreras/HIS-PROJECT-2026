@@ -76,10 +76,16 @@ onMounted(() => Promise.all([store.load(), inventory.load()]));
                   label="Administrada"
                   tone="success"
                 />
+                <StatusChip
+                  v-else-if="m.estado === 'OMITIDA'"
+                  label="Omitida"
+                  tone="warning"
+                />
                 <StatusChip v-else :label="windowText(m)" :tone="withinWindow(m) ? 'info' : 'neutral'" />
                 <br /><small v-if="m.administradaPor" class="muted">
                   Por {{ m.administradaPor }}<template v-if="m.administradaAt"> · a las {{ formatTime(m.administradaAt) }}</template>
                 </small>
+                <br /><small v-if="m.motivoOmision" class="muted">Motivo: {{ m.motivoOmision }}</small>
               </td>
               <td>
                 <button

@@ -6,8 +6,8 @@ import type { SessionIdentity } from '../../iam/application/auth.service.js';
 import type {
   AdministracionData,
   ContextoAdministracion,
+  DecisionAdministracion,
   IndicacionData,
-  NuevaAdministracion,
 } from '../domain/ports/indicaciones.repository.js';
 import { IndicacionesService } from './indicaciones.service.js';
 
@@ -23,6 +23,10 @@ describe('IndicacionesService', () => {
     medicoId: 'doc-1',
     insumoId: 'supply-1',
     insumo: 'Ibuprofeno',
+    tipo: 'MEDICACION',
+    estado: 'ACTIVA',
+    internacionId: null,
+    motivoSuspension: null,
     dosis: '400 mg',
     frecuencia: 'cada 8 horas',
     frecuenciaHoras: 8,
@@ -38,6 +42,9 @@ describe('IndicacionesService', () => {
       enfermero: 'Pérez, Juan',
       fechaHoraAdministracion: new Date(fecha),
       observaciones: null,
+      dosisProgramadaPara: null,
+      resultado: 'ADMINISTRADA',
+      motivoOmision: null,
     };
   }
 
@@ -45,6 +52,8 @@ describe('IndicacionesService', () => {
     const ind = options.ind === undefined ? indicacion : options.ind;
     const repository = {
       insumoExiste: vi.fn(async () => options.insumoExiste !== false),
+      obtenerNombreInsumo: vi.fn(async () => 'Ibuprofeno'),
+      internacionPertenece: vi.fn(async () => true),
       create: vi.fn(async (data: Record<string, unknown>) => ({
         ...indicacion,
         pacienteId: data.pacienteId as string,
@@ -55,14 +64,29 @@ describe('IndicacionesService', () => {
       })),
       listarActivas: vi.fn(),
       administrarBajoBloqueo: vi.fn(
-        async (_id: string, decidir: (c: ContextoAdministracion) => NuevaAdministracion) => {
-          const nueva = decidir({ indicacion: ind, administraciones: options.previas ?? [] });
+        async (_id: string, decidir: (c: ContextoAdministracion) => DecisionAdministracion) => {
+          const decision = decidir({ indicacion: ind, administraciones: options.previas ?? [] });
+          if (decision.existente) {
+            return { indicacion: ind as IndicacionData, administracion: decision.existente, creada: false };
+          }
+          const nueva = decision.nueva!;
           return {
             indicacion: ind as IndicacionData,
-            administracion: { ...admin(nueva.fechaHoraAdministracion.toISOString()), id: 'adm-1', enfermeroId: nueva.enfermeroId, enfermero: 'López, Marta', observaciones: nueva.observaciones },
+            administracion: {
+              ...admin(nueva.fechaHoraAdministracion.toISOString()),
+              id: 'adm-1',
+              enfermeroId: nueva.enfermeroId,
+              enfermero: 'López, Marta',
+              observaciones: nueva.observaciones,
+              dosisProgramadaPara: nueva.dosisProgramadaPara,
+              resultado: nueva.resultado,
+              motivoOmision: nueva.motivoOmision,
+            },
+            creada: true,
           };
         },
       ),
+      cambiarEstado: vi.fn(),
     };
     const pacientes = {
       get: vi.fn(async () => {
@@ -73,7 +97,8 @@ describe('IndicacionesService', () => {
     const events = new EventBus();
     const published: Array<{ type: string; payload: unknown }> = [];
     events.ofType(INTEGRATION_EVENTS.MEDICATION_ADMINISTERED).subscribe((event) => published.push(event));
-    const service = new IndicacionesService(repository as never, pacientes as never, events);
+    const historiaClinica = { alertasAlergia: vi.fn(async () => []) };
+    const service = new IndicacionesService(repository as never, pacientes as never, events, historiaClinica as never);
     return { service, repository, pacientes, published };
   }
 
@@ -94,6 +119,8 @@ describe('IndicacionesService', () => {
         pacienteId: 'patient-1',
         medicoId: 'doc-1',
         insumoId: 'supply-1',
+        tipo: 'MEDICACION',
+        internacionId: null,
         dosis: '400 mg',
         frecuencia: 'cada 8 horas',
         frecuenciaHoras: 8,
@@ -167,10 +194,11 @@ describe('IndicacionesService', () => {
       expect(published).toHaveLength(0);
     });
 
-    it('409 when the dose was already administered (double click)', async () => {
+    it('returns the original administration on a retry without publishing a duplicate event', async () => {
       vi.setSystemTime(new Date('2030-01-01T14:10:00.000Z'));
       const { service, published } = build({ previas: [admin('2030-01-01T14:02:00.000Z')] });
-      await expect(service.administrar('ind-1', {}, nurse)).rejects.toThrow(/ya fue administrada/);
+      const result = await service.administrar('ind-1', {}, nurse);
+      expect(result.id).toBe('adm-0');
       expect(published).toHaveLength(0);
     });
 
