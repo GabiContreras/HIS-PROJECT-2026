@@ -4,7 +4,7 @@ export class ForgotPasswordResponseDto {
   @ApiProperty({
     description: 'Información sobre el estado de la recuperación.',
     example:
-      'La recuperación por correo está temporalmente deshabilitada. En desarrollo, restablecé la contraseña mediante /auth/reset-password.',
+      'La recuperación por correo no está disponible. Pedile a un administrativo que restablezca tu contraseña.',
   })
   message: string;
 }

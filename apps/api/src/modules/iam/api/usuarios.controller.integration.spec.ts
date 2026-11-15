@@ -43,7 +43,7 @@ describe('UsuariosController: autorización por rol y por superadmin', () => {
     dispose: vi.fn(async () => cuenta),
     restore: vi.fn(async () => cuenta),
   };
-  const auth = { register: vi.fn(async () => ({ message: 'ok' })) };
+  const auth = { createStaff: vi.fn(async () => ({ message: 'ok' })) };
 
   // Reemplaza solo la autenticación. RolesGuard y SuperadminGuard son los reales.
   const authGuardFalso = {
@@ -91,7 +91,7 @@ describe('UsuariosController: autorización por rol y por superadmin', () => {
 
   // Endpoints de administración común: cualquier ADMINISTRATIVO (el superadmin también lo es).
   const deAdministrativo = [
-    { nombre: 'POST /usuarios', metodo: 'post', ruta: '/usuarios', body: STAFF, ok: 201, caso: () => auth.register },
+    { nombre: 'POST /usuarios', metodo: 'post', ruta: '/usuarios', body: STAFF, ok: 201, caso: () => auth.createStaff },
     { nombre: 'GET /usuarios', metodo: 'get', ruta: '/usuarios', ok: 200, caso: () => accounts.list },
     { nombre: 'GET /usuarios/:id', metodo: 'get', ruta: `/usuarios/${ID}`, ok: 200, caso: () => accounts.get },
     { nombre: 'PATCH /usuarios/:id', metodo: 'patch', ruta: `/usuarios/${ID}`, body: { nombre: 'Ada' }, ok: 200, caso: () => accounts.updateProfile },
@@ -174,7 +174,7 @@ describe('UsuariosController: autorización por rol y por superadmin', () => {
   describe('validación de entrada', () => {
     it('rechaza crear personal con una contraseña que no cumple la política', async () => {
       await llamar('post', '/usuarios', ADMINISTRATIVO, { ...STAFF, password: 'ClaveSegura123' }).expect(400);
-      expect(auth.register).not.toHaveBeenCalled();
+      expect(auth.createStaff).not.toHaveBeenCalled();
     });
 
     it('rechaza crear un administrativo con email inválido', async () => {

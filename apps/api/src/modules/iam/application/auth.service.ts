@@ -17,7 +17,6 @@ import {
 import { RefreshSession } from '../../../entities/refresh-session.entity.js';
 import { CreateAdminDto } from '../api/dto/create-admin.dto.js';
 import { RegistroDto } from '../api/dto/registro.dto.js';
-import { ResetPasswordDto } from '../api/dto/reset-password.dto.js';
 import { PasswordHasher } from './password-hasher.js';
 import { TokenService } from './token.service.js';
 
@@ -317,48 +316,7 @@ export class AuthService {
     return { message: 'La contraseña temporal fue asignada.' };
   }
 
-  async resetPassword(dto: ResetPasswordDto): Promise<{ message: string }> {
-    if (process.env.NODE_ENV === 'production') {
-      throw new ForbiddenException(
-        'El restablecimiento sin verificación solo está habilitado durante el desarrollo.',
-      );
-    }
-    const user = await this.findByEmail(dto.email);
-    if (
-      !user ||
-      user.estado === EstadoCuenta.DESHABILITADO ||
-      user.estado === EstadoCuenta.BAJA
-    ) {
-      throw new NotFoundException('No se encontró una cuenta habilitada.');
-    }
-
-    await this.dataSource.transaction(async (manager) => {
-      await manager.getRepository(Usuario).update(
-        { id: user.id },
-        {
-          passwordHash: await this.passwordHasher.hash(dto.password),
-          estado:
-            user.estado === EstadoCuenta.PENDIENTE_VERIFICACION
-              ? user.rol === RolUsuario.MEDICO
-                ? EstadoCuenta.PENDIENTE_HABILITACION
-                : EstadoCuenta.ACTIVO
-              : user.estado,
-          emailVerificado: true,
-          intentosFallidos: 0,
-          bloqueadoHasta: null,
-        },
-      );
-      await manager
-        .getRepository(RefreshSession)
-        .update(
-          { usuarioId: user.id, revocadoEn: IsNull() },
-          { revocadoEn: new Date() },
-        );
-    });
-    return { message: 'Contraseña restablecida correctamente.' };
-  }
-
-  async changePassword(
+ async changePassword(
     identity: SessionIdentity,
     currentPassword: string,
     newPassword: string,
