@@ -8,6 +8,7 @@ import { MovimientoInventario } from '../../../entities/movimiento-inventario.en
 import { RolUsuario } from '../../../entities/usuario.entity.js';
 import { AuthGuard } from '../../iam/api/auth.guard.js';
 import { InventoryService } from '../infrastructure/inventory.service.js';
+import { EventBus } from '../../../shared/events/event-bus.service.js';
 import { InventoryController } from './inventory.controller.js';
 
 describe('InventoryController reponer integration', () => {
@@ -53,6 +54,7 @@ describe('InventoryController reponer integration', () => {
       controllers: [InventoryController],
       providers: [
         InventoryService,
+        { provide: EventBus, useValue: { publish: vi.fn() } },
         { provide: getRepositoryToken(Insumo), useValue: repository },
         { provide: getRepositoryToken(MovimientoInventario), useValue: movimientoRepository },
       ],

@@ -190,4 +190,83 @@ describe('OutboxService', () => {
     expect(retryDelayMs(2)).toBe(retryDelayMs(1) * 2);
     expect(retryDelayMs(OUTBOX_MAX_ATTEMPTS)).toBeLessThanOrEqual(300_000);
   });
+
+  describe('acción posterior a la entrega', () => {
+    it('ejecuta la función devuelta por el consumidor después de confirmar la entrega', async () => {
+      const log: string[] = [];
+      const alerta = vi.fn(() => {
+        log.push('alerta');
+      });
+      inventory.mockImplementation(async () => {
+        log.push('handle');
+        return alerta;
+      });
+      const deliverOnce = store.deliverOnce.bind(store);
+      store.deliverOnce = async (...args) => {
+        const outcome = await deliverOnce(...args);
+        if (args[1] === 'inventory') log.push('commit');
+        return outcome;
+      };
+
+      await outbox.enqueue(medicationAdministered);
+
+      expect(log).toEqual(['handle', 'commit', 'alerta']);
+      expect(alerta).toHaveBeenCalledTimes(1);
+    });
+
+    it('no la ejecuta si el consumidor falla', async () => {
+      const alerta = vi.fn();
+      inventory.mockImplementationOnce(async () => {
+        throw new Error('revierte');
+      });
+      inventory.mockResolvedValueOnce(alerta);
+
+      await outbox.enqueue(medicationAdministered);
+
+      expect(alerta).not.toHaveBeenCalled();
+    });
+
+    it('no la ejecuta si la entrega ya estaba registrada', async () => {
+      const alerta = vi.fn();
+      inventory.mockResolvedValue(alerta);
+      await outbox.enqueue(medicationAdministered);
+      expect(alerta).toHaveBeenCalledTimes(1);
+      store.records[0].pending = true;
+
+      await outbox.processDue(afterMaxBackoff());
+
+      expect(alerta).toHaveBeenCalledTimes(1);
+    });
+
+    it('si la acción lanza un error, la entrega igual queda registrada', async () => {
+      inventory.mockResolvedValue(() => {
+        throw new Error('falló la alerta');
+      });
+
+      await expect(outbox.enqueue(medicationAdministered)).resolves.toBeUndefined();
+
+      expect(store.records[0].deliveredConsumers).toContain('inventory');
+      expect(store.records[0].attempts).toBe(0);
+    });
+
+    it('en la entrega en memoria sin persistencia también ejecuta la acción devuelta', async () => {
+      const alerta = vi.fn();
+      const failingStore: OutboxStore = {
+        append: vi.fn().mockRejectedValue(new Error('sin conexión')),
+        deliverOnce: vi.fn(),
+        recordFailure: vi.fn(),
+        findDue: vi.fn(),
+      };
+      const degradedOutbox = new OutboxService(failingStore);
+      degradedOutbox.registerConsumer({
+        name: 'inventory',
+        eventType: medicationAdministered.type,
+        handle: vi.fn().mockResolvedValue(alerta),
+      });
+
+      await degradedOutbox.enqueue(medicationAdministered);
+
+      expect(alerta).toHaveBeenCalledTimes(1);
+    });
+  });
 });

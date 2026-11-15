@@ -8,14 +8,18 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, QueryFailedError, Repository } from 'typeorm';
 import { Insumo } from '../../../entities/insumo.entity.js';
+import { EventBus } from '../../../shared/events/event-bus.service.js';
+import { InventoryLowStock } from '../../../shared/events/inventory-low-stock.event.js';
 import { MovimientoInventario } from '../../../entities/movimiento-inventario.entity.js';
 import {
   OrigenMovimientoInventario,
   TipoMovimientoInventario,
 } from '../domain/inventory-movement.js';
+import { cruzaStockMinimo } from '../domain/low-stock.js';
 import {
   ActualizarInsumoInput,
   CrearInsumoInput,
+  DescontarStockDiferido,
   DescontarStockInput,
   DescontarStockResult,
   InsumoDetalle,
@@ -69,6 +73,7 @@ export class InventoryService implements InventoryPort {
     private readonly insumoRepository: Repository<Insumo>,
     @InjectRepository(MovimientoInventario)
     private readonly movimientoRepository: Repository<MovimientoInventario>,
+    private readonly eventBus: EventBus,
   ) {}
 
   async listar(): Promise<InsumoStock[]> {
@@ -152,22 +157,23 @@ export class InventoryService implements InventoryPort {
 
   async descontarStock(
     input: DescontarStockInput,
-    manager?: EntityManager,
   ): Promise<DescontarStockResult> {
-    const { cantidad } = input;
+    this.validarCantidad(input.cantidad);
 
-    if (!Number.isInteger(cantidad) || cantidad <= 0) {
-      throw new BadRequestException(
-        'La cantidad debe ser un entero positivo',
+    const { resultado, publicarAlerta } =
+      await this.insumoRepository.manager.transaction((transaccion) =>
+        this.descontarEn(transaccion, input),
       );
-    }
+    publicarAlerta();
+    return resultado;
+  }
 
-    if (manager) {
-      return this.descontarEn(manager, input);
-    }
-    return this.insumoRepository.manager.transaction((transaccion) =>
-      this.descontarEn(transaccion, input),
-    );
+  async descontarStockEnTransaccion(
+    input: DescontarStockInput,
+    manager: EntityManager,
+  ): Promise<DescontarStockDiferido> {
+    this.validarCantidad(input.cantidad);
+    return this.descontarEn(manager, input);
   }
 
   async reponerStock(input: ReponerStockInput): Promise<ReponerStockResult> {
@@ -213,10 +219,18 @@ export class InventoryService implements InventoryPort {
     }));
   }
 
+  private validarCantidad(cantidad: number): void {
+    if (!Number.isInteger(cantidad) || cantidad <= 0) {
+      throw new BadRequestException(
+        'La cantidad debe ser un entero positivo',
+      );
+    }
+  }
+
   private async descontarEn(
     manager: EntityManager,
     input: DescontarStockInput,
-  ): Promise<DescontarStockResult> {
+  ): Promise<DescontarStockDiferido> {
     const { insumoId, cantidad } = input;
 
     const insumos = manager.getRepository(Insumo);
@@ -246,9 +260,13 @@ export class InventoryService implements InventoryPort {
 
     const actualizado = result.raw[0] as {
       id: string;
+      nombre: string;
+      unidad_medida: string;
       cantidad_disponible: number | string;
+      stock_minimo: number | string;
     };
     const cantidadRestante = Number(actualizado.cantidad_disponible);
+    const stockMinimo = Number(actualizado.stock_minimo);
 
     await this.registrarMovimiento(
       manager,
@@ -257,10 +275,30 @@ export class InventoryService implements InventoryPort {
       cantidadRestante,
     );
 
-    return {
-      insumoId: actualizado.id,
-      cantidadDescontada: cantidad,
+    const cruzaMinimo = cruzaStockMinimo(
+      cantidadRestante + cantidad,
       cantidadRestante,
+      stockMinimo,
+    );
+
+    return {
+      resultado: {
+        insumoId: actualizado.id,
+        cantidadDescontada: cantidad,
+        cantidadRestante,
+      },
+      publicarAlerta: () => {
+        if (!cruzaMinimo) return;
+        this.eventBus.publish(
+          new InventoryLowStock({
+            insumoId: actualizado.id,
+            nombre: actualizado.nombre,
+            unidadMedida: actualizado.unidad_medida,
+            cantidadDisponible: cantidadRestante,
+            stockMinimo,
+          }),
+        );
+      },
     };
   }
 

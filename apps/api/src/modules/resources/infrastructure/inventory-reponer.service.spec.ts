@@ -36,7 +36,7 @@ describe('InventoryService reponerStock', () => {
     manager.transaction = vi.fn((work: (m: unknown) => unknown) => work(manager));
     Object.assign(repository, { manager });
 
-    service = new InventoryService(repository as never, movimientos as never);
+    service = new InventoryService(repository as never, movimientos as never, { publish: vi.fn() } as never);
   });
 
   it('repone stock y devuelve el saldo actual', async () => {

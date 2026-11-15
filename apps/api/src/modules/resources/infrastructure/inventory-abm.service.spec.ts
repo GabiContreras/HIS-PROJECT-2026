@@ -44,7 +44,7 @@ describe('InventoryService ABM', () => {
       createQueryBuilder: vi.fn(() => queryBuilder),
     };
 
-    service = new InventoryService(repository as never, {} as never);
+    service = new InventoryService(repository as never, {} as never, { publish: vi.fn() } as never);
   });
 
   describe('crear', () => {

@@ -7,6 +7,7 @@ import { Insumo } from '../../../entities/insumo.entity.js';
 import { MovimientoInventario } from '../../../entities/movimiento-inventario.entity.js';
 import { AuthGuard } from '../../iam/api/auth.guard.js';
 import { RolesGuard } from '../../iam/api/roles.guard.js';
+import { EventBus } from '../../../shared/events/event-bus.service.js';
 import { InventoryController } from './inventory.controller.js';
 import { InventoryService } from '../infrastructure/inventory.service.js';
 import { RolUsuario } from '../../../entities/usuario.entity.js';
@@ -18,6 +19,7 @@ describe('InventoryController integration', () => {
   const insumoId = '550e8400-e29b-41d4-a716-446655440000';
   const insumoInexistente = '550e8400-e29b-41d4-a716-446655440001';
   const stock = new Map<string, number>();
+  const eventBus = { publish: vi.fn() };
 
   const repository = {
     createQueryBuilder: vi.fn(() => {
@@ -49,7 +51,15 @@ describe('InventoryController integration', () => {
 
           return {
             affected: 1,
-            raw: [{ id, cantidad_disponible: restante }],
+            raw: [
+              {
+                id,
+                nombre: 'Ibuprofeno 400mg',
+                unidad_medida: 'comprimido',
+                cantidad_disponible: restante,
+                stock_minimo: 5,
+              },
+            ],
           };
         }),
       };
@@ -91,6 +101,7 @@ describe('InventoryController integration', () => {
       controllers: [InventoryController],
       providers: [
         InventoryService,
+        { provide: EventBus, useValue: eventBus },
         { provide: getRepositoryToken(Insumo), useValue: repository },
         { provide: getRepositoryToken(MovimientoInventario), useValue: movimientoRepository },
       ],
@@ -155,6 +166,29 @@ describe('InventoryController integration', () => {
       cantidadRestante: 7,
     });
   });
+  it('al cruzar el stock mínimo responde igual y publica la alerta una vez', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/resources/inventory/descontar')
+      .send({ insumoId, cantidad: 5 })
+      .expect(201);
+
+    expect(response.body).toEqual({
+      insumoId,
+      cantidadDescontada: 5,
+      cantidadRestante: 5,
+    });
+    expect(eventBus.publish).toHaveBeenCalledTimes(1);
+  });
+
+  it('un descuento rechazado por stock insuficiente no publica la alerta', async () => {
+    await request(app.getHttpServer())
+      .post('/resources/inventory/descontar')
+      .send({ insumoId, cantidad: 20 })
+      .expect(409);
+
+    expect(eventBus.publish).not.toHaveBeenCalled();
+  });
+
   it('devuelve 403 cuando el usuario no es MEDICO', async () => {
   rolUsuario = RolUsuario.ENFERMERO;
 

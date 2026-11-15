@@ -34,17 +34,23 @@ export class MedicationAdministeredSubscriber implements OnModuleInit, OnModuleD
   async handle(
     event: DomainEvent<MedicationAdministeredPayload>,
     manager?: EntityManager,
-  ): Promise<void> {
+  ): Promise<(() => void) | void> {
     const { supplyId, quantity, administrationId } = event.payload;
-    await this.inventory.descontarStock(
-      {
-        insumoId: supplyId,
-        cantidad: quantity,
-        usuarioId: null,
-        origen: OrigenMovimientoInventario.ADMINISTRACION_MEDICACION,
-        referenciaId: administrationId ?? null,
-      },
+    const input = {
+      insumoId: supplyId,
+      cantidad: quantity,
+      usuarioId: null,
+      origen: OrigenMovimientoInventario.ADMINISTRACION_MEDICACION,
+      referenciaId: administrationId ?? null,
+    };
+    if (!manager) {
+      await this.inventory.descontarStock(input);
+      return;
+    }
+    const { publicarAlerta } = await this.inventory.descontarStockEnTransaccion(
+      input,
       manager,
     );
+    return publicarAlerta;
   }
 }
