@@ -1,9 +1,12 @@
 import { Module, ValidationPipe } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { APP_FILTER, APP_PIPE } from '@nestjs/core';
+import { APP_FILTER, APP_PIPE, APP_INTERCEPTOR } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
+import { Auditoria } from './entities/auditoria.entity.js';
+import { AuditoriaService } from './modules/iam/application/auditoria.service.js';
+import { AuditarInterceptor } from './modules/iam/api/auditar.interceptor.js';
 import { Usuario } from './entities/usuario.entity.js';
 import { RefreshSession } from './entities/refresh-session.entity.js';
 import { Paciente } from './entities/paciente.entity.js';
@@ -32,14 +35,14 @@ import { AllExceptionsFilter } from './shared/http/all-exceptions.filter.js';
 
 @Module({
   imports: [
-    // 1. Cargamos ConfigModule especificando posibles rutas del .env
+    
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ['.env', 'apps/api/.env', '../../.env'],
     }),
 
-    // 2. Usamos forRootAsync para esperar a que las variables de entorno se carguen
     TypeOrmModule.forRootAsync({
+      
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
@@ -71,6 +74,7 @@ import { AllExceptionsFilter } from './shared/http/all-exceptions.filter.js';
             : { rejectUnauthorized: false },
       }),
     }),
+    TypeOrmModule.forFeature([Auditoria]),
 
     SharedModule,
     HealthModule,
@@ -86,6 +90,7 @@ import { AllExceptionsFilter } from './shared/http/all-exceptions.filter.js';
     AppService,
     { provide: APP_PIPE, useValue: new ValidationPipe({ whitelist: true, transform: true }) },
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
+    { provide: APP_INTERCEPTOR, useClass: AuditarInterceptor },
   ],
 })
 export class AppModule {}

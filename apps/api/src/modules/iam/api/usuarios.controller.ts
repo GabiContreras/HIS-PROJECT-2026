@@ -38,6 +38,7 @@ import { UpdateUserDto } from './dto/update-user.dto.js';
 import { HorarioMedicoDto } from './dto/horario-medico.dto.js';
 import { AccountResponseDto } from './dto/account-response.dto.js';
 import { MessageResponseDto } from './dto/message-response.dto.js';
+import { Auditar } from './auditar.decorator.js';
 
 @Controller('usuarios')
 @ApiTags('Usuarios')
@@ -48,6 +49,7 @@ export class UsuariosController {
     private readonly auth: AuthService,
   ) {}
 
+  @Auditar('CREAR_CUENTA', 'usuarios')
   @Post()
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(RolUsuario.ADMINISTRATIVO)
@@ -64,6 +66,7 @@ export class UsuariosController {
     return this.auth.createStaff(dto);
   }
 
+  @Auditar('CREAR_ADMINISTRADOR', 'usuarios')
   @Post('administrativos')
   @UseGuards(AuthGuard, SuperadminGuard)
   @ApiOperation({
@@ -126,6 +129,7 @@ export class UsuariosController {
     return this.accounts.get(id);
   }
 
+  @Auditar('MODIFICAR_CUENTA', 'usuarios')
   @Patch(':id')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(RolUsuario.ADMINISTRATIVO)
@@ -148,6 +152,7 @@ export class UsuariosController {
     return this.accounts.updateProfile(id, dto, identity);
   }
 
+  @Auditar('MODIFICAR_HORARIO', 'usuarios')
   @Patch(':id/horario')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(RolUsuario.ADMINISTRATIVO)
@@ -170,6 +175,7 @@ export class UsuariosController {
     return this.accounts.updateSchedule(id, dto, identity);
   }
 
+  @Auditar('HABILITAR_CUENTA', 'usuarios')
   @Patch(':id/habilitar')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(RolUsuario.ADMINISTRATIVO)
@@ -190,6 +196,7 @@ export class UsuariosController {
     return this.accounts.enableDoctor(id, identity);
   }
 
+  @Auditar('DESHABILITAR_CUENTA', 'usuarios')
   @Patch(':id/deshabilitar')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(RolUsuario.ADMINISTRATIVO)
@@ -210,6 +217,7 @@ export class UsuariosController {
     return this.accounts.deactivate(id, identity);
   }
 
+  @Auditar('RESTABLECER_CLAVE', 'usuarios')
   @Patch(':id/restablecer-clave')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(RolUsuario.ADMINISTRATIVO)
@@ -230,6 +238,7 @@ export class UsuariosController {
     return this.accounts.resetPassword(id, dto, identity);
   }
 
+  @Auditar('BAJA_CUENTA', 'usuarios')
   @Patch(':id/baja')
   @UseGuards(AuthGuard, SuperadminGuard)
   @ApiOperation({
@@ -252,6 +261,7 @@ export class UsuariosController {
     return this.accounts.dispose(id, identity);
   }
 
+  @Auditar('RESTAURAR_CUENTA', 'usuarios')
   @Patch(':id/restaurar')
   @UseGuards(AuthGuard, SuperadminGuard)
   @ApiOperation({

@@ -8,11 +8,14 @@ export interface PacienteData {
   fechaNacimiento: string;
   telefono: string | null;
   tipoCobertura: CoverageType;
-  /** Prepaga u obra social; null si es particular. */
   entidadCobertura: string | null;
 }
 
 export type NuevoPaciente = Omit<PacienteData, 'id'>;
+
+export type ActualizacionPaciente = Partial<
+  Omit<PacienteData, 'id' | 'tipoCobertura' | 'entidadCobertura' | 'telefono'>
+> & { telefono?: string };
 
 export class DocumentoDuplicadoError extends Error {
   constructor() {
@@ -24,9 +27,8 @@ export interface PacientesRepository {
   search(term: string | undefined, limit: number): Promise<PacienteData[]>;
   findById(id: string): Promise<PacienteData | null>;
   findByDocumento(documento: string): Promise<PacienteData | null>;
-  /** Lanza DocumentoDuplicadoError si el documento ya existe. */
   create(data: NuevoPaciente): Promise<PacienteData>;
-  /** null si el paciente no existe. */
+  update(id: string, changes: ActualizacionPaciente): Promise<PacienteData | null>;
   updateCoverage(
     id: string,
     tipoCobertura: CoverageType,
