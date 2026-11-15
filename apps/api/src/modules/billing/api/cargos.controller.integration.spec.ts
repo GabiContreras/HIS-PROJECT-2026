@@ -5,6 +5,7 @@ import request from 'supertest';
 import { QueryFailedError } from 'typeorm';
 import { Cargo, TipoAtencionFacturable } from '../../../entities/cargo.entity.js';
 import { Turno } from '../../../entities/turno.entity.js';
+import { Paciente } from '../../../entities/paciente.entity.js';
 import { AuthGuard } from '../../iam/api/auth.guard.js';
 import { RolesGuard } from '../../iam/api/roles.guard.js';
 import { EventBus } from '../../../shared/events/event-bus.service.js';
@@ -94,6 +95,7 @@ describe('Billing integration', () => {
         { provide: getRepositoryToken(Turno), useValue: turnosRepository },
         {provide: getRepositoryToken(Insumo),useValue: {findOneByOrFail: vi.fn(),},},
         {provide: getRepositoryToken(AdministracionMedicacion),useValue: {findOne: vi.fn(),}},
+        { provide: getRepositoryToken(Paciente), useValue: { findOneBy: vi.fn() } },
       ],
     })
       .overrideGuard(AuthGuard)

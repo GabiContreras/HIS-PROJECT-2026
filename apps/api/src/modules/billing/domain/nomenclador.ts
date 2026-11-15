@@ -1,6 +1,7 @@
 export enum PrestacionCodigo {
   CONSULTA_REGULAR = 'CONSULTA_REGULAR',
   CONSULTA_URGENCIA = 'CONSULTA_URGENCIA',
+  DIA_CAMA = 'DIA_CAMA',
 }
 
 export interface PrestacionData {

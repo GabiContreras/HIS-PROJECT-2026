@@ -4,11 +4,13 @@ import type { TipoCobertura } from '../../services/patients';
 export const CONCEPTO: Record<TipoAtencion, string> = {
   REGULAR: 'Consulta médica general',
   URGENCIA: 'Consulta de urgencia (entreturno)',
+  INTERNACION: 'Internación (días de cama)',
 };
 
 export const TIPO_LABEL: Record<TipoAtencion, string> = {
   REGULAR: 'Prestación médica',
   URGENCIA: 'Urgencia',
+  INTERNACION: 'Internación',
 };
 
 export const COBERTURA_LABEL: Record<TipoCobertura, string> = {

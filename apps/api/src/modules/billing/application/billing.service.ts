@@ -21,6 +21,10 @@ import { MedicationAdministeredPayload } from '../../../shared/events/medication
 
 import { AdministracionMedicacion } from '../../../entities/administracion-medicacion.entity.js';
 import { TipoIndicacion } from '../../../entities/indicacion-medica.entity.js';
+import { Paciente } from '../../../entities/paciente.entity.js';
+import { BedReleasedPayload } from '../../../shared/events/bed-released.event.js';
+import { calcularDiasCama } from '../domain/dias-cama.js';
+import { PrestacionCodigo } from '../domain/nomenclador.js';
 export interface CargoDetalle {
   id: string;
   turnoId: string | null;
@@ -70,6 +74,9 @@ export class BillingService {
 
     @InjectRepository(AdministracionMedicacion)
     private readonly administraciones: Repository<AdministracionMedicacion>,
+
+    @InjectRepository(Paciente)
+    private readonly pacientes: Repository<Paciente>,
 
     private readonly nomenclador: NomencladorService,
 
@@ -193,6 +200,57 @@ if (
     });
   }
  }
+
+  async createForBedStay(input: BedReleasedPayload): Promise<Cargo> {
+    const dias = calcularDiasCama(input.fechaIngreso, input.fechaEgreso);
+
+    const paciente = await this.pacientes.findOneBy({ id: input.patientId });
+    if (!paciente) {
+      throw new Error(
+        `No se encontró el paciente ${input.patientId} de la internación ${input.internacionId}.`,
+      );
+    }
+
+    const { valorPesos: valorDia, copagoPesos } = await this.nomenclador.resolve(
+      PrestacionCodigo.DIA_CAMA,
+      paciente.financiadorId ?? null,
+    );
+
+    const importePesos = dias * valorDia;
+    if (!Number.isSafeInteger(importePesos)) {
+      throw new Error('El importe del cargo de internación no es válido.');
+    }
+
+    const reparto = coverageStrategyFor(paciente.tipoCobertura).split(
+      importePesos,
+      copagoPesos,
+    );
+
+    try {
+      return await this.cargos.save(
+        this.cargos.create({
+          turnoId: null,
+          administrationId: null,
+          internacionId: input.internacionId,
+          concepto: `Internación: ${dias} días de cama`,
+          importePesos,
+          tipoAtencion: TipoAtencionFacturable.INTERNACION,
+          tipoCobertura: paciente.tipoCobertura,
+          entidadCobertura: paciente.entidadCobertura ?? null,
+          importePacientePesos: reparto.pacientePesos,
+          importeTerceroPesos: reparto.terceroPesos,
+        }),
+      );
+    } catch (error) {
+      if (!this.isDuplicateAppointmentCharge(error)) {
+        throw error;
+      }
+
+      return this.cargos.findOneByOrFail({
+        internacionId: input.internacionId,
+      });
+    }
+  }
 
   async list(): Promise<CargoDetalle[]> {
     const cargos = await this.cargos.find({
