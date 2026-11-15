@@ -27,6 +27,8 @@ import { Habitacion } from './entities/habitacion.entity.js';
 import { AgendaMedico } from './entities/agenda-medico.entity.js';
 import { AgendaExcepcion } from './entities/agenda-excepcion.entity.js';
 import { Auditoria } from './entities/auditoria.entity.js';
+import { Especialidad } from './entities/especialidad.entity.js';
+import { MedicoEspecialidad } from './entities/medico-especialidad.entity.js';
 
 export default new DataSource({
   type: 'postgres',
@@ -59,6 +61,8 @@ export default new DataSource({
     AgendaMedico,
     AgendaExcepcion,
     Auditoria,
+    Especialidad,
+    MedicoEspecialidad,
   ],
   migrations: ['src/migrations/*.ts'],
   synchronize: false,

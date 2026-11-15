@@ -29,6 +29,7 @@ import { TransicionTurnoInvalidaError } from '../domain/states/turno-state.inter
 import { AgendaService } from './agenda.service.js';
 import { entraEnAgenda } from '../domain/agenda.rules.js';
 import { ReprogramarTurnoDto } from '../api/dto/reprogramar-turno.dto.js';
+import { EspecialidadesService } from './especialidades.service.js';
 
 const STANDARD_DURATION_MINUTES = 30;
 const URGENT_DURATION_MINUTES = 15;
@@ -101,12 +102,15 @@ export class TurnosService {
     private readonly events: EventBus,
     @Optional()
     private readonly agenda?: AgendaService,
+    @Optional()
+    private readonly especialidades?: EspecialidadesService,
   ) { }
 
   async listAvailable(
     medicoId?: string,
     desde?: string,
     hasta?: string,
+    especialidadId?: string,
   ): Promise<SlotDisponible[]> {
     this.validateDateRange(desde, hasta);
     const now = Date.now();
@@ -122,7 +126,7 @@ export class TurnosService {
     }
     if (to <= from) return [];
 
-    const doctors = await this.usuarios.find({
+    const allDoctors = await this.usuarios.find({
       where: {
         rol: RolUsuario.MEDICO,
         estado: EstadoCuenta.ACTIVO,
@@ -130,7 +134,16 @@ export class TurnosService {
       },
       order: { apellido: 'ASC', nombre: 'ASC' },
     });
-    if (doctors.length === 0) return [];
+    
+    const allowedIds =
+      especialidadId && this.especialidades
+        ? new Set(await this.especialidades.medicoIds(especialidadId))
+        : null;
+   
+    const doctors = allowedIds
+      ? allDoctors.filter((doctor) => allowedIds.has(doctor.id))
+      : allDoctors;
+    if (allDoctors.length === 0) return [];
 
     const cargada = this.agenda
       ? await this.agenda.cargarParaDisponibilidad(
@@ -206,58 +219,68 @@ export class TurnosService {
   }
 
   async listAgenda(
-    filters: { medicoId?: string; desde?: string; hasta?: string },
-    identity: SessionIdentity,
-  ): Promise<TurnoAgendaSummary[]> {
-    this.validateDateRange(filters.desde, filters.hasta);
-    const doctorId =
-      identity.rol === RolUsuario.MEDICO
-        ? identity.accountId
-        : filters.medicoId;
-    if (
-      identity.rol === RolUsuario.MEDICO &&
-      filters.medicoId &&
-      filters.medicoId !== identity.accountId
-    ) {
-      throw new ForbiddenException('Solo podés consultar tu propia agenda.');
-    }
-    const query = this.turnos
-      .createQueryBuilder('turno')
-      .innerJoin('turno.medico', 'medico')
-      .leftJoin('turno.paciente', 'paciente')
-      .select([
-        'turno.id',
-        'turno.fechaHora',
-        'turno.duracionMinutos',
-        'turno.estado',
-        'turno.urgente',
-        'medico.id',
-        'medico.nombre',
-        'medico.apellido',
-        'paciente.id',
-        'paciente.nombre',
-        'paciente.apellido',
-      ])
-      .orderBy('turno.fechaHora', 'ASC');
-    if (doctorId) query.andWhere('medico.id = :doctorId', { doctorId });
-    if (filters.desde) {
-      query.andWhere('turno.fechaHora >= :desde', { desde: filters.desde });
-    }
-    if (filters.hasta) {
-      query.andWhere('turno.fechaHora < :hasta', { hasta: filters.hasta });
-    }
-    const rows = await query.getMany();
-    return rows.map((turno) => ({
-      ...this.toSummary(turno),
-      paciente: turno.paciente
-        ? {
+  filters: { medicoId?: string; desde?: string; hasta?: string; especialidadId?: string },
+  identity: SessionIdentity,
+): Promise<TurnoAgendaSummary[]> {
+  this.validateDateRange(filters.desde, filters.hasta);
+  const doctorId =
+    identity.rol === RolUsuario.MEDICO
+      ? identity.accountId
+      : filters.medicoId;
+  if (
+    identity.rol === RolUsuario.MEDICO &&
+    filters.medicoId &&
+    filters.medicoId !== identity.accountId
+  ) {
+    throw new ForbiddenException('Solo podés consultar tu propia agenda.');
+  }
+  const query = this.turnos
+    .createQueryBuilder('turno')
+    .innerJoin('turno.medico', 'medico')
+    .leftJoin('turno.paciente', 'paciente')
+    .select([
+      'turno.id',
+      'turno.fechaHora',
+      'turno.duracionMinutos',
+      'turno.estado',
+      'turno.urgente',
+      'medico.id',
+      'medico.nombre',
+      'medico.apellido',
+      'paciente.id',
+      'paciente.nombre',
+      'paciente.apellido',
+    ])
+    .orderBy('turno.fechaHora', 'ASC');
+
+  if (doctorId) query.andWhere('medico.id = :doctorId', { doctorId });
+
+  // 👇 FILTRO NUEVO AGREGADO AQUÍ SEGÚN LA GUÍA 👇
+  if (filters.especialidadId) {
+    query.andWhere(
+      'medico.id IN (SELECT me.medico_id FROM medico_especialidad me WHERE me.especialidad_id = :especialidadId)',
+      { especialidadId: filters.especialidadId },
+    );
+  }
+
+  if (filters.desde) {
+    query.andWhere('turno.fechaHora >= :desde', { desde: filters.desde });
+  }
+  if (filters.hasta) {
+    query.andWhere('turno.fechaHora < :hasta', { hasta: filters.hasta });
+  }
+  const rows = await query.getMany();
+  return rows.map((turno) => ({
+    ...this.toSummary(turno),
+    paciente: turno.paciente
+      ? {
           id: turno.paciente.id,
           nombre: turno.paciente.nombre,
           apellido: turno.paciente.apellido,
         }
-        : null,
-    }));
-  }
+      : null,
+  }));
+}
 
   async reserve(
     dto: ReservarTurnoDto,

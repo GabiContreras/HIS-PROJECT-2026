@@ -74,6 +74,7 @@ export class TurnosController {
       filters.medicoId,
       filters.desde,
       filters.hasta,
+      filters.especialidadId,
     );
   }
 

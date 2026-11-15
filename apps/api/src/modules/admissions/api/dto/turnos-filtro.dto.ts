@@ -25,4 +25,12 @@ export class TurnosFiltroDto {
   @IsOptional()
   @IsDateString()
   hasta?: string;
+
+  @ApiPropertyOptional({
+  example: '550e8400-e29b-41d4-a716-446655440000',
+  description: 'Identificador de la especialidad para filtrar médicos.',
+  })
+  @IsOptional()
+  @IsUUID()
+  especialidadId?: string;
 }
