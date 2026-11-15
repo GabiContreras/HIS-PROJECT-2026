@@ -42,6 +42,7 @@ import { TurnoAgendaResponseDto } from './dto/turno-agenda-response.dto.js';
 import { TurnoSummaryResponseDto } from './dto/turno-summary-response.dto.js';
 import { TurnoTransitionResponseDto } from './dto/turno-transition-response.dto.js';
 import { EsperaSummaryResponseDto } from './dto/espera-summary-response.dto.js';
+import { ReprogramarTurnoDto } from './dto/reprogramar-turno.dto.js';
 
 @Controller('turnos')
 @UseGuards(AuthGuard, RolesGuard)
@@ -295,6 +296,39 @@ export class TurnosController {
   ) {
     return this.turnos.transition(id, dto.estado, identity);
   }
+
+    @Patch(':id/reprogramar')
+  @Roles(RolUsuario.MEDICO, RolUsuario.ADMINISTRATIVO)
+  @ApiOperation({
+    summary: 'Reprogramar un turno',
+    description:
+      'Cambia la fecha, la hora o el médico de un turno reservado o confirmado, en una sola operación atómica.',
+  })
+  @ApiParam({ name: 'id', description: 'Identificador del turno.' })
+  @ApiOkResponse({
+    type: TurnoSummaryResponseDto,
+    description: 'Turno reprogramado correctamente.',
+  })
+  @ApiBadRequestResponse({
+    description: 'La fecha o el horario no son válidos.',
+  })
+  @ApiUnauthorizedResponse({ description: 'Autenticación no válida.' })
+  @ApiForbiddenResponse({
+    description: 'El usuario no puede gestionar esa agenda.',
+  })
+  @ApiNotFoundResponse({ description: 'No se encontró el turno.' })
+  @ApiConflictResponse({
+    description:
+      'El horario ya está ocupado o el turno no puede reprogramarse en su estado actual.',
+  })
+  reschedule(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ReprogramarTurnoDto,
+    @CurrentIdentity() identity: SessionIdentity,
+  ) {
+    return this.turnos.reschedule(id, dto, identity);
+  }
+
 
     @Get(':id')
   @Roles(RolUsuario.MEDICO, RolUsuario.ADMINISTRATIVO)

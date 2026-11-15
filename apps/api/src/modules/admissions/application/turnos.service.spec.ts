@@ -391,4 +391,106 @@ describe('TurnosService', () => {
       });
     });
   });
+
+  describe('reschedule (ADM-5)', () => {
+    const reservado = (estado: EstadoTurno = EstadoTurno.RESERVADO, urgente = false) =>
+      ({
+        id: 'turno-1',
+        estado,
+        urgente,
+        fechaHora: at('12:00'),
+        duracionMinutos: urgente ? 15 : 30,
+        medico,
+        paciente: { id: 'patient-1' },
+      }) as unknown as Turno;
+
+    it('mueve el turno al nuevo horario con lock del médico', async () => {
+      const { service, turnoRepository, usuarioRepository } = setup();
+      turnoRepository.findOne.mockResolvedValue(reservado());
+      const result = await service.reschedule(
+        'turno-1',
+        { fechaHora: at('13:00').toISOString() },
+        admin,
+      );
+      expect(result.fechaHora).toEqual(at('13:00'));
+      expect(result.duracionMinutos).toBe(30);
+      expect(usuarioRepository.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({ lock: { mode: 'pessimistic_write' } }),
+      );
+      expect(turnoRepository.save).toHaveBeenCalled();
+    });
+
+    it('avisa que el horario nuevo acaba de ser ocupado', async () => {
+      const { service, turnoRepository } = setup([1]);
+      turnoRepository.findOne.mockResolvedValue(reservado());
+      await expect(
+        service.reschedule('turno-1', { fechaHora: at('13:00').toISOString() }, admin),
+      ).rejects.toThrow('acaba de ser ocupado');
+      expect(turnoRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('rechaza si el paciente ya tiene otro turno en ese horario', async () => {
+      const { service, turnoRepository } = setup([0, 0, 1]);
+      turnoRepository.findOne.mockResolvedValue(reservado());
+      await expect(
+        service.reschedule('turno-1', { fechaHora: at('13:00').toISOString() }, admin),
+      ).rejects.toThrow('El paciente ya tiene un turno');
+    });
+
+    it('acorta a 15 min si un entreturno ocupa la segunda mitad', async () => {
+      const { service, turnoRepository } = setup([0, 1]);
+      turnoRepository.findOne.mockResolvedValue(reservado());
+      const result = await service.reschedule(
+        'turno-1',
+        { fechaHora: at('13:00').toISOString() },
+        admin,
+      );
+      expect(result.duracionMinutos).toBe(15);
+    });
+
+    it.each([EstadoTurno.EN_SALA_DE_ESPERA, EstadoTurno.ATENDIDO, EstadoTurno.CANCELADO])(
+      'no reprograma un turno %s',
+      async (estado) => {
+        const { service, turnoRepository } = setup();
+        turnoRepository.findOne.mockResolvedValue(reservado(estado));
+        await expect(
+          service.reschedule('turno-1', { fechaHora: at('13:00').toISOString() }, admin),
+        ).rejects.toThrow('reservados o confirmados');
+      },
+    );
+
+    it('responde 404 si el turno no existe', async () => {
+      const { service, turnoRepository } = setup();
+      turnoRepository.findOne.mockResolvedValue(null);
+      await expect(
+        service.reschedule('turno-1', { fechaHora: at('13:00').toISOString() }, admin),
+      ).rejects.toThrow('No se encontró el turno.');
+    });
+
+    it('un entreturno solo se mueve a un :15 o :45', async () => {
+      const { service, turnoRepository } = setup();
+      turnoRepository.findOne.mockResolvedValue(reservado(EstadoTurno.RESERVADO, true));
+      await expect(
+        service.reschedule('turno-1', { fechaHora: at('13:00').toISOString() }, admin),
+      ).rejects.toThrow(':15 o :45');
+    });
+
+    it('rechaza horarios fuera de la jornada del médico', async () => {
+      const { service, turnoRepository } = setup();
+      turnoRepository.findOne.mockResolvedValue(reservado());
+      await expect(
+        service.reschedule('turno-1', { fechaHora: at('19:00').toISOString() }, admin),
+      ).rejects.toThrow('atiende de 08:00 a 16:00');
+    });
+
+    it('traduce la violación del índice único a 409', async () => {
+      const { service, turnoRepository } = setup();
+      turnoRepository.findOne.mockResolvedValue(reservado());
+      turnoRepository.save.mockRejectedValueOnce({ code: '23505' });
+      await expect(
+        service.reschedule('turno-1', { fechaHora: at('13:00').toISOString() }, admin),
+      ).rejects.toThrow('acaba de ser ocupado');
+    });
+  });
+
 });
