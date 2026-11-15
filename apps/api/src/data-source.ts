@@ -20,6 +20,9 @@ import { NotificacionEntity } from './entities/notificacion.entity.js';
 import { TriajeRegistro } from './entities/triaje.entity.js';
 import { Financiador } from './entities/financiador.entity.js';
 import { Plan } from './entities/plan.entity.js';
+import { Prestacion } from './entities/prestacion.entity.js';
+import { Tarifa } from './entities/tarifa.entity.js';
+import { MovimientoInventario } from './entities/movimiento-inventario.entity.js';
 import { OutboxEvent } from './entities/outbox-event.entity.js';
 import { Estudio } from './entities/estudio.entity.js';
 import { Sector } from './entities/sector.entity.js';
@@ -52,6 +55,9 @@ export default new DataSource({
     TriajeRegistro,
     Financiador,
     Plan,
+    Prestacion,
+    Tarifa,
+    MovimientoInventario,
     OutboxEvent,
     Estudio,
     Sector,
