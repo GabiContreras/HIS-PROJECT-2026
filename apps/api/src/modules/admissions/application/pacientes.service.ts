@@ -13,8 +13,10 @@ import {
   type PacienteData,
   type PacientesRepository,
 } from '../domain/ports/pacientes.repository.js';
+import { FiltroPacientes } from '../domain/ports/pacientes.repository.js';
 
 const SEARCH_LIMIT = 50;
+const DEFAULT_PAGE_SIZE = 20;
 
 export interface CrearPacienteInput {
   nombre: string;
@@ -76,6 +78,21 @@ export class PacientesService {
 
   search(term?: string): Promise<PacienteData[]> {
     return this.repository.search(term?.trim() || undefined, SEARCH_LIMIT);
+  }
+    list(filters: {
+    q?: string;
+    tipoCobertura?: CoverageType;
+    page?: number;
+    limit?: number;
+  }): Promise<{ items: PacienteData[]; total: number }> {
+    const paginated = filters.page !== undefined || filters.limit !== undefined;
+    const limit = paginated ? (filters.limit ?? DEFAULT_PAGE_SIZE) : SEARCH_LIMIT;
+    const page = paginated ? (filters.page ?? 1) : 1;
+    const filtro: FiltroPacientes = {
+      term: filters.q?.trim() || undefined,
+      tipoCobertura: filters.tipoCobertura,
+    };
+    return this.repository.searchPage(filtro, (page - 1) * limit, limit);
   }
 
   async get(id: string): Promise<PacienteData> {

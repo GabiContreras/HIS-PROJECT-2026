@@ -73,6 +73,38 @@ export class TriageService {
       .getMany();
     return registros.map((r) => this.aRespuesta(r, `${r.paciente.apellido}, ${r.paciente.nombre}`));
   }
+    async listar(filters: {
+    nivel?: NivelTriage;
+    estado?: EstadoTriaje;
+    page?: number;
+    limit?: number;
+  }): Promise<{ items: TriageResponseDto[]; total: number }> {
+    const query = this.triajeRepo
+      .createQueryBuilder('t')
+      .innerJoinAndSelect('t.paciente', 'p')
+      .where('t.estado = :estado', {
+        estado: filters.estado ?? EstadoTriaje.EN_COLA,
+      })
+      .orderBy(
+        `CASE t.nivel WHEN 'ROJO' THEN 1 WHEN 'NARANJA' THEN 2 WHEN 'AMARILLO' THEN 3 WHEN 'VERDE' THEN 4 ELSE 5 END`,
+      )
+      .addOrderBy('t.llegadaAt', 'ASC');
+    if (filters.nivel) {
+      query.andWhere('t.nivel = :nivel', { nivel: filters.nivel });
+    }
+    if (filters.page !== undefined || filters.limit !== undefined) {
+      const limit = filters.limit ?? 20;
+      const page = filters.page ?? 1;
+      query.offset((page - 1) * limit).limit(limit);
+    }
+    const [registros, total] = await query.getManyAndCount();
+    return {
+      items: registros.map((r) =>
+        this.aRespuesta(r, `${r.paciente.apellido}, ${r.paciente.nombre}`),
+      ),
+      total,
+    };
+  }
 
     async atender(
     id: string,

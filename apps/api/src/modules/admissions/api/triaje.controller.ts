@@ -1,4 +1,15 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, UseGuards } from '@nestjs/common';
+import { 
+  Res,
+  Body, 
+  Controller, 
+  Get, 
+  Param, 
+  ParseUUIDPipe, 
+  Patch, 
+  Post,
+  Query, 
+  UseGuards 
+} from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -22,6 +33,9 @@ import { TriageService } from '../application/triage.service.js';
 import { CrearTriageDto } from './dto/crear-triage.dto.js';
 import { TriageResponseDto } from './dto/triage-response.dto.js';
 import { TriageAtencionResponseDto } from './dto/triage-atencion-response.dto.js';
+import { TriageFiltroDto } from './dto/triage-filtro.dto.js';
+import type { Response } from 'express';
+
 @Controller('triaje')
 @UseGuards(AuthGuard, RolesGuard)
 @ApiTags('Triaje')
@@ -54,8 +68,13 @@ export class TriajeController {
   @ApiOkResponse({ type: TriageResponseDto, isArray: true, description: 'Cola de espera.' })
   @ApiUnauthorizedResponse({ description: 'Autenticación no válida.' })
   @ApiForbiddenResponse({ description: 'El rol no puede consultar la cola.' })
-  cola() {
-    return this.triage.obtenerCola();
+   async cola(
+    @Query() filters: TriageFiltroDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { items, total } = await this.triage.listar(filters);
+    res.setHeader('X-Total-Count', String(total));
+    return items;
   }
 
     @Patch(':id/atender')

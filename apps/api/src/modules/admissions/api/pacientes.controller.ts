@@ -8,6 +8,7 @@ import {
   Post,
   Query,
   UseGuards,
+  Res
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
@@ -38,7 +39,7 @@ import {
 import { PacientesFiltroDto } from './dto/pacientes-filtro.dto.js';
 import { PacienteResponseDto } from './dto/paciente-response.dto.js';
 import { TurnoAgendaResponseDto } from './dto/turno-agenda-response.dto.js';
-
+import type { Response } from 'express';
 @Controller('pacientes')
 @UseGuards(AuthGuard, RolesGuard)
 @ApiTags('Pacientes')
@@ -58,10 +59,14 @@ export class PacientesController {
   @ApiOkResponse({ type: PacienteResponseDto, isArray: true, description: 'Listado de pacientes obtenido correctamente.' })
   @ApiUnauthorizedResponse({ description: 'Autenticación no válida.' })
   @ApiForbiddenResponse({ description: 'El usuario no tiene permisos.' })
-  list(@Query() filters: PacientesFiltroDto) {
-    return this.pacientes.search(filters.q);
+    async list(
+    @Query() filters: PacientesFiltroDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { items, total } = await this.pacientes.list(filters);
+    res.setHeader('X-Total-Count', String(total));
+    return items;
   }
-
   @Get(':id')
   @Roles(RolUsuario.MEDICO, RolUsuario.ENFERMERO, RolUsuario.ADMINISTRATIVO)
   @Auditar('LEER_PACIENTE', 'pacientes', 'id')
