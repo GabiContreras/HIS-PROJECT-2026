@@ -1,11 +1,16 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsNumber, IsUUID } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEnum, IsNumber, IsOptional, IsUUID } from 'class-validator';
 import { TipoSignoVital } from '../../domain/vital-sign-rules.js';
 
 export class RegistrarSignoVitalDto {
   @ApiProperty({ format: 'uuid' })
   @IsUUID()
   pacienteId: string;
+
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  internacionId?: string;
 
   @ApiProperty({ enum: TipoSignoVital, example: TipoSignoVital.TEMPERATURA })
   @IsEnum(TipoSignoVital)

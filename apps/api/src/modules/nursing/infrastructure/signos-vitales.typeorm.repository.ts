@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'node:crypto';
 import { DataSource, IsNull, Not, Repository } from 'typeorm';
 import { SignoVital } from '../../../entities/signo-vital.entity.js';
+import { Internacion } from '../../../entities/internacion.entity.js';
 import type {
   NuevoControl,
   NuevoSignoVital,
@@ -20,6 +21,7 @@ function toData(row: SignoVital): SignoVitalData {
     valor: Number(row.valor),
     fechaHora: new Date(row.fechaHora),
     controlId: row.controlId,
+    internacionId: row.internacion?.id ?? null,
     registradoPor: `${row.registradoPor.apellido}, ${row.registradoPor.nombre}`,
   };
 }
@@ -39,19 +41,27 @@ export class SignosVitalesTypeOrmRepository implements SignosVitalesRepository {
         registradoPor: { id: data.registradoPorId },
         tipo: data.tipo,
         valor: data.valor,
+        internacion: data.internacionId ? { id: data.internacionId } : null,
       }),
     );
     const row = await this.signos.findOneOrFail({
       where: { id: saved.id },
-      relations: { paciente: true, registradoPor: true },
+      relations: { paciente: true, registradoPor: true, internacion: true },
     });
     return toData(row);
   }
 
-  async list(pacienteId: string | undefined, limit: number): Promise<SignoVitalData[]> {
+  async list(
+    pacienteId: string | undefined,
+    internacionId: string | undefined,
+    limit: number,
+  ): Promise<SignoVitalData[]> {
     const rows = await this.signos.find({
-      where: pacienteId ? { paciente: { id: pacienteId } } : {},
-      relations: { paciente: true, registradoPor: true },
+      where: {
+        ...(pacienteId ? { paciente: { id: pacienteId } } : {}),
+        ...(internacionId ? { internacion: { id: internacionId } } : {}),
+      },
+      relations: { paciente: true, registradoPor: true, internacion: true },
       order: { fechaHora: 'DESC' },
       take: limit,
     });
@@ -70,25 +80,57 @@ export class SignosVitalesTypeOrmRepository implements SignosVitalesRepository {
             tipo: lectura.tipo,
             valor: lectura.valor,
             controlId,
+            internacion: data.internacionId ? { id: data.internacionId } : null,
           }),
         ),
       );
     });
     const rows = await this.signos.find({
       where: { controlId },
-      relations: { paciente: true, registradoPor: true },
+      relations: { paciente: true, registradoPor: true, internacion: true },
       order: { fechaHora: 'DESC' },
     });
     return rows.map(toData);
   }
 
-  async listControles(pacienteId: string | undefined, limit: number): Promise<SignoVitalData[]> {
+  async listControles(
+    pacienteId: string | undefined,
+    internacionId: string | undefined,
+    limit: number,
+  ): Promise<SignoVitalData[]> {
     const rows = await this.signos.find({
-      where: { controlId: Not(IsNull()), ...(pacienteId ? { paciente: { id: pacienteId } } : {}) },
+      where: {
+        controlId: Not(IsNull()),
+        ...(pacienteId ? { paciente: { id: pacienteId } } : {}),
+        ...(internacionId ? { internacion: { id: internacionId } } : {}),
+      },
       relations: { paciente: true, registradoPor: true },
       order: { fechaHora: 'DESC' },
       take: limit,
     });
     return rows.map(toData);
+  }
+
+  async listSerie(
+    pacienteId: string,
+    tipo: string | undefined,
+    internacionId: string | undefined,
+    limit: number,
+  ): Promise<SignoVitalData[]> {
+    const rows = await this.signos.find({
+      where: {
+        paciente: { id: pacienteId },
+        ...(tipo ? { tipo } : {}),
+        ...(internacionId ? { internacion: { id: internacionId } } : {}),
+      },
+      relations: { paciente: true, registradoPor: true, internacion: true },
+      order: { fechaHora: 'DESC' },
+      take: limit,
+    });
+    return rows.map(toData);
+  }
+
+  internacionPertenece(internacionId: string, pacienteId: string): Promise<boolean> {
+    return this.dataSource.getRepository(Internacion).exists({ where: { id: internacionId, pacienteId } });
   }
 }

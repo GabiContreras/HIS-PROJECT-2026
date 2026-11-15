@@ -1,6 +1,8 @@
 import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { Paciente } from './paciente.entity.js';
 import { Usuario } from './usuario.entity.js';
+import { Turno } from './turno.entity.js';
+import { Internacion } from './internacion.entity.js';
 
 /**
  * Registro de la historia clínica. Inmutable: solo se insertan filas (la migración lo refuerza con un trigger).
@@ -15,6 +17,18 @@ export class RegistroClinico {
   @ManyToOne(() => Paciente, { onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'paciente_id' })
   paciente: Paciente;
+
+  @ManyToOne(() => RegistroClinico, { nullable: true, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'corrige_a' })
+  corrigeA: RegistroClinico | null;
+
+  @ManyToOne(() => Turno, { nullable: true, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'turno_id' })
+  turno: Turno | null;
+
+  @ManyToOne(() => Internacion, { nullable: true, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'internacion_id' })
+  internacion: Internacion | null;
 
   @Column()
   categoria: string;

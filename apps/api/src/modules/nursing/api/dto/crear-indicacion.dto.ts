@@ -1,14 +1,26 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsDateString, IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, Max, MaxLength, Min } from 'class-validator';
+import { IsDateString, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, Max, MaxLength, Min, ValidateIf } from 'class-validator';
+import { TipoIndicacion } from '../../../../entities/indicacion-medica.entity.js';
 
 export class CrearIndicacionDto {
   @ApiProperty({ format: 'uuid' })
   @IsUUID()
   pacienteId: string;
 
-  @ApiProperty({ format: 'uuid', description: 'Insumo (medicamento) del inventario.' })
+  @ApiPropertyOptional({ format: 'uuid', description: 'Obligatorio solo para una indicación MEDICACION.' })
+  @ValidateIf((dto: CrearIndicacionDto) => !dto.tipo || dto.tipo === TipoIndicacion.MEDICACION)
   @IsUUID()
-  insumoId: string;
+  insumoId?: string;
+
+  @ApiPropertyOptional({ enum: TipoIndicacion, default: TipoIndicacion.MEDICACION })
+  @IsOptional()
+  @IsEnum(TipoIndicacion)
+  tipo?: TipoIndicacion;
+
+  @ApiPropertyOptional({ format: 'uuid', description: 'Internación a la que corresponde la indicación.' })
+  @IsOptional()
+  @IsUUID()
+  internacionId?: string;
 
   @ApiProperty({ example: '400 mg', maxLength: 50 })
   @IsString()

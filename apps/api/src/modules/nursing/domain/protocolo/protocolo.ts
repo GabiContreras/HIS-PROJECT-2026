@@ -5,6 +5,7 @@
 export enum TipoIngreso {
   PRE_QUIRURGICO = 'PRE_QUIRURGICO',
   RESPIRATORIO = 'RESPIRATORIO',
+  GENERAL = 'GENERAL',
 }
 
 /** Tarea inicial de enfermería. Inmutable. */

@@ -3,10 +3,14 @@ import { INTEGRATION_EVENTS } from './integration-event-names.js';
 
 export interface BedReleasedPayload {
   bedId: string;
+  camaId: string;
   bedNumber: string;
   patientId: string;
   admissionId: string;
   releasedAt: string;
+  internacionId: string;
+  fechaIngreso: string;
+  fechaEgreso: string;
 }
 
 export class BedReleased extends IntegrationEvent<BedReleasedPayload> {

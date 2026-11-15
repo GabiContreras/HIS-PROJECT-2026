@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -8,6 +9,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Patch,
   Query,
   Sse,
   UseGuards,
@@ -42,6 +44,10 @@ import { BedStreamEventDto } from './dto/bed-stream-event.dto.js';
 import { CamaResponseDto } from './dto/cama-response.dto.js';
 import { ErrorResponseDto } from './dto/error-response.dto.js';
 import { ListarCamasQueryDto } from './dto/listar-camas-query.dto.js';
+import { CrearCamaDto } from './dto/crear-cama.dto.js';
+import { ActualizarCamaDto } from './dto/actualizar-cama.dto.js';
+import { BloquearCamaDto } from './dto/bloquear-cama.dto.js';
+import { TrasladarCamaDto } from './dto/trasladar-cama.dto.js';
 
 const CAMA_ID = { name: 'id', description: 'UUID de la cama', format: 'uuid' };
 
@@ -93,6 +99,14 @@ export class CamasController {
     return this.camas.listar(query);
   }
 
+  @Post()
+  @Roles(RolUsuario.ADMINISTRATIVO)
+  @ApiOperation({ summary: 'Crear una cama en una habitación activa con capacidad disponible' })
+  @ApiCreatedResponse({ type: CamaResponseDto })
+  crear(@Body() dto: CrearCamaDto): Promise<CamaResponseDto> {
+    return this.camas.crear(dto);
+  }
+
   // Va antes de @Get(':id') para que "eventos" no se interprete como el id de una cama.
   @Sse('eventos')
   @Roles(RolUsuario.MEDICO, RolUsuario.ENFERMERO, RolUsuario.ADMINISTRATIVO)
@@ -132,6 +146,24 @@ export class CamasController {
 })
   obtener(@Param('id', ParseUUIDPipe) id: string): Promise<CamaResponseDto> {
     return this.camas.obtener(id);
+  }
+
+  @Patch(':id')
+  @Roles(RolUsuario.ADMINISTRATIVO)
+  @ApiOperation({ summary: 'Actualizar número o habitación de una cama libre' })
+  actualizar(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ActualizarCamaDto,
+  ): Promise<CamaResponseDto> {
+    return this.camas.actualizar(id, dto);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.OK)
+  @Roles(RolUsuario.ADMINISTRATIVO)
+  @ApiOperation({ summary: 'Dar de baja lógica una cama libre' })
+  darDeBaja(@Param('id', ParseUUIDPipe) id: string): Promise<CamaResponseDto> {
+    return this.camas.darDeBaja(id);
   }
 
   @Post(':id/asignar')
@@ -229,6 +261,21 @@ export class CamasController {
     return this.camas.darAlta(id);
   }
 
+  @Post(':id/trasladar')
+  @HttpCode(HttpStatus.OK)
+  @Roles(RolUsuario.MEDICO, RolUsuario.ADMINISTRATIVO)
+  @ApiOperation({
+    summary: 'Trasladar a un paciente entre camas con bloqueo atómico de origen y destino',
+    description: 'El origen pasa a EN_LIMPIEZA; el destino pasa a OCUPADA y la internación conserva sus fechas.',
+  })
+  @ApiConflictResponse({ description: 'Origen/destino en estado incompatible o conflicto concurrente' })
+  trasladar(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: TrasladarCamaDto,
+  ): Promise<CamaResponseDto> {
+    return this.camas.trasladar(id, dto.camaDestinoId);
+  }
+
   @Post(':id/limpieza/confirmar')
   @HttpCode(HttpStatus.OK)
   @Roles(RolUsuario.ENFERMERO, RolUsuario.ADMINISTRATIVO)
@@ -300,8 +347,11 @@ export class CamasController {
     },
   },
 })
-  bloquear(@Param('id', ParseUUIDPipe) id: string): Promise<CamaResponseDto> {
-    return this.camas.bloquear(id);
+  bloquear(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: BloquearCamaDto,
+  ): Promise<CamaResponseDto> {
+    return this.camas.bloquear(id, dto);
   }
 
   @Post(':id/desbloquear')

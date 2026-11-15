@@ -21,6 +21,9 @@ import { TriajeRegistro } from './entities/triaje.entity.js';
 import { Financiador } from './entities/financiador.entity.js';
 import { Plan } from './entities/plan.entity.js';
 import { OutboxEvent } from './entities/outbox-event.entity.js';
+import { Estudio } from './entities/estudio.entity.js';
+import { Sector } from './entities/sector.entity.js';
+import { Habitacion } from './entities/habitacion.entity.js';
 
 export default new DataSource({
   type: 'postgres',
@@ -47,6 +50,9 @@ export default new DataSource({
     Financiador,
     Plan,
     OutboxEvent,
+    Estudio,
+    Sector,
+    Habitacion,
   ],
   migrations: ['src/migrations/*.ts'],
   synchronize: false,

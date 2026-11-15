@@ -44,10 +44,11 @@ describe('OutboxService', () => {
     });
   });
 
-  it('reconoce solo los dos eventos durables', () => {
+  it('reconoce eventos de integración durables y excluye eventos operativos', () => {
     expect(outbox.isDurable(INTEGRATION_EVENTS.ADMISSIONS_APPOINTMENT_ATTENDED)).toBe(true);
     expect(outbox.isDurable(INTEGRATION_EVENTS.MEDICATION_ADMINISTERED)).toBe(true);
-    expect(outbox.isDurable(INTEGRATION_EVENTS.BED_ASSIGNED)).toBe(false);
+    expect(outbox.isDurable(INTEGRATION_EVENTS.BED_ASSIGNED)).toBe(true);
+    expect(outbox.isDurable(INTEGRATION_EVENTS.BED_TRANSFERRED)).toBe(true);
     expect(outbox.isDurable(INTEGRATION_EVENTS.VITAL_SIGN_ALERT)).toBe(false);
   });
 

@@ -124,7 +124,7 @@ describe('SignosVitalesController: autorización por rol y validación de entrad
   describe('delegación al caso de uso', () => {
     it('pasa el pacienteId del filtro a la consulta', async () => {
       await llamar('get', `/signos-vitales/controles?pacienteId=${PACIENTE_ID}`, RolUsuario.MEDICO).expect(200);
-      expect(service.listarControles).toHaveBeenCalledWith(PACIENTE_ID);
+      expect(service.listarControles).toHaveBeenCalledWith(PACIENTE_ID, undefined);
     });
 
     it('registra el control a nombre del usuario de la sesión', async () => {

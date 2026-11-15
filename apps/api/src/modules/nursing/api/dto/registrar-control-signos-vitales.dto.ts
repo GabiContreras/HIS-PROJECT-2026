@@ -1,10 +1,15 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsUUID } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsNumber, IsOptional, IsUUID } from 'class-validator';
 
 export class RegistrarControlSignosVitalesDto {
   @ApiProperty({ format: 'uuid' })
   @IsUUID()
   pacienteId: string;
+
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  internacionId?: string;
 
   @ApiProperty({ example: 120, description: 'Presión sistólica en mmHg.' })
   @IsNumber({ maxDecimalPlaces: 2 })

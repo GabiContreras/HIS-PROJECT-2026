@@ -19,6 +19,7 @@ import { Insumo } from '../../../entities/insumo.entity.js';
 import { MedicationAdministeredPayload } from '../../../shared/events/medication-administered.event.js';
 
 import { AdministracionMedicacion } from '../../../entities/administracion-medicacion.entity.js';
+import { TipoIndicacion } from '../../../entities/indicacion-medica.entity.js';
 export interface CargoDetalle {
   id: string;
   turnoId: string | null;
@@ -134,6 +135,8 @@ if (!administracion) {
 }
 
 if (
+  administracion.indicacion.tipo !== TipoIndicacion.MEDICACION ||
+  !administracion.indicacion.insumo ||
   administracion.indicacion.paciente.id !== input.patientId ||
   administracion.indicacion.insumo.id !== input.supplyId
 ) {

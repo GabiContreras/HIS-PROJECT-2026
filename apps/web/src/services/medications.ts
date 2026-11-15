@@ -1,7 +1,7 @@
 import { displayName } from '../shared/format';
 import { http } from '../shared/http';
 
-export type MedicationStatus = 'PENDIENTE' | 'ADMINISTRADA';
+export type MedicationStatus = 'PENDIENTE' | 'ADMINISTRADA' | 'OMITIDA';
 
 export interface Medication {
   /** Una fila por dosis programada del día: `<indicacionId>:<n>`. */
@@ -16,8 +16,10 @@ export interface Medication {
   estado: MedicationStatus;
   /** Insumo del inventario que se descuenta al administrar (si corresponde). */
   insumoId: string | null;
+  internacionId: string | null;
   administradaPor: string | null;
   administradaAt: string | null;
+  motivoOmision: string | null;
 }
 
 /** Margen permitido para administrar respecto del horario indicado. */
@@ -36,13 +38,16 @@ interface DoseDto {
   estado: MedicationStatus;
   administradaPor?: string;
   administradaEn?: string;
+  motivoOmision?: string | null;
 }
 
 interface IndicationDto {
   id: string;
   paciente: string;
-  insumoId: string;
-  insumo: string;
+  insumoId: string | null;
+  insumo: string | null;
+  tipo: 'MEDICACION' | 'DIETA' | 'CURACION' | 'ESTUDIO' | 'CUIDADO';
+  internacionId: string | null;
   dosis: string;
   frecuencia: string;
   dosisDelDia: DoseDto[];
@@ -51,21 +56,29 @@ interface IndicationDto {
 export async function listMedications(): Promise<Medication[]> {
   const indications = await http.get<IndicationDto[]>('/indicaciones');
   return indications
-    .flatMap((ind) =>
-      ind.dosisDelDia.map((dose, n) => ({
+    .filter((ind) => ind.tipo === 'MEDICACION')
+    .flatMap((ind) => {
+      const insumoId = ind.insumoId;
+      const insumo = ind.insumo;
+      if (!insumoId || !insumo) {
+        throw new Error(`La indicación de medicación ${ind.id} no tiene un insumo asociado.`);
+      }
+      return ind.dosisDelDia.map((dose, n) => ({
         id: `${ind.id}:${n}`,
         indicacionId: ind.id,
         paciente: displayName(ind.paciente),
-        medicamento: ind.insumo,
+        medicamento: insumo,
         dosis: ind.dosis,
         indicacion: ind.frecuencia,
         programadaAt: dose.programadaPara,
         estado: dose.estado,
-        insumoId: ind.insumoId,
+        insumoId,
+        internacionId: ind.internacionId,
         administradaPor: dose.administradaPor ? displayName(dose.administradaPor) : null,
         administradaAt: dose.administradaEn ?? null,
-      })),
-    )
+        motivoOmision: dose.motivoOmision ?? null,
+      }));
+    })
     .sort((a, b) => a.programadaAt.localeCompare(b.programadaAt));
 }
 
