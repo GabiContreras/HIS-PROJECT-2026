@@ -6,6 +6,7 @@ import {Cargo,EstadoCargo,TipoAtencionFacturable,} from '../../../entities/cargo
 import { Turno } from '../../../entities/turno.entity.js';
 import { CoverageType } from '../../../shared/events/coverage-type.js';
 
+import { NomencladorService } from './nomenclador.service.js';
 import { coverageStrategyFor } from '../domain/coverage.strategy.js';
 import { ConsultaRegularStrategy } from '../domain/consulta-regular.strategy.js';
 import { ConsultaUrgenciaStrategy } from '../domain/consulta-urgencia.strategy.js';
@@ -70,6 +71,8 @@ export class BillingService {
     @InjectRepository(AdministracionMedicacion)
     private readonly administraciones: Repository<AdministracionMedicacion>,
 
+    private readonly nomenclador: NomencladorService,
+
     private readonly consultaRegular: ConsultaRegularStrategy,
     private readonly consultaUrgencia: ConsultaUrgenciaStrategy,
   ) {}
@@ -82,8 +85,6 @@ export class BillingService {
       ? this.consultaUrgencia
       : this.consultaRegular;
 
-    const valorBase = strategy.calculateAmount();
-
     const turno = await this.turnos.findOne({
       where: { id: input.appointmentId },
       relations: { paciente: true },
@@ -91,8 +92,14 @@ export class BillingService {
 
     const paciente = turno?.paciente ?? null;
 
+    const { valorPesos: valorBase, copagoPesos } =
+      await this.nomenclador.resolve(
+        strategy.prestacion,
+        paciente?.financiadorId ?? null,
+      );
+
     const reparto = paciente
-      ? coverageStrategyFor(paciente.tipoCobertura).split(valorBase)
+      ? coverageStrategyFor(paciente.tipoCobertura).split(valorBase, copagoPesos)
       : null;
 
     try {
