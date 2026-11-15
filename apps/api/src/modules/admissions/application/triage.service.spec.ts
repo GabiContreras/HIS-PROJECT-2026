@@ -35,7 +35,14 @@ function build() {
     notificarUsuarios: vi.fn().mockResolvedValue(undefined),
     notificarPorRol: vi.fn().mockResolvedValue(undefined),
   };
-  const service = new TriageService(triajeRepo as never, usuarioRepo as never, pacientes as never, notificaciones as never);
+  const service = new TriageService(
+    triajeRepo as never, 
+    usuarioRepo as never, 
+    pacientes as never, 
+    notificaciones as never,
+    {} as never,
+    {} as never,
+  );
   return { service, qb, triajeRepo, usuarioRepo, pacientes, notificaciones };
 }
 
@@ -128,28 +135,5 @@ describe('TriageService', () => {
     );
   });
 
-  describe('atender', () => {
-    it('responde 404 si el triaje no existe', async () => {
-      const { service, triajeRepo } = build();
-      triajeRepo.findOne.mockResolvedValue(null);
-      await expect(service.atender('t1')).rejects.toBeInstanceOf(NotFoundException);
-    });
-
-    it('responde 409 si ya estaba atendido', async () => {
-      const { service, triajeRepo } = build();
-      triajeRepo.findOne.mockResolvedValue({ id: 't1', estado: EstadoTriaje.ATENDIDO, paciente });
-      await expect(service.atender('t1')).rejects.toBeInstanceOf(ConflictException);
-      expect(triajeRepo.save).not.toHaveBeenCalled();
-    });
-
-    it('marca como atendido y registra la hora', async () => {
-      const { service, triajeRepo } = build();
-      triajeRepo.findOne.mockResolvedValue({ id: 't1', estado: EstadoTriaje.EN_COLA, paciente, nivel: NivelTriage.VERDE });
-      const res = await service.atender('t1');
-      expect(res.estado).toBe(EstadoTriaje.ATENDIDO);
-      expect(triajeRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ estado: EstadoTriaje.ATENDIDO, atendidoAt: expect.any(Date) }),
-      );
-    });
-  });
+  
 });

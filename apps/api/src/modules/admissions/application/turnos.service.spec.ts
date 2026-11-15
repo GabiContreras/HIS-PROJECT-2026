@@ -492,5 +492,63 @@ describe('TurnosService', () => {
       ).rejects.toThrow('acaba de ser ocupado');
     });
   });
+    describe('createUrgentAttendance (ADM-8)', () => {
+    const run = (
+      service: ReturnType<typeof setup>['service'],
+      dataSource: ReturnType<typeof setup>['dataSource'],
+    ) =>
+      dataSource.transaction((manager: unknown) =>
+        service.createUrgentAttendance(manager as never, 'doctor-1', 'patient-1'),
+      );
+
+    it('crea un turno urgente ya atendido a la hora actual', async () => {
+      const { service, dataSource } = setup();
+      const result = await run(service, dataSource);
+      expect(result).toMatchObject({
+        estado: EstadoTurno.ATENDIDO,
+        urgente: true,
+        duracionMinutos: 15,
+        fechaHora: new Date('2029-12-31T12:00:00.000Z'),
+      });
+    });
+
+    it('si el médico está ocupado, lo registra en el hueco anterior', async () => {
+      const { service, dataSource } = setup([1, 0]);
+      const result = await run(service, dataSource);
+      expect(result.fechaHora).toEqual(new Date('2029-12-31T11:45:00.000Z'));
+    });
+
+    it('rechaza si no hay hueco libre en la agenda reciente', async () => {
+      const { service, dataSource } = setup(Array(20).fill(1));
+      await expect(run(service, dataSource)).rejects.toThrow('hueco libre');
+    });
+
+    it('traduce una violación de la restricción de la agenda a 409', async () => {
+      const { service, dataSource, turnoRepository } = setup();
+      turnoRepository.save.mockRejectedValueOnce({ code: '23P01' });
+      await expect(run(service, dataSource)).rejects.toThrow('Reintentá');
+    });
+  });
+
+  describe('publishAttended (INT-3)', () => {
+    it('incluye urgente y tipoAtencion en el payload', () => {
+      const { service, events } = setup();
+      service.publishAttended('t1', true);
+      service.publishAttended('t2', false);
+      expect(events.publish).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          type: 'admissions.appointment-attended',
+          payload: { appointmentId: 't1', urgente: true, tipoAtencion: 'URGENCIA' },
+        }),
+      );
+      expect(events.publish).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          payload: { appointmentId: 't2', urgente: false, tipoAtencion: 'REGULAR' },
+        }),
+      );
+    });
+  });
 
 });

@@ -50,6 +50,7 @@ const clinicClock = new Intl.DateTimeFormat('en-GB', {
   minute: '2-digit',
   hourCycle: 'h23',
 });
+const MAX_URGENT_SHIFTS = 8;
 
 
 function clinicMinutesOfDay(date: Date): number {
@@ -407,12 +408,8 @@ export class TurnosService {
       };
     });
     const occurredAt = new Date().toISOString();
-    if (nextState === EstadoTurno.ATENDIDO) {
-      this.events.publish({
-        type: INTEGRATION_EVENTS.ADMISSIONS_APPOINTMENT_ATTENDED,
-        occurredAt,
-        payload: { appointmentId: id, urgente: result.summary.urgente },
-      });
+        if (nextState === EstadoTurno.ATENDIDO) {
+      this.publishAttended(id, result.summary.urgente);
     }
     if (nextState === EstadoTurno.EN_SALA_DE_ESPERA) {
       // Alerta al consultorio del médico (HU 2.1, escenario 1).
@@ -491,6 +488,77 @@ export class TurnosService {
       };
     }
     return null;
+  }
+
+    async createUrgentAttendance(
+    manager: EntityManager,
+    doctorId: string,
+    patientId: string,
+  ): Promise<TurnoSummary> {
+    const doctor = await this.lockDoctor(manager, doctorId);
+    const patient = await manager
+      .getRepository(Paciente)
+      .findOne({ where: { id: patientId } });
+    if (!patient) throw new NotFoundException('No se encontró el paciente.');
+
+    const repository = manager.getRepository(Turno);
+    let start = new Date();
+    start.setSeconds(0, 0);
+    let shifts = 0;
+    while (
+      await this.hasOverlap(
+        repository,
+        doctor.id,
+        start,
+        URGENT_DURATION_MINUTES,
+      )
+    ) {
+      shifts += 1;
+      if (shifts > MAX_URGENT_SHIFTS) {
+        throw new ConflictException(
+          'No se pudo registrar la atención urgente: el médico no tiene un hueco libre en su agenda reciente.',
+        );
+      }
+      start = new Date(start.getTime() - URGENT_DURATION_MINUTES * 60_000);
+    }
+
+    try {
+      const saved = await repository.save(
+        repository.create({
+          medico: doctor,
+          paciente: patient,
+          fechaHora: start,
+          duracionMinutos: URGENT_DURATION_MINUTES,
+          estado: EstadoTurno.ATENDIDO,
+          urgente: true,
+        }),
+      );
+      return this.toSummary(saved);
+    } catch (error) {
+      if (this.isUniqueViolation(error) || this.isExclusionViolation(error)) {
+        throw new ConflictException(
+          'La agenda del médico cambió mientras se registraba la atención. Reintentá.',
+        );
+      }
+      throw error;
+    }
+  }
+
+  publishAttended(appointmentId: string, urgente: boolean): void {
+    this.events.publish({
+      type: INTEGRATION_EVENTS.ADMISSIONS_APPOINTMENT_ATTENDED,
+      occurredAt: new Date().toISOString(),
+      payload: {
+        appointmentId,
+        urgente,
+        tipoAtencion: urgente ? 'URGENCIA' : 'REGULAR',
+      },
+    });
+  }
+
+  private isExclusionViolation(error: unknown): boolean {
+    const e = error as { code?: string; driverError?: { code?: string } };
+    return e?.code === '23P01' || e?.driverError?.code === '23P01';
   }
 
   async getById(
