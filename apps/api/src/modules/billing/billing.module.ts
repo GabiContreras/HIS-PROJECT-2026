@@ -13,15 +13,22 @@ import { Insumo } from '../../entities/insumo.entity.js';
 import { AdministracionMedicacion } from '../../entities/administracion-medicacion.entity.js';
 import { Financiador } from '../../entities/financiador.entity.js';
 import { Plan } from '../../entities/plan.entity.js';
+import { Prestacion } from '../../entities/prestacion.entity.js';
+import { Tarifa } from '../../entities/tarifa.entity.js';
 import { CoverageCatalogService } from './application/coverage-catalog.service.js';
 import { MedicationAdministeredSubscriber } from './application/medication-administered.subscriber.js';
+import { NomencladorService } from './application/nomenclador.service.js';
+import { NOMENCLADOR_REPOSITORY } from './domain/nomenclador.repository.js';
+import { TypeOrmNomencladorRepository } from './infrastructure/typeorm-nomenclador.repository.js';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Cargo, Turno, Insumo, AdministracionMedicacion, Financiador, Plan]), IamModule],
+  imports: [TypeOrmModule.forFeature([Cargo, Turno, Insumo, AdministracionMedicacion, Financiador, Plan, Prestacion, Tarifa]), IamModule],
   controllers: [CargosController, CoverageCatalogController],
   providers: [
     BillingService,
     CoverageCatalogService,
+    NomencladorService,
+    { provide: NOMENCLADOR_REPOSITORY, useClass: TypeOrmNomencladorRepository },
     ConsultaRegularStrategy,
     ConsultaUrgenciaStrategy,
     AppointmentAttendedSubscriber,
