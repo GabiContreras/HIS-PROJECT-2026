@@ -1,4 +1,16 @@
-export interface DescontarStockInput {
+import type {
+  OrigenMovimientoInventario,
+  TipoMovimientoInventario,
+} from '../inventory-movement.js';
+
+export interface MovimientoContexto {
+  usuarioId?: string | null;
+  origen?: OrigenMovimientoInventario;
+  referenciaId?: string | null;
+  motivo?: string | null;
+}
+
+export interface DescontarStockInput extends MovimientoContexto {
   insumoId: string;
   cantidad: number;
 }
@@ -9,7 +21,7 @@ export interface DescontarStockResult {
   cantidadRestante: number;
 }
 
-export interface ReponerStockInput {
+export interface ReponerStockInput extends MovimientoContexto {
   insumoId: string;
   cantidad: number;
 }
@@ -45,6 +57,23 @@ export interface ActualizarInsumoInput {
   stockMinimo?: number;
 }
 
+export interface MovimientoDetalle {
+  id: string;
+  tipo: TipoMovimientoInventario;
+  cantidad: number;
+  stockResultante: number;
+  usuarioId: string | null;
+  origen: OrigenMovimientoInventario;
+  referenciaId: string | null;
+  motivo: string | null;
+  fecha: string;
+}
+
+export interface ListarMovimientosInput {
+  limit: number;
+  offset: number;
+}
+
 export interface InventoryPort {
   listar(): Promise<InsumoStock[]>;
   crear(input: CrearInsumoInput): Promise<InsumoDetalle>;
@@ -56,4 +85,8 @@ export interface InventoryPort {
     input: DescontarStockInput,
   ): Promise<DescontarStockResult>;
   reponerStock(input: ReponerStockInput): Promise<ReponerStockResult>;
+  listarMovimientos(
+    insumoId: string,
+    input: ListarMovimientosInput,
+  ): Promise<MovimientoDetalle[]>;
 }

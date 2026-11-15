@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { QueryFailedError } from 'typeorm';
+import { Insumo } from '../../../entities/insumo.entity.js';
 import { InventoryService } from './inventory.service.js';
 
 describe('InventoryService reponerStock', () => {
@@ -27,7 +28,15 @@ describe('InventoryService reponerStock', () => {
     });
 
     repository = { createQueryBuilder: vi.fn(() => queryBuilder) };
-    service = new InventoryService(repository as never);
+    const movimientos = { insert: vi.fn().mockResolvedValue(undefined), find: vi.fn() };
+    const manager: Record<string, unknown> = {};
+    manager.getRepository = vi.fn((entity: unknown) =>
+      entity === Insumo ? repository : movimientos,
+    );
+    manager.transaction = vi.fn((work: (m: unknown) => unknown) => work(manager));
+    Object.assign(repository, { manager });
+
+    service = new InventoryService(repository as never, movimientos as never);
   });
 
   it('repone stock y devuelve el saldo actual', async () => {

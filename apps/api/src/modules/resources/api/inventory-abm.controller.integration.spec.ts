@@ -4,6 +4,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { QueryFailedError } from 'typeorm';
 import { Insumo } from '../../../entities/insumo.entity.js';
+import { MovimientoInventario } from '../../../entities/movimiento-inventario.entity.js';
 import { RolUsuario } from '../../../entities/usuario.entity.js';
 import { AuthGuard } from '../../iam/api/auth.guard.js';
 import { InventoryService } from '../infrastructure/inventory.service.js';
@@ -30,6 +31,8 @@ describe('InventoryController ABM integration', () => {
     createQueryBuilder: vi.fn(() => queryBuilder),
   };
 
+  const movimientoRepository = { insert: vi.fn(), find: vi.fn() };
+
   beforeEach(async () => {
     rolUsuario = RolUsuario.ADMINISTRATIVO;
     vi.clearAllMocks();
@@ -55,6 +58,7 @@ describe('InventoryController ABM integration', () => {
       providers: [
         InventoryService,
         { provide: getRepositoryToken(Insumo), useValue: repository },
+        { provide: getRepositoryToken(MovimientoInventario), useValue: movimientoRepository },
       ],
     })
       .overrideGuard(AuthGuard)

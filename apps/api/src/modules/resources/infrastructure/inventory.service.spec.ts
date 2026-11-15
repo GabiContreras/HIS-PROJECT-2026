@@ -5,6 +5,7 @@ import {
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
+import { Insumo } from '../../../entities/insumo.entity.js';
 import { InventoryService } from './inventory.service.js';
 
 describe('InventoryService', () => {
@@ -35,7 +36,15 @@ describe('InventoryService', () => {
       findOneBy: vi.fn(),
     };
 
-    service = new InventoryService(repository as never);
+    const movimientos = { insert: vi.fn().mockResolvedValue(undefined), find: vi.fn() };
+    const manager: Record<string, unknown> = {};
+    manager.getRepository = vi.fn((entity: unknown) =>
+      entity === Insumo ? repository : movimientos,
+    );
+    manager.transaction = vi.fn((work: (m: unknown) => unknown) => work(manager));
+    Object.assign(repository, { manager });
+
+    service = new InventoryService(repository as never, movimientos as never);
   });
 
   it('descuenta stock y devuelve el saldo restante', async () => {
@@ -92,7 +101,11 @@ describe('InventoryService', () => {
       if (name !== 'execute') method.mockReturnValue(transactionalBuilder);
     });
     const manager = {
-      getRepository: vi.fn(() => ({ createQueryBuilder: () => transactionalBuilder })),
+      getRepository: vi.fn((entity: unknown) =>
+        entity === Insumo
+          ? { createQueryBuilder: () => transactionalBuilder }
+          : { insert: vi.fn().mockResolvedValue(undefined) },
+      ),
     };
 
     await service.descontarStock({ insumoId: 'insumo-1', cantidad: 1 }, manager as never);

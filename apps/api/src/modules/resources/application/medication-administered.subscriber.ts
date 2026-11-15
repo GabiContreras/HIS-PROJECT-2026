@@ -6,6 +6,7 @@ import {
   type MedicationAdministeredPayload,
 } from '../../../shared/events/medication-administered.event.js';
 import { OutboxService } from '../../../shared/events/outbox/outbox.service.js';
+import { OrigenMovimientoInventario } from '../domain/inventory-movement.js';
 import { InventoryService } from '../infrastructure/inventory.service.js';
 
 export const INVENTORY_MEDICATION_CONSUMER = 'resources.medication-administered';
@@ -34,7 +35,16 @@ export class MedicationAdministeredSubscriber implements OnModuleInit, OnModuleD
     event: DomainEvent<MedicationAdministeredPayload>,
     manager?: EntityManager,
   ): Promise<void> {
-    const { supplyId, quantity } = event.payload;
-    await this.inventory.descontarStock({ insumoId: supplyId, cantidad: quantity }, manager);
+    const { supplyId, quantity, administrationId } = event.payload;
+    await this.inventory.descontarStock(
+      {
+        insumoId: supplyId,
+        cantidad: quantity,
+        usuarioId: null,
+        origen: OrigenMovimientoInventario.ADMINISTRACION_MEDICACION,
+        referenciaId: administrationId ?? null,
+      },
+      manager,
+    );
   }
 }
