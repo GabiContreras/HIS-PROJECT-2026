@@ -26,15 +26,19 @@ export interface CrearPacienteInput {
   entidadCobertura?: string;
 }
 
+export interface ActualizarPacienteInput {
+  nombre?: string;
+  apellido?: string;
+  documento?: string;
+  fechaNacimiento?: string;
+  telefono?: string;
+}
+
 export interface CoberturaInput {
   tipoCobertura: CoverageType;
   entidadCobertura?: string;
 }
 
-/**
- * Reglas de la cobertura: la prepaga necesita su nombre (el copago depende de ella), la obra
- * social pública lo admite opcional y el particular no tiene entidad.
- */
 export function normalizeCoverage(input: CoberturaInput): {
   tipoCobertura: CoverageType;
   entidadCobertura: string | null;
@@ -50,6 +54,16 @@ export function normalizeCoverage(input: CoberturaInput): {
       return { tipoCobertura: input.tipoCobertura, entidadCobertura: entidad };
     default:
       return { tipoCobertura: CoverageType.SELF_PAY, entidadCobertura: null };
+  }
+}
+
+function assertBirthDate(birth: string, today: string): void {
+  const problem = validateBirthDate(birth, today);
+  if (problem === 'FUTURE') {
+    throw new BadRequestException('La fecha de nacimiento no puede ser futura.');
+  }
+  if (problem === 'TOO_OLD') {
+    throw new BadRequestException('La fecha de nacimiento no es válida.');
   }
 }
 
@@ -75,15 +89,7 @@ export class PacientesService {
     today = new Date().toISOString().slice(0, 10),
   ): Promise<PacienteData> {
     const birth = input.fechaNacimiento.slice(0, 10);
-    const problem = validateBirthDate(birth, today);
-    if (problem === 'FUTURE') {
-      throw new BadRequestException(
-        'La fecha de nacimiento no puede ser futura.',
-      );
-    }
-    if (problem === 'TOO_OLD') {
-      throw new BadRequestException('La fecha de nacimiento no es válida.');
-    }
+    assertBirthDate(birth, today);
 
     const coverage = normalizeCoverage(input);
 
@@ -101,7 +107,44 @@ export class PacientesService {
         ...coverage,
       });
     } catch (error) {
-      // Dos altas simultáneas con el mismo documento: gana una, la otra recibe 409.
+      if (error instanceof DocumentoDuplicadoError) {
+        throw new ConflictException(error.message);
+      }
+      throw error;
+    }
+  }
+
+  async update(
+    id: string,
+    input: ActualizarPacienteInput,
+    today = new Date().toISOString().slice(0, 10),
+  ): Promise<PacienteData> {
+    const changes: ActualizarPacienteInput = {};
+    if (input.nombre !== undefined) changes.nombre = input.nombre;
+    if (input.apellido !== undefined) changes.apellido = input.apellido;
+    if (input.documento !== undefined) changes.documento = input.documento;
+    if (input.telefono !== undefined) changes.telefono = input.telefono;
+    if (input.fechaNacimiento !== undefined) {
+      const birth = input.fechaNacimiento.slice(0, 10);
+      assertBirthDate(birth, today);
+      changes.fechaNacimiento = birth;
+    }
+    if (Object.keys(changes).length === 0) {
+      throw new BadRequestException('Indicá al menos un dato para actualizar.');
+    }
+
+    if (changes.documento) {
+      const existing = await this.repository.findByDocumento(changes.documento);
+      if (existing && existing.id !== id) {
+        throw new ConflictException('Ya existe un paciente con ese documento.');
+      }
+    }
+
+    try {
+      const updated = await this.repository.update(id, changes);
+      if (!updated) throw new NotFoundException('No se encontró el paciente.');
+      return updated;
+    } catch (error) {
       if (error instanceof DocumentoDuplicadoError) {
         throw new ConflictException(error.message);
       }

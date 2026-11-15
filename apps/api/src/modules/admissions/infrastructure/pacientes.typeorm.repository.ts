@@ -4,6 +4,7 @@ import { Brackets, QueryFailedError, Repository } from 'typeorm';
 import { Paciente } from '../../../entities/paciente.entity.js';
 import { CoverageType } from '../../../shared/events/coverage-type.js';
 import {
+  type ActualizacionPaciente,
   DocumentoDuplicadoError,
   type NuevoPaciente,
   type PacienteData,
@@ -25,6 +26,14 @@ function toData(entity: Paciente): PacienteData {
   };
 }
 
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    error instanceof QueryFailedError &&
+    (error.driverError as { code?: string } | undefined)?.code ===
+      UNIQUE_VIOLATION
+  );
+}
+
 @Injectable()
 export class PacientesTypeOrmRepository implements PacientesRepository {
   constructor(
@@ -43,7 +52,6 @@ export class PacientesTypeOrmRepository implements PacientesRepository {
       .limit(limit);
 
     if (term) {
-      // Escapa los comodines de LIKE para buscar "%" o "_" como texto.
       const pattern = `%${term.replace(/[\\%_]/g, '\\$&')}%`;
       query.andWhere(
         new Brackets((qb) => {
@@ -82,13 +90,28 @@ export class PacientesTypeOrmRepository implements PacientesRepository {
       );
       return toData(saved);
     } catch (error) {
-      if (
-        error instanceof QueryFailedError &&
-        (error.driverError as { code?: string } | undefined)?.code ===
-          UNIQUE_VIOLATION
-      ) {
-        throw new DocumentoDuplicadoError();
-      }
+      if (isUniqueViolation(error)) throw new DocumentoDuplicadoError();
+      throw error;
+    }
+  }
+
+  async update(
+    id: string,
+    changes: ActualizacionPaciente,
+  ): Promise<PacienteData | null> {
+    const entity = await this.pacientes.findOne({ where: { id } });
+    if (!entity) return null;
+    if (changes.nombre !== undefined) entity.nombre = changes.nombre;
+    if (changes.apellido !== undefined) entity.apellido = changes.apellido;
+    if (changes.documento !== undefined) entity.documento = changes.documento;
+    if (changes.fechaNacimiento !== undefined) {
+      entity.fechaNacimiento = changes.fechaNacimiento;
+    }
+    if (changes.telefono !== undefined) entity.telefono = changes.telefono;
+    try {
+      return toData(await this.pacientes.save(entity));
+    } catch (error) {
+      if (isUniqueViolation(error)) throw new DocumentoDuplicadoError();
       throw error;
     }
   }

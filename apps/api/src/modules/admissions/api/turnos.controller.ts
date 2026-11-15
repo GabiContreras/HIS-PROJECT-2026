@@ -295,4 +295,23 @@ export class TurnosController {
   ) {
     return this.turnos.transition(id, dto.estado, identity);
   }
+
+    @Get(':id')
+  @Roles(RolUsuario.MEDICO, RolUsuario.ADMINISTRATIVO)
+  @ApiOperation({
+    summary: 'Consultar un turno',
+    description: 'Obtiene un turno por su identificador. Los médicos solo pueden consultar los propios.',
+  })
+  @ApiParam({ name: 'id', description: 'Identificador del turno.' })
+  @ApiOkResponse({ type: TurnoAgendaResponseDto, description: 'Turno obtenido correctamente.' })
+  @ApiBadRequestResponse({ description: 'El identificador no es un UUID válido.' })
+  @ApiUnauthorizedResponse({ description: 'Autenticación no válida.' })
+  @ApiForbiddenResponse({ description: 'El médico intenta consultar el turno de otro médico.' })
+  @ApiNotFoundResponse({ description: 'No se encontró el turno.' })
+  getById(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentIdentity() identity: SessionIdentity,
+  ) {
+    return this.turnos.getById(id, identity);
+  }
 }

@@ -15,6 +15,8 @@ import { Financiador } from '../../entities/financiador.entity.js';
 import { Plan } from '../../entities/plan.entity.js';
 import { CoverageCatalogService } from './application/coverage-catalog.service.js';
 import { MedicationAdministeredSubscriber } from './application/medication-administered.subscriber.js';
+import { COVERAGE_VERIFIER } from './domain/ports/coverage-verifier.port.js';
+import { SimulatedCoverageVerifier } from './infrastructure/simulated-coverage-verifier.js';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Cargo, Turno, Insumo, AdministracionMedicacion, Financiador, Plan]), IamModule],
@@ -26,7 +28,8 @@ import { MedicationAdministeredSubscriber } from './application/medication-admin
     ConsultaUrgenciaStrategy,
     AppointmentAttendedSubscriber,
     MedicationAdministeredSubscriber,
+    { provide: COVERAGE_VERIFIER, useClass: SimulatedCoverageVerifier },
   ],
-  exports: [BillingService, CoverageCatalogService],
+  exports: [BillingService, CoverageCatalogService, COVERAGE_VERIFIER],
 })
 export class BillingModule {}
