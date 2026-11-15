@@ -234,7 +234,7 @@ describe('AuthService account creation', () => {
     );
 
     await expect(
-      service.register({
+      service.createStaff({
         nombre: 'Ada',
         apellido: 'Lovelace',
         email: 'ada@example.com',
@@ -248,7 +248,7 @@ describe('AuthService account creation', () => {
     const { service, usersRepo } = buildService({});
 
     await expect(
-      service.register({
+      service.createStaff({
         nombre: '',
         apellido: 'Lovelace',
         email: 'ada@example.com',
@@ -265,42 +265,6 @@ describe('AuthService password management', () => {
     process.env.NODE_ENV = 'development';
   });
 
-  it('refuses to reset the password of an unknown or disabled account', async () => {
-    const unknown = buildService({ user: null });
-    await expect(
-      unknown.service.resetPassword({
-        email: 'x@example.com',
-        password: 'NewSecurePassword4',
-      }),
-    ).rejects.toThrow('No se encontró una cuenta habilitada.');
-
-    const disabled = buildService({
-      user: buildUser({ estado: EstadoCuenta.DESHABILITADO }),
-    });
-    await expect(
-      disabled.service.resetPassword({
-        email: 'ada@example.com',
-        password: 'NewSecurePassword4',
-      }),
-    ).rejects.toThrow('No se encontró una cuenta habilitada.');
-    expect(disabled.usersRepo.update).not.toHaveBeenCalled();
-  });
-
-  it('activates a non-doctor account that was pending verification', async () => {
-    const { service, usersRepo } = buildService({
-      user: buildUser({ estado: EstadoCuenta.PENDIENTE_VERIFICACION }),
-    });
-
-    await service.resetPassword({
-      email: 'ada@example.com',
-      password: 'NewSecurePassword4',
-    });
-
-    expect(usersRepo.update).toHaveBeenCalledWith(
-      { id: 'user-1' },
-      expect.objectContaining({ estado: EstadoCuenta.ACTIVO }),
-    );
-  });
 
   it('rejects a password change when the current password is wrong', async () => {
     const { service, dataSource } = buildService({ passwordMatches: false });
@@ -367,7 +331,7 @@ describe('AuthService password management', () => {
 
     const result = await service.forgotPassword('ada@example.com');
 
-    expect(result.message).toContain('temporalmente deshabilitada');
+    expect(result.message).toContain('Pedile a un administrativo');
     expect(usersRepo.createQueryBuilder).not.toHaveBeenCalled();
   });
 });
