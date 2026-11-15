@@ -8,7 +8,7 @@ export enum EstadoCargo {
 export class InvalidCargoTransitionError extends Error {
   constructor(
     readonly from: EstadoCargo,
-    readonly action: 'pagar' | 'anular',
+    readonly action: 'pagar' | 'anular' | 'facturar',
   ) {
     super(`No se puede ${action} un cargo en estado ${from}.`);
   }
@@ -18,6 +18,7 @@ export interface CargoState {
   readonly estado: EstadoCargo;
   pagar(): CargoState;
   anular(): CargoState;
+  facturar(): CargoState;
 }
 
 abstract class BaseCargoState implements CargoState {
@@ -30,6 +31,10 @@ abstract class BaseCargoState implements CargoState {
   anular(): CargoState {
     throw new InvalidCargoTransitionError(this.estado, 'anular');
   }
+
+  facturar(): CargoState {
+    throw new InvalidCargoTransitionError(this.estado, 'facturar');
+  }
 }
 
 class PendienteState extends BaseCargoState {
@@ -41,6 +46,10 @@ class PendienteState extends BaseCargoState {
 
   override anular(): CargoState {
     return new AnuladoState();
+  }
+
+  override facturar(): CargoState {
+    return new FacturadoState();
   }
 }
 

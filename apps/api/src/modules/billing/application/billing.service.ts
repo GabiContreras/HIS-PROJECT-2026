@@ -159,6 +159,7 @@ export class BillingService {
           tipoAtencion: strategy.tipoAtencion,
           tipoCobertura: paciente?.tipoCobertura ?? null,
           entidadCobertura: paciente?.entidadCobertura ?? null,
+          financiadorId: paciente?.financiadorId ?? null,
           importePacientePesos: reparto?.pacientePesos ?? null,
           importeTerceroPesos: reparto?.terceroPesos ?? null,
         }),
@@ -228,6 +229,7 @@ if (
         tipoAtencion: TipoAtencionFacturable.FARMACIA,
         tipoCobertura: null,
         entidadCobertura: null,
+        financiadorId: administracion.indicacion.paciente.financiadorId ?? null,
         importePacientePesos: null,
         importeTerceroPesos: null,
       }),
@@ -279,6 +281,7 @@ if (
           tipoAtencion: TipoAtencionFacturable.INTERNACION,
           tipoCobertura: paciente.tipoCobertura,
           entidadCobertura: paciente.entidadCobertura ?? null,
+          financiadorId: paciente.financiadorId ?? null,
           importePacientePesos: reparto.pacientePesos,
           importeTerceroPesos: reparto.terceroPesos,
         }),
@@ -544,15 +547,26 @@ if (
   }
 
   anular(id: string): Promise<Cargo> {
-    return this.changeState(id, (state) => state.anular());
+    return this.changeState(
+      id,
+      (state) => state.anular(),
+      (cargo) => {
+        if (cargo.liquidacionId) {
+          throw new ConflictException(
+            'El cargo ya está liquidado y no se puede anular.',
+          );
+        }
+      },
+    );
   }
 
   private changeState(
     id: string,
     transition: (state: CargoState) => CargoState,
+    precondition?: (cargo: Cargo) => void,
   ): Promise<Cargo> {
     return this.cargos.manager.transaction((manager) =>
-      this.changeStateLocked(manager, id, transition),
+      this.changeStateLocked(manager, id, transition, precondition),
     );
   }
 
@@ -560,6 +574,7 @@ if (
     manager: EntityManager,
     id: string,
     transition: (state: CargoState) => CargoState,
+    precondition?: (cargo: Cargo) => void,
   ): Promise<Cargo> {
     const repository = manager.getRepository(Cargo);
     const cargo = await repository.findOne({
@@ -570,6 +585,8 @@ if (
     if (!cargo) {
       throw new NotFoundException('El cargo no existe.');
     }
+
+    precondition?.(cargo);
 
     cargo.estado = this.nextEstado(cargo.estado, transition);
     return repository.save(cargo);

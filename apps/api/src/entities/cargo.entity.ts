@@ -49,6 +49,12 @@ export class Cargo {
   @Column({ name: 'importe_tercero_pesos', type: 'integer', nullable: true })
   importeTerceroPesos: number | null;
 
+  @Column({ name: 'financiador_id', type: 'uuid', nullable: true })
+  financiadorId: string | null;
+
+  @Column({ name: 'liquidacion_id', type: 'uuid', nullable: true })
+  liquidacionId: string | null;
+
   @Column({ name: 'estado', type: 'varchar', length: 20, default: EstadoCargo.PENDIENTE })
   estado: EstadoCargo;
 

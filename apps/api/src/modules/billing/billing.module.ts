@@ -5,6 +5,9 @@ import { Turno } from '../../entities/turno.entity.js';
 import { CargosController } from './api/cargos.controller.js';
 import { CoverageCatalogController } from './api/coverage-catalog.controller.js';
 import { ReportesController } from './api/reportes.controller.js';
+import { LiquidacionesController } from './api/liquidaciones.controller.js';
+import { Liquidacion } from '../../entities/liquidacion.entity.js';
+import { LiquidacionesService } from './application/liquidaciones.service.js';
 import { AppointmentAttendedSubscriber } from './application/appointment-attended.subscriber.js';
 import { BillingService } from './application/billing.service.js';
 import { ReportesService } from './application/reportes.service.js';
@@ -30,10 +33,11 @@ import { COVERAGE_VERIFIER } from './domain/ports/coverage-verifier.port.js';
 import { SimulatedCoverageVerifier } from './infrastructure/simulated-coverage-verifier.js';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Cargo, Turno, Insumo, AdministracionMedicacion, Financiador, Plan, Prestacion, Tarifa, Paciente, MovimientoInventario]), IamModule, ResourcesModule],
-  controllers: [CargosController, CoverageCatalogController, ReportesController],
+  imports: [TypeOrmModule.forFeature([Cargo, Turno, Insumo, AdministracionMedicacion, Financiador, Plan, Prestacion, Tarifa, Paciente, MovimientoInventario, Liquidacion]), IamModule, ResourcesModule],
+  controllers: [CargosController, CoverageCatalogController, ReportesController, LiquidacionesController],
   providers: [
     BillingService,
+    LiquidacionesService,
     ReportesService,
     CoverageCatalogService,
     NomencladorService,
