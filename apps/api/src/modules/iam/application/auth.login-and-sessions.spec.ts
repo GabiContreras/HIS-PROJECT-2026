@@ -1,4 +1,4 @@
-import { QueryFailedError } from 'typeorm';
+import { IsNull, Not, QueryFailedError } from 'typeorm';
 import {
   EstadoCuenta,
   RolUsuario,
@@ -286,20 +286,13 @@ describe('AuthService password management', () => {
 
   it('changes the password inside a transaction and revokes the other sessions', async () => {
     const { service, usersRepo, dataSource } = buildService({});
-    const execute = vi.fn().mockResolvedValue(undefined);
-    const builder = {
-      update: vi.fn().mockReturnThis(),
-      set: vi.fn().mockReturnThis(),
-      where: vi.fn().mockReturnThis(),
-      andWhere: vi.fn().mockReturnThis(),
-      execute,
-    };
+    const sessionsUpdate = vi.fn().mockResolvedValue({ affected: 1 });
     dataSource.transaction.mockImplementationOnce((operation) =>
       operation({
         getRepository: (entity: unknown) =>
           entity === Usuario
             ? usersRepo
-            : { createQueryBuilder: () => builder },
+            : { update: sessionsUpdate },
       }),
     );
 
@@ -320,10 +313,14 @@ describe('AuthService password management', () => {
       { id: 'user-1' },
       { passwordHash: 'scrypt$new' },
     );
-    expect(builder.andWhere).toHaveBeenCalledWith('"id" != :sessionId', {
-      sessionId: 'session-1',
-    });
-    expect(execute).toHaveBeenCalled();
+    expect(sessionsUpdate).toHaveBeenCalledWith(
+      {
+        usuarioId: 'user-1',
+        revocadoEn: IsNull(),
+        id: Not('session-1'),
+      },
+      { revocadoEn: expect.any(Date) },
+    );
   });
 
   it('keeps forgot-password disabled and does not reveal accounts', async () => {

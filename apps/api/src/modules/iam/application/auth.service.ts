@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, IsNull, QueryFailedError, Repository } from 'typeorm';
+import { DataSource, IsNull, Not, QueryFailedError, Repository } from 'typeorm';
 import {
   EstadoCuenta,
   RolUsuario,
@@ -333,15 +333,14 @@ export class AuthService {
       await manager
         .getRepository(Usuario)
         .update({ id: user.id }, { passwordHash });
-      await manager
-        .getRepository(RefreshSession)
-        .createQueryBuilder()
-        .update()
-        .set({ revocadoEn: new Date() })
-        .where('"usuarioId" = :userId', { userId: user.id })
-        .andWhere('"revocadoEn" IS NULL')
-        .andWhere('"id" != :sessionId', { sessionId: identity.sessionId })
-        .execute();
+      await manager.getRepository(RefreshSession).update(
+        {
+          usuarioId: user.id,
+          revocadoEn: IsNull(),
+          id: Not(identity.sessionId),
+        },
+        { revocadoEn: new Date() },
+      );
     });
     return { message: 'La contraseña fue actualizada.' };
   }
