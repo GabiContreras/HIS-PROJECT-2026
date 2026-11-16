@@ -121,7 +121,7 @@ export class CargosController {
   @ApiOkResponse({ type: CargoEstadoDto })
   @ApiNotFoundResponse({ description: 'El cargo no existe.' })
   @ApiConflictResponse({
-    description: 'El cargo ya está pagado o anulado.',
+    description: 'El cargo ya está pagado o anulado, o ya está incluido en una liquidación.',
   })
   async anular(@Param('id', ParseUUIDPipe) id: string): Promise<CargoEstadoDto> {
     const { estado } = await this.billing.anular(id);

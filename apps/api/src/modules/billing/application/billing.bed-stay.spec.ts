@@ -93,6 +93,7 @@ describe('BillingService.createForBedStay', () => {
       tipoAtencion: TipoAtencionFacturable.INTERNACION,
       tipoCobertura: CoverageType.SELF_PAY,
       entidadCobertura: null,
+      financiadorId: null,
       importePacientePesos: 120_000,
       importeTerceroPesos: 0,
     });
