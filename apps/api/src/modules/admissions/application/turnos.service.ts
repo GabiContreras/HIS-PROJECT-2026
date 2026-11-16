@@ -390,6 +390,7 @@ export class TurnosService {
     id: string,
     nextState: EstadoTurno,
     identity: SessionIdentity,
+     cancelacion?: { motivo?: string },
   ): Promise<TurnoSummary & { promovido: PromocionStandby | null }> {
     const result = await this.dataSource.transaction(async (manager) => {
       const initial = await manager.getRepository(Turno).findOne({
@@ -414,6 +415,11 @@ export class TurnosService {
           throw new ConflictException(error.message);
         }
         throw error;
+      }
+            if (nextState === EstadoTurno.CANCELADO) {
+        turno.motivoCancelacion = cancelacion?.motivo ?? null;
+        turno.canceladoPorId = identity.accountId;
+        turno.canceladoEn = new Date();
       }
       const saved = await repository.save(turno);
       // HU 1.3: el horario liberado pasa al primero de la lista de espera, en la misma transacción.
@@ -737,6 +743,9 @@ export class TurnosService {
         throw error;
       }
     });
+  }
+    cancel(id: string, motivo: string, identity: SessionIdentity) {
+    return this.transition(id, EstadoTurno.CANCELADO, identity, { motivo });
   }
 
   getTransitionTable(): Record<string, EstadoTurno[]> {

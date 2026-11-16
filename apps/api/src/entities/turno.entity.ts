@@ -44,6 +44,15 @@ export class Turno {
   })
   estado: EstadoTurno;
 
+    @Column({ name: 'motivo_cancelacion', type: 'varchar', length: 200, nullable: true })
+  motivoCancelacion: string | null;
+
+  @Column({ name: 'cancelado_por_id', type: 'uuid', nullable: true })
+  canceladoPorId: string | null;
+
+  @Column({ name: 'cancelado_en', type: 'timestamptz', nullable: true })
+  canceladoEn: Date | null;
+
   @VersionColumn()
   version: number;
 }
