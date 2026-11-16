@@ -88,6 +88,7 @@ import { AllExceptionsFilter } from './shared/http/all-exceptions.filter.js';
   controllers: [AppController],
   providers: [
     AppService,
+    AuditoriaService,
     { provide: APP_PIPE, useValue: new ValidationPipe({ whitelist: true, transform: true }) },
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
     { provide: APP_INTERCEPTOR, useClass: AuditarInterceptor },
