@@ -610,5 +610,77 @@ describe('TurnosService', () => {
       ).rejects.toThrow('propia agenda');
     });
   });
+  
+    describe('cancel (ADM-7)', () => {
+    const turno = (estado: EstadoTurno) =>
+      ({
+        id: 'turno-1',
+        estado,
+        urgente: false,
+        fechaHora: at('14:00'),
+        duracionMinutos: 30,
+        medico,
+        paciente: { id: 'patient-1' },
+      }) as unknown as Turno;
+
+    it('registra motivo, quién canceló y cuándo', async () => {
+      const { service, turnoRepository } = setup();
+      turnoRepository.findOne.mockResolvedValue(turno(EstadoTurno.RESERVADO));
+      const result = await service.cancel('turno-1', 'No puede asistir', admin);
+      expect(result.estado).toBe(EstadoTurno.CANCELADO);
+      expect(turnoRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          estado: EstadoTurno.CANCELADO,
+          motivoCancelacion: 'No puede asistir',
+          canceladoPorId: 'admin-1',
+          canceladoEn: expect.any(Date),
+        }),
+      );
+    });
+
+    it('promueve al primero de la lista de espera como antes', async () => {
+      const { service, turnoRepository, standbyRepository } = setup();
+      turnoRepository.findOne.mockResolvedValue(turno(EstadoTurno.CONFIRMADO));
+      standbyRepository.find.mockResolvedValue([
+        { id: 'w-1', estado: 'EN_COLA', paciente: { id: 'p2', nombre: 'Luis', apellido: 'Medina' } },
+      ]);
+      const result = await service.cancel('turno-1', 'Se enfermó el médico', admin);
+      expect(result.promovido?.paciente.id).toBe('p2');
+    });
+
+    it('la transición genérica registra quién canceló pero no el motivo', async () => {
+      const { service, turnoRepository } = setup();
+      turnoRepository.findOne.mockResolvedValue(turno(EstadoTurno.RESERVADO));
+      await service.transition('turno-1', EstadoTurno.CANCELADO, admin);
+      expect(turnoRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ motivoCancelacion: null, canceladoPorId: 'admin-1' }),
+      );
+    });
+
+    it('otras transiciones no marcan cancelación', async () => {
+      const { service, turnoRepository } = setup();
+      const reservado = turno(EstadoTurno.RESERVADO);
+      turnoRepository.findOne.mockResolvedValue(reservado);
+      await service.transition('turno-1', EstadoTurno.CONFIRMADO, admin);
+      expect(reservado).not.toHaveProperty('canceladoPorId');
+    });
+
+    it('no cancela un turno ya atendido', async () => {
+      const { service, turnoRepository } = setup();
+      turnoRepository.findOne.mockResolvedValue(turno(EstadoTurno.ATENDIDO));
+      await expect(service.cancel('turno-1', 'Error', admin)).rejects.toThrow(
+        'Un turno atendido no puede modificarse.',
+      );
+      expect(turnoRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('responde 404 si el turno no existe', async () => {
+      const { service, turnoRepository } = setup();
+      turnoRepository.findOne.mockResolvedValue(null);
+      await expect(service.cancel('turno-1', 'Error', admin)).rejects.toThrow(
+        'No se encontró el turno.',
+      );
+    });
+  });
 
 });

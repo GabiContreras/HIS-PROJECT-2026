@@ -46,7 +46,8 @@ import { EsperaSummaryResponseDto } from './dto/espera-summary-response.dto.js';
 import { ReprogramarTurnoDto } from './dto/reprogramar-turno.dto.js';
 import type { Response } from 'express';
 import { AgendaFiltroDto } from './dto/agenda-filtro.dto.js';
-
+import { CancelarTurnoDto } from './dto/cancelar-turno.dto.js';
+import { Auditar } from '../../iam/api/auditar.decorator.js';
 @Controller('turnos')
 @UseGuards(AuthGuard, RolesGuard)
 @ApiTags('Turnos')
@@ -334,6 +335,37 @@ export class TurnosController {
     @CurrentIdentity() identity: SessionIdentity,
   ) {
     return this.turnos.reschedule(id, dto, identity);
+  }
+
+  @Auditar('CANCELAR_TURNO', 'turnos')
+    @Post(':id/cancelar')
+  @HttpCode(200)
+  @Roles(RolUsuario.MEDICO, RolUsuario.ADMINISTRATIVO)
+  @ApiOperation({
+    summary: 'Cancelar un turno',
+    description:
+      'Cancela un turno indicando el motivo. Registra quién canceló y cuándo, y puede promover a una persona de la lista de espera.',
+  })
+  @ApiParam({ name: 'id', description: 'Identificador del turno.' })
+  @ApiOkResponse({
+    type: TurnoTransitionResponseDto,
+    description: 'Turno cancelado correctamente.',
+  })
+  @ApiBadRequestResponse({ description: 'Falta el motivo o no es válido.' })
+  @ApiUnauthorizedResponse({ description: 'Autenticación no válida.' })
+  @ApiForbiddenResponse({
+    description: 'El usuario no puede gestionar esa agenda.',
+  })
+  @ApiNotFoundResponse({ description: 'No se encontró el turno.' })
+  @ApiConflictResponse({
+    description: 'El turno no puede cancelarse en su estado actual.',
+  })
+  cancel(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CancelarTurnoDto,
+    @CurrentIdentity() identity: SessionIdentity,
+  ) {
+    return this.turnos.cancel(id, dto.motivo, identity);
   }
 
 
