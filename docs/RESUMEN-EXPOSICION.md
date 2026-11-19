@@ -1,6 +1,6 @@
 # Resumen para la exposición
 
-Guía corta para presentar el backend: qué patrones se usan, cómo se resuelve la concurrencia, cómo se comunican los módulos y cuáles son los límites reales del sistema. Lo que figura acá está en el código; los resultados de la prueba contra servidor y base reales son los del registro de la verificación del 10/11/2026 (`docs/PRUEBAS-FUNCIONALES-ENFERMERIA-RECURSOS-IAM.md`) y las cifras de la sección 8 se midieron el 16/11/2026 sobre el commit `f404552` de `main`.
+Guía corta para presentar el backend: qué patrones se usan, cómo se resuelve la concurrencia, cómo se comunican los módulos y cuáles son los límites reales del sistema. Lo que figura acá está en el código; los resultados de la prueba contra servidor y base reales son los del registro de la verificación del 10/11/2026 (`docs/PRUEBAS-FUNCIONALES-ENFERMERIA-RECURSOS-IAM.md`) y las cifras de la sección 8 se midieron el 18/11/2026 sobre el commit `140aca4` de `main`.
 
 ## 1. Qué es
 
@@ -73,19 +73,19 @@ La tabla completa de quién publica y quién escucha cada evento está en `docs/
 - **El nomenclador tiene valores provisorios** (consulta regular $15.000, urgencia $25.000, día de cama $50.000 y copago de $3.000), sembrados por migración y a la espera de la definición del docente. No hay endpoint para administrarlos.
 - **La liquidación a terceros no tiene datos reales con el alta de pacientes actual:** `POST /pacientes` no recibe el financiador, el plan ni el número de afiliado, por lo que los cargos quedan sin financiador.
 - **Tres roles en lugar de los cinco del diseño:** Administrador y Recepcionista operan como `ADMINISTRATIVO`, y Paciente no existe como cuenta.
-- **La base compartida tiene el historial de migraciones desincronizado** (ver `docs/PRUEBAS-FUNCIONALES-ENFERMERIA-RECURSOS-IAM.md`, sección 3); sobre una base vacía las 39 migraciones aplican sin errores.
+- **La base compartida tiene el historial de migraciones desincronizado** (ver `docs/PRUEBAS-FUNCIONALES-ENFERMERIA-RECURSOS-IAM.md`, sección 3); sobre una base vacía las 40 migraciones aplican sin errores.
 
 ## 8. Números
 
-Medidos el 16/11/2026 sobre el commit `f404552` de `main`.
+Medidos el 18/11/2026 sobre el commit `140aca4` de `main`.
 
 | Indicador | Valor |
 | --- | --- |
 | Pruebas automatizadas del backend | 1249 pasan y 21 se omiten (97 archivos pasan y 4 se omiten, de 101); las omitidas requieren una base PostgreSQL local |
-| Pruebas del frontend | 48 pasan; 7 de 8 archivos pasan y 1 falla (`stores/__tests__/dashboard.store.spec.ts` importa un store que no existe) |
-| Lint del backend (oxlint) | 0 errores y 12 advertencias |
+| Pruebas del frontend | 48 pasan en 7 archivos |
+| Lint del backend (oxlint) | 0 errores y 11 advertencias |
 | Type-check del frontend | Sin errores |
-| Migraciones sobre base vacía | 39 de 39; una segunda ejecución informa que no hay pendientes |
+| Migraciones sobre base vacía | 40 de 40; una segunda ejecución informa que no hay pendientes |
 | Entidades TypeORM | 32 archivos en `apps/api/src/entities` |
 | Rutas HTTP del backend | 120 decoradores de ruta (119 sin contar `GET /`, que Swagger excluye) |
 | Prueba funcional contra servidor y base reales (verificación del 10/11/2026) | 29 de 29 criterios |

@@ -4,7 +4,7 @@ Aplicación web para la gestión de admisión de pacientes, agenda de turnos, ca
 
 Proyecto integrador de la Tecnicatura Universitaria en Programación (UTN Facultad Regional San Francisco). Se evalúa en conjunto para Programación IV (frontend en Vue y backend en NestJS) y Metodología / Arquitectura de Software.
 
-Las cifras de este documento (pruebas, migraciones, entidades, rutas) se midieron el 16/11/2026 sobre el commit `f404552` de `main`.
+Las cifras de este documento (pruebas, migraciones, entidades, rutas) se midieron el 18/11/2026 sobre el commit `140aca4` de `main`.
 
 ## Índice
 
@@ -170,7 +170,7 @@ HIS-PROJECT-2026/
         data-source.ts      DataSource para migraciones
         config/             estrategia de nombres snake_case
         entities/           entidades TypeORM (32)
-        migrations/         migraciones versionadas (39)
+        migrations/         migraciones versionadas (40)
         modules/            iam, admissions, ehr, nursing, resources, billing, health
         shared/             bus de eventos, Outbox, filtro de excepciones y utilidades
         scripts/            bootstrap-superadmin.ts
@@ -253,7 +253,7 @@ Todos los comandos se ejecutan desde la raíz del repositorio.
 
 8. Abrir `http://localhost:5173` e iniciar sesión con el email y la contraseña del superadmin.
 
-La documentación interactiva de la API (Swagger) queda disponible en `http://localhost:3000/docs` mientras `NODE_ENV` sea distinto de `production`.
+La documentación interactiva de la API (Swagger) queda disponible en `http://localhost:3000/docs` (el JSON de OpenAPI, en `http://localhost:3000/docs-json`) mientras `NODE_ENV` sea distinto de `production`.
 
 Otros comandos útiles:
 
@@ -311,9 +311,9 @@ Los archivos `.env` no deben subirse al repositorio.
 
 ## 9. Base de datos y migraciones
 
-- Motor: PostgreSQL. Esquema versionado con migraciones de TypeORM en `apps/api/src/migrations/` (39 archivos). `synchronize` está desactivado en `app.module.ts` y en `data-source.ts`.
+- Motor: PostgreSQL. Esquema versionado con migraciones de TypeORM en `apps/api/src/migrations/` (40 archivos). `synchronize` está desactivado en `app.module.ts` y en `data-source.ts`.
 - Convención de nombres: el código usa `camelCase` y las tablas y columnas de PostgreSQL usan `snake_case` mediante `SnakeNamingStrategy`.
-- Ejecutar migraciones: `npm --prefix apps/api run migration:run`. TypeORM registra las ejecutadas en la tabla `migrations`, por lo que repetir el comando es seguro. Sobre una base vacía, las 39 migraciones se aplican sin errores y una segunda ejecución informa que no hay migraciones pendientes (medido el 16/11/2026 en una base PostgreSQL 16 local). Correrlas solo contra una base local propia; la base compartida tiene el historial desincronizado (sección 19).
+- Ejecutar migraciones: `npm --prefix apps/api run migration:run`. TypeORM registra las ejecutadas en la tabla `migrations`, por lo que repetir el comando es seguro. Sobre una base vacía, las 40 migraciones se aplican sin errores y una segunda ejecución informa que no hay migraciones pendientes (medido el 18/11/2026 en una base PostgreSQL 16 local). Correrlas solo contra una base local propia; la base compartida tiene el historial desincronizado (sección 19).
 - Cambios de esquema: cada cambio va en una migración nueva escrita a mano e idempotente (`IF NOT EXISTS`); no se editan las ya aplicadas. No se usa la salida de `migration:generate`: la base es más estricta que las entidades (restricciones, índices y longitudes definidos en SQL) y el comando propone borrarlos.
 - Carga inicial: las migraciones siembran tres prestaciones del nomenclador (`CONSULTA_REGULAR`, `CONSULTA_URGENCIA` y `DIA_CAMA`, con valores provisorios; ver `docs/BILLING-IMPLEMENTACION.md`). El resto de las tablas arranca vacía. La única cuenta inicial se crea con `iam:bootstrap-superadmin`.
 
@@ -517,7 +517,7 @@ Las vistas se cargan de forma diferida. Un `beforeEach` restaura la sesión, red
 - **Pinia** (`defineStore` con la sintaxis de composición): `session.store` (en `features/iam/`), `beds.store`, `inventory.store`, `medications.store`, `notification.store`, `triage.store` y `vitals.store`. Cada store expone estado, getters (`computed`) y acciones, con indicadores de carga y error.
 - **Composables**: `useBeds`, `useCharges`, `useClinicalHistory`, `useFeedback`, `useInventory`, `usePatients` y `useProtocols` en `composables/`, y `useAppointments` y `useUsers` en las carpetas de cada feature. Separan la lógica de acceso a datos de la presentación.
 - **Comunicación entre componentes**: props tipadas con `defineProps`, eventos con `defineEmits`, slots en los componentes de interfaz y stores para el estado compartido.
-- **Componentes de interfaz** reutilizables en `components/ui`: `BaseCard`, `DataTable`, `SideDrawer`, `StatusChip`, `StatCard`, `PageHeader`, `NoticeBanner`, entre otros.
+- **Componentes de interfaz** reutilizables en `components/ui`: `BaseCard`, `SideDrawer`, `StatusChip`, `StatCard`, `PageHeader`, `NoticeBanner`, entre otros.
 
 ### Conexión con la API (`src/shared/http.ts`)
 
@@ -570,14 +570,14 @@ npm --prefix apps/api run test:cov                # con cobertura
 npm --prefix apps/api run test:e2e                # e2e (requiere base de datos configurada)
 ```
 
-Estado medido el 16/11/2026 (commit `f404552`):
+Estado medido el 18/11/2026 (commit `140aca4`):
 
 | Verificación | Resultado |
 | --- | --- |
 | `npm run api:build` | Sin errores |
 | `npm run api:test` | 1249 pruebas pasan y 21 se omiten (97 archivos pasan y 4 se omiten, de 101) |
-| `npm --prefix apps/api run lint` | 0 errores y 12 advertencias (imports y funciones sin usar, y un escape innecesario en `BaselineSchema`) |
-| `npm --prefix apps/web run test` | 48 pruebas pasan en 7 archivos; 1 archivo falla |
+| `npm --prefix apps/api run lint` | 0 errores y 11 advertencias (imports y funciones sin usar, y un escape innecesario en `BaselineSchema`) |
+| `npm --prefix apps/web run test` | 48 pruebas pasan en 7 archivos |
 | `npm --prefix apps/web run type-check` | Sin errores |
 | `npm --prefix apps/web run build` | Sin errores |
 
@@ -597,7 +597,7 @@ La prueba `cargo-urgencia.local.spec.ts` (14 de las 21 omitidas, más 7 de la gu
 
 Prueba funcional contra servidor y base reales: `apps/api/scripts/functional-check.mjs` recorre 29 criterios de aceptación de Enfermería, Recursos e IAM por HTTP. El resultado y la forma de repetirla están en `docs/PRUEBAS-FUNCIONALES-ENFERMERIA-RECURSOS-IAM.md`, que es el registro de la verificación del 10/11/2026.
 
-Frontend: hay 8 archivos de pruebas con Vitest (`npm --prefix apps/web run test`). Pasan 7; `stores/__tests__/dashboard.store.spec.ts` falla porque importa un store que no existe. El script `type-check` (`vue-tsc --build`) verifica los tipos.
+Frontend: hay 7 archivos de pruebas con Vitest (`npm --prefix apps/web run test`) y las 48 pruebas pasan. El script `type-check` (`vue-tsc --build`) verifica los tipos.
 
 ## 15. Seguridad
 
@@ -605,6 +605,7 @@ Frontend: hay 8 archivos de pruebas con Vitest (`npm --prefix apps/web run test`
 - CORS restringido a los orígenes de `FRONTEND_ORIGINS`.
 - Refresh token en cookie `HttpOnly`, rotado en cada renovación y almacenado como hash; si se reutiliza uno ya rotado se revoca la familia de sesiones.
 - Bloqueo de 15 minutos tras 5 intentos de inicio de sesión fallidos.
+- Auditoría: los inicios de sesión y las acciones marcadas con `@Auditar` (por ejemplo alta, habilitación y baja de cuentas y alta de pacientes) quedan registrados en la tabla `auditoria`, también los intentos fallidos con su código HTTP.
 - Control de acceso por rol aplicado en el backend; las restricciones del router del frontend son solo de experiencia de usuario.
 - Los adjuntos de estudios aceptan PDF, PNG y JPEG de hasta 10 MB, se guardan fuera del directorio público y se descargan con autenticación.
 - Swagger se desactiva en producción.
@@ -677,7 +678,6 @@ Ubicación en el código de cada criterio de la rúbrica.
 - `packages/contracts` no contiene contratos compartidos ni tiene `package.json` en su raíz. Hoy los DTOs viven en cada módulo de la API y los tipos del frontend en `apps/web/src/services`.
 - El sistema tiene tres roles (`MEDICO`, `ENFERMERO`, `ADMINISTRATIVO`) frente a los cinco del documento de diseño; la equivalencia está en la sección 12.
 - Sin verificación por correo electrónico ni recuperación de contraseña por correo.
-- Una prueba del frontend falla (sección 14).
 
 ## 20. Documentación complementaria
 

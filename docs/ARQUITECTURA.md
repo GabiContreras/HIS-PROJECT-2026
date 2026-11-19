@@ -4,7 +4,7 @@
 
 Adaptar el monorepo a la arquitectura de referencia UTN sin cambiar Vue 3, Vite, NestJS, TypeORM ni PostgreSQL. La organización es un **monolito modular** con límites de dominio, capas hexagonales y eventos internos para reducir acoplamiento.
 
-Estado verificado el 16/11/2026 sobre el commit `f404552` de `main`.
+Estado verificado el 18/11/2026 sobre el commit `140aca4` de `main`.
 
 ## Módulos de dominio
 
@@ -124,7 +124,7 @@ Durabilidad: son durables los 8 tipos de `DURABLE_EVENT_TYPES` (`admissions.appo
 ## Persistencia
 
 - PostgreSQL (el entorno compartido usa Supabase); no se adopta SQLite de la referencia.
-- `synchronize: false`; el esquema se modifica con migraciones versionadas en `apps/api/src/migrations/` (39 archivos al 16/11/2026), escritas a mano e idempotentes (`IF NOT EXISTS`). No se usa la salida de `migration:generate`: la base es más estricta que las entidades (restricciones, índices y longitudes definidos en SQL) y el comando propone borrarlas.
+- `synchronize: false`; el esquema se modifica con migraciones versionadas en `apps/api/src/migrations/` (40 archivos al 18/11/2026), escritas a mano e idempotentes (`IF NOT EXISTS`). No se usa la salida de `migration:generate`: la base es más estricta que las entidades (restricciones, índices y longitudes definidos en SQL) y el comando propone borrarlas.
 - El código TypeScript usa `camelCase`; los nombres de tablas y columnas en PostgreSQL usan `snake_case`, mediante `SnakeNamingStrategy`, configurada tanto en `app.module.ts` como en `data-source.ts`.
 - Las migraciones de nomenclador siembran las prestaciones iniciales de Facturación (ver `docs/BILLING-IMPLEMENTACION.md`); el resto de las tablas arranca vacía.
 - `DATABASE_URL` es secreto y solo se usa en backend.
