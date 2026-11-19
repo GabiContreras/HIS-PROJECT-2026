@@ -34,6 +34,7 @@ interface PersistedBedEvent {
   event_type: string;
   payload: Record<string, unknown>;
   created_at: Date | string;
+  created_at_cursor: string;
 }
 
 /**
@@ -113,13 +114,13 @@ export class BedEventsStreamService {
     if (!dataSource) throw new Error('El stream persistente de camas requiere una conexión de base de datos.');
 
     return defer(() => {
-      let cursorAt = new Date();
+      let cursorAt: Date | string = new Date();
       let cursorId = '00000000-0000-0000-0000-000000000000';
       return interval(1_000).pipe(
         concatMap(() =>
           from(
             dataSource.query<PersistedBedEvent[]>(
-              `SELECT id, event_type, payload, created_at
+              `SELECT id, event_type, payload, created_at, created_at::text AS created_at_cursor
                FROM outbox_events
                WHERE event_type = ANY($1::varchar[])
                  AND (created_at, id) > ($2::timestamptz, $3::uuid)
@@ -142,7 +143,7 @@ export class BedEventsStreamService {
         ),
         concatMap((rows) => from(rows)),
         concatMap((row) => {
-          cursorAt = new Date(row.created_at);
+          cursorAt = row.created_at_cursor;
           cursorId = row.id;
           return from(this.toMessages(row));
         }),
