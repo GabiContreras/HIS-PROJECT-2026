@@ -60,12 +60,12 @@ El menú lateral (`AppShell.vue`) muestra solo las entradas permitidas para el r
 | Insumos | API (solo lectura) | `services/inventory.ts` |
 | Facturación (cargos) | API | `services/charges.ts` |
 | Notificaciones | API | `services/notifications.ts` |
-| Camas | Datos locales en memoria | `services/beds.ts` (con `TODO` hacia `/camas`) |
+| Camas | API (con actualización en tiempo real por `GET /camas/eventos`) | `services/beds.ts` |
 | Triaje | Datos locales en memoria | `services/triage.ts` (con `TODO` hacia `/triaje`) |
 
 Servicios que existen pero ninguna pantalla usa todavía: `services/liquidations.ts` (liquidaciones), `services/reports.ts` (reportes administrativos), `services/coverageCatalog.ts` (solo tipos del catálogo de financiadores y planes, que se conservan para una mejora futura), `downloadCharges` y `exportCharges` de `services/charges.ts` (exportación CSV generada por el servidor) y `listVitalSignSeries` de `services/vitalSigns.ts`.
 
-El frontend no tiene pantallas para la agenda médica semanal, las excepciones de agenda, las especialidades, la reprogramación ni la cancelación de turnos con motivo, las liquidaciones, los reportes, la administración del inventario (alta, edición, reposición, historial) ni los sectores y habitaciones. El stream `GET /camas/eventos` no se consume.
+El frontend no tiene pantallas para la agenda médica semanal, las excepciones de agenda, las especialidades, la reprogramación ni la cancelación de turnos con motivo, las liquidaciones, los reportes, la administración del inventario (alta, edición, reposición, historial) ni los sectores y habitaciones.
 
 ## Gestión de usuarios
 
@@ -140,12 +140,17 @@ Pruebas unitarias con Vitest sobre stores, composables y servicios.
 | Archivo | Cobertura |
 | --- | --- |
 | `src/features/iam/__tests__/session.store.spec.ts` | Estado de sesión, inicio y cierre de sesión, restauración y actualización de sesión |
-| `src/composables/__tests__/useBeds.spec.ts` | Estado inicial, cálculo de camas ocupadas, carga y manejo de errores |
+| `src/composables/__tests__/useBeds.spec.ts` | Estado inicial, cálculo de camas ocupadas, carga, lista vacía y manejo de errores |
+| `src/features/beds/__tests__/BedDetailView.spec.ts` | Detalle de cama: acciones visibles según el rol y el estado de la cama |
+| `src/stores/__tests__/beds.store.spec.ts` | Store de camas: estado vacío, eventos en tiempo real (idempotencia), conexión y reconexión del stream |
+| `src/services/__tests__/beds.spec.ts` | Servicio de camas: mapeo de estados, acciones, conflicto 409 y lectura del stream |
 | `src/composables/__tests__/useInventory.spec.ts` | Estado inicial, carga de inventario, identificación de stock bajo y manejo de errores |
 | `src/composables/__tests__/useCharges.spec.ts` | Carga y totales de cargos |
 | `src/services/__tests__/charges.spec.ts` | Servicio de cargos: paginación, filtros y exportación |
 | `src/services/__tests__/liquidations.spec.ts` | Servicio de liquidaciones |
 | `src/shared/__tests__/http.download.spec.ts` | Descarga de archivos del cliente HTTP |
+| `src/shared/__tests__/http.stream.spec.ts` | Apertura del stream con token, renovación de sesión y errores |
+| `src/shared/__tests__/sse.spec.ts` | Lectura de mensajes SSE (mensajes partidos entre chunks, `ping`, CRLF) |
 
 Desde la raíz: `npm --prefix apps/web run test`.
 

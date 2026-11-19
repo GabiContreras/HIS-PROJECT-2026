@@ -32,9 +32,9 @@ npm run web:dev                          # servidor de desarrollo
 | `app/` | `router.ts` (rutas y guardia) y `AppShell.vue` (layout con menú lateral filtrado por rol). |
 | `features/` | Pantallas por módulo: `admissions`, `beds`, `billing`, `dashboard`, `ehr`, `feedback`, `iam`, `inventory`, `nursing`, `patients`, `triage`. `iam` incluye el store de sesión (`session.store.ts`), `api.ts`, `types.ts` y `useUsers.ts`; `admissions` incluye `useAppointments.ts`. |
 | `stores/` | 6 stores de Pinia: `beds`, `inventory`, `medications`, `notification`, `triage`, `vitals`. Con `features/iam/session.store.ts` son 7 en total. |
-| `composables/` | 7 composables: `useBeds`, `useCharges`, `useClinicalHistory`, `useFeedback`, `useInventory`, `usePatients`, `useProtocols`. Con `useAppointments` y `useUsers` (dentro de sus features) son 9 en total. |
+| `composables/` | 8 composables: `useBeds`, `useBedsRealtime`, `useCharges`, `useClinicalHistory`, `useFeedback`, `useInventory`, `usePatients`, `useProtocols`. Con `useAppointments` y `useUsers` (dentro de sus features) son 10 en total. |
 | `services/` | Funciones de acceso a la API y tipos de cada módulo (`patients`, `turnos`, `charges`, `inventory`, `medications`, `protocols`, `vitalSigns`, `clinicalHistory`, `notifications`, `users`, `reports`, `liquidations`, entre otros). |
-| `shared/` | `http.ts` (cliente HTTP), `errors.ts`, `format.ts`, `brand.ts` y `styles/` (`tokens.css`, `base.css`). |
+| `shared/` | `http.ts` (cliente HTTP), `sse.ts` (lectura de streams SSE), `errors.ts`, `format.ts`, `brand.ts` y `styles/` (`tokens.css`, `base.css`). |
 | `components/` | Componentes reutilizables. `components/ui/` tiene los de interfaz base (`BaseCard`, `SideDrawer`, `StatusChip`, `StatCard`, `PageHeader`, `NoticeBanner`, `RoleChip`, `AppIcon`, `BrandMark`); `components/feedback/` tiene las notificaciones, toasts y confirmaciones. |
 
 Las pruebas están en carpetas `__tests__` junto al código que prueban.
@@ -60,16 +60,16 @@ La guardia `beforeEach` restaura la sesión, envía a `/login` (conservando la r
 
 ## Conexión con la API
 
-- **Cliente central:** `src/shared/http.ts` expone `http.get`, `post`, `patch`, `delete` y `download`, basados en `fetch`. Los errores HTTP y de red se convierten en `ApiError` con estado y mensaje legible.
+- **Cliente central:** `src/shared/http.ts` expone `http.get`, `post`, `patch`, `delete`, `download` y `stream`, basados en `fetch`. Los errores HTTP y de red se convierten en `ApiError` con estado y mensaje legible.
 - **Autenticación:** el access token se guarda en memoria y se envía como `Authorization: Bearer`. El refresh token viaja en una cookie `HttpOnly` administrada por la API; las llamadas a rutas `/auth/` se envían con `credentials: 'include'` (las demás, con `same-origin`).
 - **Renovación de sesión:** ante un `401` en una ruta que no es `/auth/`, el cliente llama a `POST /auth/refresh` (una sola renovación a la vez) y reintenta la petición. Si no se puede renovar, limpia la sesión y redirige a `/login` (`main.ts`). Al cargar la aplicación, el router intenta restaurar la sesión con la misma renovación.
+- **Tiempo real de camas:** `http.stream` abre `GET /camas/eventos` con `fetch` y el mismo token y renovación de sesión que el resto de las llamadas (el `EventSource` del navegador no envía `Authorization`). `shared/sse.ts` lee el stream y `stores/beds.store.ts` aplica cada cambio a la cama indicada, reconecta con espera creciente y refresca el mapa al reconectar.
 - **Descarga de archivos:** `http.download` devuelve el `Blob` y el nombre tomado de `Content-Disposition`. El servicio `services/charges.ts` lo usa en `exportCharges` y `downloadCharges` (`GET /billing/cargos/exportar`).
 
 ## Estado conocido
 
 Verificado en el código a la fecha de este README:
 
-- Camas: `services/beds.ts` trabaja con datos de prueba en memoria; las pantallas de camas y los paneles que las usan no llaman todavía a `/camas`. Está previsto conectarlas.
 - Triaje: `services/triage.ts` trabaja con datos de prueba en memoria; la pantalla de triaje no llama todavía a `/triaje`. Está previsto conectarla.
 - Facturación: la acción "Exportar CSV" de `BillingView.vue` arma el CSV en el navegador (`buildChargesCsv` y `downloadCsv` de `features/billing/charge-ui.ts`) con los cargos ya cargados. `downloadCharges` y `exportCharges` (CSV generado por la API) están implementados y probados, pero hoy ninguna pantalla los invoca.
 - `services/reports.ts` (reportes de facturación) y `services/liquidations.ts` (liquidaciones) tienen funciones para los endpoints de `/billing`, pero no hay pantalla que los use; `liquidations.ts` solo se importa desde su prueba.

@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { searchPatients, type Patient } from '../services/patients';
 import { messageFrom } from '../shared/errors';
 
-const props = defineProps<{ modelValue: Patient | null; label?: string }>();
+const props = withDefaults(defineProps<{ modelValue: Patient | null; label?: string; excludeIds?: string[] }>(), {
+  excludeIds: () => [],
+});
 const emit = defineEmits<{ 'update:modelValue': [patient: Patient | null] }>();
 
 const query = ref('');
-const results = ref<Patient[]>([]);
+const found = ref<Patient[]>([]);
+const results = computed(() => found.value.filter((p) => !props.excludeIds.includes(p.id)));
 const loading = ref(false);
 const error = ref<string | null>(null);
 
@@ -19,8 +22,8 @@ async function run(): Promise<void> {
   loading.value = true;
   error.value = null;
   try {
-    const found = await searchPatients(query.value);
-    if (current === request) results.value = found;
+    const patients = await searchPatients(query.value);
+    if (current === request) found.value = patients;
   } catch (reason) {
     if (current === request) error.value = messageFrom(reason, 'No se pudo buscar pacientes.');
   } finally {

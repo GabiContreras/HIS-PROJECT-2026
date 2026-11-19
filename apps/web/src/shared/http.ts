@@ -18,6 +18,8 @@ interface RequestOptions {
   method?: Method;
   body?: unknown;
   responseType?: 'blob';
+  signal?: AbortSignal;
+  accept?: string;
 }
 
 export interface Download {
@@ -45,6 +47,7 @@ export function configureAuth(handlers: {
 async function send(path: string, options: RequestOptions): Promise<Response> {
   const headers: Record<string, string> = {};
   if (options.body !== undefined) headers['Content-Type'] = 'application/json';
+  if (options.accept) headers['Accept'] = options.accept;
   if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
 
   try {
@@ -53,6 +56,7 @@ async function send(path: string, options: RequestOptions): Promise<Response> {
       headers,
       body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
       credentials: path.startsWith('/auth/') ? 'include' : 'same-origin',
+      signal: options.signal,
     });
   } catch {
     throw new ApiError(0, 'No se pudo conectar con el servidor. Verificá que la API esté en marcha.');
@@ -120,10 +124,26 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   return parse<T>(response, options.responseType);
 }
 
+export async function openStream(path: string, signal: AbortSignal): Promise<Response> {
+  const options: RequestOptions = { signal, accept: 'text/event-stream' };
+  let response = await send(path, options);
+
+  if (response.status === 401 && !path.startsWith('/auth/')) {
+    if (await refreshOnce()) {
+      response = await send(path, options);
+    } else {
+      onSessionExpired?.();
+    }
+  }
+  if (!response.ok) await parse<never>(response);
+  return response;
+}
+
 export const http = {
   get: <T>(path: string) => request<T>(path),
   download: (path: string) => request<Download>(path, { responseType: 'blob' }),
   post: <T>(path: string, body?: unknown) => request<T>(path, { method: 'POST', body }),
   patch: <T>(path: string, body?: unknown) => request<T>(path, { method: 'PATCH', body }),
   delete: <T = void>(path: string) => request<T>(path, { method: 'DELETE' }),
+  stream: (path: string, signal: AbortSignal) => openStream(path, signal),
 };

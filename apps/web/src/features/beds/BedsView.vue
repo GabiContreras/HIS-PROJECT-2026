@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia';
 import { useRouter } from 'vue-router';
 import BedGrid from '../../components/BedGrid.vue';
 import BedLegend from '../../components/BedLegend.vue';
+import { useBedsRealtime } from '../../composables/useBedsRealtime';
 import BaseCard from '../../components/ui/BaseCard.vue';
 import NoticeBanner from '../../components/ui/NoticeBanner.vue';
 import PageHeader from '../../components/ui/PageHeader.vue';
@@ -12,7 +13,7 @@ import { useBedsStore } from '../../stores/beds.store';
 
 const router = useRouter();
 const store = useBedsStore();
-const { beds, counts, loading, error } = storeToRefs(store);
+const { beds, counts, loading, error, empty } = storeToRefs(store);
 
 const STATUSES = Object.keys(BED_STATUS_LABELS) as BedStatus[];
 const filter = ref<BedStatus | ''>('');
@@ -23,6 +24,7 @@ function openBed(bed: Bed): void {
 }
 
 onMounted(store.load);
+useBedsRealtime();
 </script>
 
 <template>
@@ -41,6 +43,7 @@ onMounted(store.load);
         {{ error }} <button type="button" class="btn-sm" :disabled="loading" @click="store.load">Reintentar</button>
       </NoticeBanner>
       <p v-else-if="loading && beds.length === 0" role="status">Cargando camas...</p>
+      <p v-else-if="empty" class="muted">Todavía no hay camas cargadas.</p>
       <p v-else-if="visible.length === 0" class="muted">No hay camas con ese estado.</p>
       <BedGrid v-else :beds="visible" @select="openBed" />
     </BaseCard>
