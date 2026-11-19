@@ -638,7 +638,20 @@ curl "http://localhost:3000/billing/cargos?desde=2026-11-01&hasta=2026-11-30&est
 
 ## 17. Capturas de pantalla
 
-Pendiente. Para completar este apartado se deben agregar imágenes en `docs/img/` y referenciarlas desde esta sección. Pantallas sugeridas: inicio de sesión, panel por rol, agenda de turnos, mapa de camas, alta de paciente y facturación.
+Capturas de la aplicación en ejecución (frontend sobre una base local de pruebas, con datos ficticios). Las pantallas de camas y de triaje usan datos locales del frontend (ver `apps/web/README.md`, "Estado conocido").
+
+| Pantalla | Imagen |
+| --- | --- |
+| Inicio de sesión | ![Inicio de sesión](docs/img/login.png) |
+| Panel de administrativo | ![Panel de administrativo](docs/img/panel-administrativo.png) |
+| Panel de médico | ![Panel de médico](docs/img/panel-medico.png) |
+| Panel de enfermero | ![Panel de enfermero](docs/img/panel-enfermero.png) |
+| Pacientes, con búsqueda aplicada | ![Pacientes](docs/img/pacientes.png) |
+| Alta de paciente con cobertura | ![Alta de paciente](docs/img/alta-paciente.png) |
+| Agenda de turnos | ![Agenda de turnos](docs/img/turnos.png) |
+| Mapa de camas | ![Mapa de camas](docs/img/camas.png) |
+| Inventario con alerta de stock bajo | ![Inventario](docs/img/inventario.png) |
+| Facturación: listado de cargos | ![Facturación](docs/img/facturacion.png) |
 
 ## 18. Guía para la evaluación
 

@@ -76,6 +76,10 @@ Verificado en el código a la fecha de este README:
 - `services/coverageCatalog.ts` solo define los tipos de los endpoints del catálogo de financiadores y planes de Facturación (`/billing/financiadores` y `/billing/planes`) y ninguna pantalla los usa todavía. Se conserva para una mejora futura.
 - Cobertura del paciente: el alta (`POST /pacientes`) y el cambio de cobertura (`PATCH /pacientes/:id/cobertura`) aceptan `tipoCobertura` y `entidadCobertura` (texto libre), pero no `financiadorId`, `planId` ni `numeroAfiliado`, aunque la entidad `Paciente` tiene esas columnas. Por eso las tarifas y el copago por financiador no se aplican desde la aplicación: Facturación, sin `financiadorId` en el paciente, usa el valor base y el copago de la prestación.
 
+## Capturas
+
+Imágenes en [docs/img](../../docs/img/): inicio de sesión, paneles por rol, pacientes, alta de paciente, turnos, camas, inventario y facturación. Se muestran en la sección 17 del [README raíz](../../README.md).
+
 ## Pruebas
 
 ```bash
