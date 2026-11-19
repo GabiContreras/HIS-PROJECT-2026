@@ -69,7 +69,7 @@ La tabla completa de quién publica y quién escucha cada evento está en `docs/
 - **El protocolo de ingreso se genera en segundo plano**, un instante después de asignar la cama.
 - **Solo hay protocolos para dos motivos de ingreso**, los que definen las historias de usuario.
 - **El stream de camas no guarda historial**: entrega los cambios ocurridos con la conexión abierta, con hasta un segundo de demora.
-- **El frontend de camas y el de triaje todavía usan datos locales**, aunque los endpoints existen. El frontend de facturación muestra los cargos pero no consume las liquidaciones, los reportes ni el catálogo de coberturas.
+- **El frontend de triaje todavía usa datos locales**, aunque el endpoint existe. El frontend de facturación muestra los cargos pero no consume las liquidaciones, los reportes ni el catálogo de coberturas.
 - **El nomenclador tiene valores provisorios** (consulta regular $15.000, urgencia $25.000, día de cama $50.000 y copago de $3.000), sembrados por migración y a la espera de la definición del docente. No hay endpoint para administrarlos.
 - **La liquidación a terceros no tiene datos reales con el alta de pacientes actual:** `POST /pacientes` no recibe el financiador, el plan ni el número de afiliado, por lo que los cargos quedan sin financiador.
 - **Tres roles en lugar de los cinco del diseño:** Administrador y Recepcionista operan como `ADMINISTRATIVO`, y Paciente no existe como cuenta.
@@ -77,12 +77,12 @@ La tabla completa de quién publica y quién escucha cada evento está en `docs/
 
 ## 8. Números
 
-Medidos el 18/11/2026 sobre el commit `140aca4` de `main`.
+Medidos el 19/11/2026 sobre el commit `4c0b4e5` de `main`.
 
 | Indicador | Valor |
 | --- | --- |
-| Pruebas automatizadas del backend | 1249 pasan y 21 se omiten (97 archivos pasan y 4 se omiten, de 101); las omitidas requieren una base PostgreSQL local |
-| Pruebas del frontend | 48 pasan en 7 archivos |
+| Pruebas automatizadas del backend | 1250 pasan y 21 se omiten (97 archivos pasan y 4 se omiten, de 101); las omitidas requieren una base PostgreSQL local |
+| Pruebas del frontend | 123 pasan en 12 archivos |
 | Lint del backend (oxlint) | 0 errores y 11 advertencias |
 | Type-check del frontend | Sin errores |
 | Migraciones sobre base vacía | 40 de 40; una segunda ejecución informa que no hay pendientes |

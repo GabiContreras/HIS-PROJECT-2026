@@ -1,6 +1,6 @@
 # Implementación frontend
 
-Describe el frontend Vue 3 del Sistema de Información Hospitalaria tal como está en el código al 18/11/2026 (commit `140aca4` de `main`): qué pantallas consumen la API, cuáles siguen con datos locales y qué servicios existen sin pantalla que los use.
+Describe el frontend Vue 3 del Sistema de Información Hospitalaria tal como está en el código al 19/11/2026 (commit `4c0b4e5` de `main`): qué pantallas consumen la API, cuáles siguen con datos locales y qué servicios existen sin pantalla que los use.
 
 ## Configuración y validación
 
@@ -19,7 +19,7 @@ npm --prefix apps/web run test           # vitest
 npm --prefix apps/web run build          # type-check y build de producción
 ```
 
-Estado de las comprobaciones: `type-check` sin errores; `test` con 48 pruebas aprobadas en 7 archivos (ver "Pruebas automatizadas").
+Estado de las comprobaciones: `type-check` sin errores; `test` con 123 pruebas aprobadas en 12 archivos (ver "Pruebas automatizadas").
 
 ## Sesión y autorización
 
@@ -154,4 +154,4 @@ Pruebas unitarias con Vitest sobre stores, composables y servicios.
 
 Desde la raíz: `npm --prefix apps/web run test`.
 
-Resultado el 18/11/2026: 7 archivos de prueba y 48 pruebas aprobadas.
+Resultado el 19/11/2026: 12 archivos de prueba y 123 pruebas aprobadas.
