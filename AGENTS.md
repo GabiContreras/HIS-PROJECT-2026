@@ -50,34 +50,35 @@ Idioma: explicaciones en español; código, commits y nombres en inglés.
 - Todo cambio en dominio o servicios lleva tests unitarios.
 - Los flujos con concurrencia (turnos, camas, inventario, medicación) deben testear el 409.
 - Antes de dar una tarea por terminada: correr build, tests y lint, y reportar el resultado.
-- Línea base: 577 tests pasando, 7 omitidos; lint con 3 warnings. No debe empeorar.
-- Los 7 omitidos necesitan una base real y solo corren contra PostgreSQL local (README, sección 14). Nunca apuntarlos a la base compartida.
+- Línea base (19/11/2026, `main` en `4c0b4e5`): API con 1250 tests pasando y 21 omitidos, lint con 11 warnings; frontend con 123 tests pasando en 12 archivos. No debe empeorar.
+- Los 21 omitidos necesitan una base real y solo corren contra PostgreSQL local (README, sección 14). Nunca apuntarlos a la base compartida.
 
 ## Estado del proyecto
-Verificado el 10/11/2026 contra servidor y base reales (`docs/PRUEBAS-FUNCIONALES-ENFERMERIA-RECURSOS-IAM.md`).
+Verificado el 19/11/2026 sobre `main` (commit `4c0b4e5`). Las cifras y el detalle están en el README y en `docs/`. La verificación contra servidor y base reales del 10/11/2026 está en `docs/PRUEBAS-FUNCIONALES-ENFERMERIA-RECURSOS-IAM.md`.
 
-- Backend completo: Admisión 1.1, 1.2, 1.3, 2.1 y 3.1 (triaje con cola persistida); Enfermería 1.1, 1.2 y 2.1; Recursos 1.1, 2.1 (con tiempo real por `GET /camas/eventos`) y 3.1; Facturación 1.1 y 2.1; IAM; Historia clínica.
-- Enfermería e Historia clínica están en `main`.
+- Backend completo: Admisión (turnos, agenda médica, especialidades, cancelación y reprogramación, triaje con cola persistida); Enfermería; Recursos (camas con tiempo real por `GET /camas/eventos`, inventario con historial de movimientos y alerta de stock bajo); Facturación (cargos con estados, nomenclador, coberturas, listado paginado con exportación CSV, reportes y liquidaciones a terceros); IAM con auditoría; Historia clínica.
+- Outbox persistente para los eventos durables (cargos, descuento de stock y cambios de cama); ver `docs/ARQUITECTURA.md`.
 - `patient.admitted` lo publica Recursos al asignar una cama con `motivoIngreso`.
-- Frontend: las pantallas de camas y de triaje siguen con datos locales en memoria; el resto consume la API.
+- Frontend: consume la API en todas las pantallas salvo triaje, que sigue con datos locales en memoria. Camas usa `/camas` y `GET /camas/eventos` (con `fetch`, no `EventSource`).
 
 ## Deuda técnica
-- Bus de eventos en memoria, sin entrega durable (mejora: Outbox).
+- Outbox parcial: solo los ocho tipos de `DURABLE_EVENT_TYPES` tienen entrega durable; las notificaciones, el protocolo de ingreso y el stock bajo se entregan en memoria y sin reintento (README, sección 19).
 - Historial de migraciones de la base compartida desincronizado con `main`: `migration:run` falla ahí hasta que se registre `AddInsumoPrice1793600000000` (detalle y arreglo en el documento de pruebas funcionales, sección 3).
 - Las entidades y el esquema difieren en restricciones, índices y longitudes; por eso `migration:generate` no es confiable.
 - Entidades TypeORM en `src/entities/` en lugar de la infraestructura de cada módulo.
 - `packages/contracts` vacío.
-- Copago de prepaga y tarifas con valores fijos provisorios.
+- Nomenclador provisorio: valores y copago fijos en las migraciones, sin endpoint para administrarlos ni para cargar tarifas por financiador.
+- El alta y el cambio de cobertura del paciente no reciben financiador, plan ni número de afiliado; los cargos quedan sin financiador y no se liquidan con datos reales.
 - Protocolos de ingreso solo para los dos motivos definidos en las historias de usuario.
-- Un test del frontend falla (`stores/__tests__/dashboard.store.spec.ts` importa un store inexistente).
-- 3 warnings de lint: dos imports sin usar en specs y un escape innecesario en `BaselineSchema`.
+- Dos errores 500 por validación (verificados el 18/11/2026): `GET` y `PATCH` de `/usuarios/:id` con un id que no es UUID, y `POST /camas` con un `numero` de más de 10 caracteres (el DTO admite 50 y la columna 10).
+- 11 warnings de lint (línea base).
 
 ## Pendientes
 1. Sincronizar la tabla `migrations` de la base compartida y aplicar ahí las migraciones pendientes.
-2. Conectar el frontend de camas a `/camas` y a `GET /camas/eventos` (con `fetch`, no `EventSource`), enviando `motivoIngreso` al asignar.
-3. Conectar el frontend de triaje a `/triaje`.
-4. Definir con el docente el nomenclador (copago de prepaga y tarifas).
-5. Corregir o eliminar el test del frontend que falla.
+2. Conectar el frontend de triaje a `/triaje`.
+3. Permitir financiador, plan y número de afiliado en el alta y en el cambio de cobertura, con su selector en el frontend (los tipos del catálogo están en `apps/web/src/services/coverageCatalog.ts`).
+4. Definir con el docente el nomenclador (copago de prepaga y tarifas por financiador).
+5. Corregir los dos errores 500 por validación.
 
 ## Cómo trabajar
 - Una tarea por vez, con cambios pequeños.

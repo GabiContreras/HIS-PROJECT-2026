@@ -86,4 +86,4 @@ Imágenes en [docs/img](../../docs/img/): inicio de sesión, paneles por rol, pa
 npm --prefix apps/web run test
 ```
 
-Resultado de la última corrida: 7 archivos de prueba y 48 pruebas aprobadas. Cubren sesión, composables (`useBeds`, `useCharges`, `useInventory`), servicios de cargos y liquidaciones, y la descarga del cliente HTTP.
+Resultado de la última corrida: 12 archivos de prueba y 123 pruebas aprobadas. Cubren sesión, composables (`useBeds`, `useCharges`, `useInventory`), servicios de cargos y liquidaciones, y la descarga del cliente HTTP.

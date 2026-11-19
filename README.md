@@ -4,7 +4,7 @@ Aplicación web para la gestión de admisión de pacientes, agenda de turnos, ca
 
 Proyecto integrador de la Tecnicatura Universitaria en Programación (UTN Facultad Regional San Francisco). Se evalúa en conjunto para Programación IV (frontend en Vue y backend en NestJS) y Metodología / Arquitectura de Software.
 
-Las cifras de este documento (pruebas, migraciones, entidades, rutas) se midieron el 18/11/2026 sobre el commit `140aca4` de `main`.
+Las cifras de este documento (pruebas, migraciones, entidades, rutas) se midieron el 19/11/2026 sobre el commit `4c0b4e5` de `main`.
 
 ## Índice
 
@@ -570,14 +570,14 @@ npm --prefix apps/api run test:cov                # con cobertura
 npm --prefix apps/api run test:e2e                # e2e (requiere base de datos configurada)
 ```
 
-Estado medido el 18/11/2026 (commit `140aca4`):
+Estado medido el 19/11/2026 (commit `4c0b4e5`):
 
 | Verificación | Resultado |
 | --- | --- |
 | `npm run api:build` | Sin errores |
-| `npm run api:test` | 1249 pruebas pasan y 21 se omiten (97 archivos pasan y 4 se omiten, de 101) |
+| `npm run api:test` | 1250 pruebas pasan y 21 se omiten (97 archivos pasan y 4 se omiten, de 101) |
 | `npm --prefix apps/api run lint` | 0 errores y 11 advertencias (imports y funciones sin usar, y un escape innecesario en `BaselineSchema`) |
-| `npm --prefix apps/web run test` | 48 pruebas pasan en 7 archivos |
+| `npm --prefix apps/web run test` | 123 pruebas pasan en 12 archivos |
 | `npm --prefix apps/web run type-check` | Sin errores |
 | `npm --prefix apps/web run build` | Sin errores |
 
@@ -597,7 +597,7 @@ La prueba `cargo-urgencia.local.spec.ts` (14 de las 21 omitidas, más 7 de la gu
 
 Prueba funcional contra servidor y base reales: `apps/api/scripts/functional-check.mjs` recorre 29 criterios de aceptación de Enfermería, Recursos e IAM por HTTP. El resultado y la forma de repetirla están en `docs/PRUEBAS-FUNCIONALES-ENFERMERIA-RECURSOS-IAM.md`, que es el registro de la verificación del 10/11/2026.
 
-Frontend: hay 7 archivos de pruebas con Vitest (`npm --prefix apps/web run test`) y las 48 pruebas pasan. El script `type-check` (`vue-tsc --build`) verifica los tipos.
+Frontend: hay 12 archivos de pruebas con Vitest (`npm --prefix apps/web run test`) y las 123 pruebas pasan. El script `type-check` (`vue-tsc --build`) verifica los tipos.
 
 ## 15. Seguridad
 
