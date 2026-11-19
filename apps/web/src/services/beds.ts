@@ -1,3 +1,6 @@
+import { ApiError, http } from '../shared/http';
+import { readSseMessages } from '../shared/sse';
+
 export type BedStatus = 'DISPONIBLE' | 'OCUPADA' | 'EN_LIMPIEZA' | 'MANTENIMIENTO';
 
 export const BED_STATUS_LABELS: Record<BedStatus, string> = {
@@ -7,6 +10,20 @@ export const BED_STATUS_LABELS: Record<BedStatus, string> = {
   MANTENIMIENTO: 'Bloqueada',
 };
 
+export type ApiBedStatus = 'LIBRE' | 'OCUPADA' | 'EN_LIMPIEZA' | 'BLOQUEADA';
+
+const STATUS_FROM_API: Record<ApiBedStatus, BedStatus> = {
+  LIBRE: 'DISPONIBLE',
+  OCUPADA: 'OCUPADA',
+  EN_LIMPIEZA: 'EN_LIMPIEZA',
+  BLOQUEADA: 'MANTENIMIENTO',
+};
+
+export function fromApiStatus(value: unknown): BedStatus | null {
+  if (typeof value !== 'string' || !Object.prototype.hasOwnProperty.call(STATUS_FROM_API, value)) return null;
+  return STATUS_FROM_API[value as ApiBedStatus];
+}
+
 export interface BedPatient {
   id: string;
   nombre: string;
@@ -15,12 +32,36 @@ export interface BedPatient {
 export interface Bed {
   id: string;
   numero: string;
-  sector: string;
+  sector: string | null;
+  habitacion: string | null;
   estado: BedStatus;
   paciente: BedPatient | null;
-  ingresoAt: string | null;
-  /** Versión para bloqueo optimista: si cambió, otra persona modificó la cama. */
-  version: number;
+  motivoBloqueo: string | null;
+  activa: boolean;
+}
+
+interface ApiBed {
+  id: string;
+  numero: string;
+  sector: string | null;
+  habitacion: { numero: string } | null;
+  estado: ApiBedStatus;
+  paciente: { id: string; nombre: string; apellido: string } | null;
+  motivoBloqueo: string | null;
+  activa: boolean;
+}
+
+export interface AssignBedInput {
+  pacienteId: string;
+  medicoId?: string;
+  motivoIngreso?: string;
+}
+
+export interface BedChange {
+  camaId: string;
+  numero: string;
+  estado: BedStatus;
+  at: string;
 }
 
 export class BedConflictError extends Error {
@@ -30,91 +71,84 @@ export class BedConflictError extends Error {
   }
 }
 
-// Máquina de estados de la cama: no se puede pasar de "ocupada" a "libre" sin limpieza.
-const TRANSITIONS: Record<BedStatus, BedStatus[]> = {
-  DISPONIBLE: ['OCUPADA', 'MANTENIMIENTO'],
-  OCUPADA: ['EN_LIMPIEZA'],
-  EN_LIMPIEZA: ['DISPONIBLE'],
-  MANTENIMIENTO: ['DISPONIBLE'],
-};
-
-const STATES: BedStatus[] = ['OCUPADA', 'DISPONIBLE', 'DISPONIBLE', 'OCUPADA', 'EN_LIMPIEZA', 'DISPONIBLE', 'MANTENIMIENTO'];
-const NAMES = ['Carlos López', 'Ana Rojas', 'Laura Gómez', 'Marta Pérez', 'Luis Rossi', 'Raúl Benítez', 'Carla Molina', 'Tomás Herrera'];
-
-// Datos de prueba en memoria mientras no exista el endpoint de camas.
-const beds: Bed[] = Array.from({ length: 30 }, (_, i) => {
-  const estado = STATES[i % STATES.length] ?? 'DISPONIBLE';
-  const nombre = NAMES[i % NAMES.length] ?? 'Paciente';
+export function toBed(api: ApiBed): Bed {
+  const estado = fromApiStatus(api.estado);
+  if (!estado) throw new Error(`Estado de cama desconocido: ${String(api.estado)}`);
   return {
-    id: String(i + 1),
-    numero: String(i + 1).padStart(2, '0'),
-    sector: i < 15 ? 'Clínica médica' : 'Cirugía',
+    id: api.id,
+    numero: api.numero,
+    sector: api.sector,
+    habitacion: api.habitacion?.numero ?? null,
     estado,
-    paciente: estado === 'OCUPADA' ? { id: `mock-${i}`, nombre } : null,
-    ingresoAt: estado === 'OCUPADA' ? new Date(Date.now() - (i + 2) * 3_600_000).toISOString() : null,
-    version: 1,
+    paciente: api.paciente ? { id: api.paciente.id, nombre: `${api.paciente.nombre} ${api.paciente.apellido}` } : null,
+    motivoBloqueo: api.motivoBloqueo,
+    activa: api.activa,
   };
-});
-
-function find(id: string): Bed {
-  const bed = beds.find((b) => b.id === id);
-  if (!bed) throw new Error('No se encontró la cama.');
-  return bed;
 }
 
-function move(bed: Bed, next: BedStatus): void {
-  if (!TRANSITIONS[bed.estado].includes(next)) {
-    throw new BedConflictError(
-      `Una cama "${BED_STATUS_LABELS[bed.estado]}" no puede pasar a "${BED_STATUS_LABELS[next]}".`,
-    );
+async function transition(request: Promise<ApiBed>): Promise<Bed> {
+  try {
+    return toBed(await request);
+  } catch (reason) {
+    if (reason instanceof ApiError && reason.status === 409) throw new BedConflictError(reason.message);
+    throw reason;
   }
-  bed.estado = next;
-  bed.version += 1;
 }
-
-const copy = (bed: Bed): Bed => ({ ...bed, paciente: bed.paciente ? { ...bed.paciente } : null });
 
 export async function listBeds(): Promise<Bed[]> {
-  return beds.map(copy); // TODO: http.get<Bed[]>('/camas') cuando exista el endpoint
+  return (await http.get<ApiBed[]>('/camas')).map(toBed);
 }
 
 export async function getBed(id: string): Promise<Bed | undefined> {
-  const bed = beds.find((b) => b.id === id);
-  return bed ? copy(bed) : undefined;
-}
-
-/** Solo una cama libre y sin cambios desde que se leyó puede ocuparse (evita la doble asignación). */
-export async function assignBed(id: string, patient: BedPatient, expectedVersion: number): Promise<Bed> {
-  const bed = find(id);
-  if (bed.version !== expectedVersion || bed.estado !== 'DISPONIBLE') {
-    throw new BedConflictError('La cama acaba de ser ocupada o cambió de estado. Actualizamos el mapa para que elijas otra.');
+  try {
+    return toBed(await http.get<ApiBed>(`/camas/${id}`));
+  } catch (reason) {
+    if (reason instanceof ApiError && reason.status === 404) return undefined;
+    throw reason;
   }
-  if (beds.some((b) => b.paciente?.id === patient.id)) {
-    throw new BedConflictError('Ese paciente ya tiene una cama asignada.');
+}
+
+export function assignBed(id: string, input: AssignBedInput): Promise<Bed> {
+  return transition(http.post<ApiBed>(`/camas/${id}/asignar`, input));
+}
+
+export function dischargeBed(id: string): Promise<Bed> {
+  return transition(http.post<ApiBed>(`/camas/${id}/alta`));
+}
+
+export function confirmCleaning(id: string): Promise<Bed> {
+  return transition(http.post<ApiBed>(`/camas/${id}/limpieza/confirmar`));
+}
+
+export function blockBed(id: string, motivo: string): Promise<Bed> {
+  return transition(http.post<ApiBed>(`/camas/${id}/bloquear`, { motivo }));
+}
+
+export function unblockBed(id: string): Promise<Bed> {
+  return transition(http.post<ApiBed>(`/camas/${id}/desbloquear`));
+}
+
+export function parseBedChange(data: string): BedChange | null {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(data);
+  } catch {
+    return null;
   }
-  move(bed, 'OCUPADA');
-  bed.paciente = { ...patient };
-  bed.ingresoAt = new Date().toISOString();
-  return copy(bed);
+  if (typeof raw !== 'object' || raw === null) return null;
+  const { camaId, numero, estado, at } = raw as Record<string, unknown>;
+  const mapped = fromApiStatus(estado);
+  if (typeof camaId !== 'string' || typeof numero !== 'string' || typeof at !== 'string' || !mapped) return null;
+  return { camaId, numero, estado: mapped, at };
 }
 
-/** Alta o traslado: la cama pasa automáticamente a limpieza y no puede asignarse hasta higienizarla. */
-export async function dischargeBed(id: string): Promise<Bed> {
-  const bed = find(id);
-  move(bed, 'EN_LIMPIEZA');
-  bed.paciente = null;
-  bed.ingresoAt = null;
-  return copy(bed);
-}
-
-export async function confirmCleaning(id: string): Promise<Bed> {
-  const bed = find(id);
-  move(bed, 'DISPONIBLE');
-  return copy(bed);
-}
-
-export async function toggleBlocked(id: string): Promise<Bed> {
-  const bed = find(id);
-  move(bed, bed.estado === 'MANTENIMIENTO' ? 'DISPONIBLE' : 'MANTENIMIENTO');
-  return copy(bed);
+export async function* streamBedChanges(signal: AbortSignal, onOpen?: () => void): AsyncGenerator<BedChange> {
+  const response = await http.stream('/camas/eventos', signal);
+  if (!response.body) throw new Error('El servidor no devolvió el flujo de camas.');
+  onOpen?.();
+  for await (const message of readSseMessages(response.body)) {
+    if (message.event === 'ping') continue;
+    const change = parseBedChange(message.data);
+    if (change) yield change;
+  }
 }

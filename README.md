@@ -56,7 +56,7 @@ La siguiente tabla refleja el código actual del repositorio, no el alcance plan
 | Admisión: agenda médica semanal, excepciones y especialidades | Implementado (`/agenda-medica`, `/especialidades`) | Sin pantallas |
 | Admisión: triaje de guardia | Implementado (`/triaje`), con cola persistida y ordenada por nivel; al atender crea un turno urgente y su cargo | Pantalla con datos locales en memoria |
 | Notificaciones | Implementado (`/notificaciones`) | Conectado a la API |
-| Recursos: camas (ABM, asignación, alta, traslado, limpieza, bloqueo), sectores, habitaciones e internaciones | Implementado, con cambios de estado en tiempo real (`GET /camas/eventos`) | Pantalla con datos locales en memoria |
+| Recursos: camas (ABM, asignación, alta, traslado, limpieza, bloqueo), sectores, habitaciones e internaciones | Implementado, con cambios de estado en tiempo real (`GET /camas/eventos`) | Mapa, detalle y acciones conectados a la API, con actualización en tiempo real |
 | Recursos: inventario | Implementado: ABM de insumos, descuento atómico, reposición, historial de movimientos, stock mínimo con notificación `STOCK_BAJO` y descuento automático al administrar medicación | Solo lectura del stock, conectado a la API |
 | Enfermería: signos vitales | Implementado (`/signos-vitales`), con alerta por temperatura mayor a 39 °C | Conectado a la API |
 | Enfermería: indicaciones y medicación | Implementado (`/indicaciones`): ventana de ±30 minutos, omisiones, suspensión y ejecución de indicaciones no medicamentosas | Conectado a la API (medicación; sin pantalla para crear indicaciones) |
@@ -67,7 +67,7 @@ La siguiente tabla refleja el código actual del repositorio, no el alcance plan
 | Facturación: nomenclador, catálogo de financiadores y planes, reportes y liquidaciones | Implementado (`/billing/financiadores`, `/billing/reportes`, `/billing/liquidaciones`); valores del nomenclador provisorios | Sin pantallas |
 | Eventos entre módulos | Bus en memoria y Outbox persistente para los eventos durables | No aplica |
 
-Las dos pantallas con datos locales en memoria (camas y triaje) marcan en el código el endpoint que deben consumir con comentarios `TODO` (`apps/web/src/services/beds.ts` y `triage.ts`). Sus datos se pierden al recargar la página. Los endpoints ya existen en la API.
+La pantalla de triaje trabaja con datos locales en memoria y marca en el código el endpoint que debe consumir con un comentario `TODO` (`apps/web/src/services/triage.ts`). Sus datos se pierden al recargar la página. El endpoint ya existe en la API.
 
 ## 3. Tecnologías
 
@@ -638,7 +638,7 @@ curl "http://localhost:3000/billing/cargos?desde=2026-11-01&hasta=2026-11-30&est
 
 ## 17. Capturas de pantalla
 
-Capturas de la aplicación en ejecución (frontend sobre una base local de pruebas, con datos ficticios). Las pantallas de camas y de triaje usan datos locales del frontend (ver `apps/web/README.md`, "Estado conocido").
+Capturas de la aplicación en ejecución (frontend sobre una base local de pruebas, con datos ficticios). La pantalla de triaje usa datos locales del frontend (ver `apps/web/README.md`, "Estado conocido"). La captura del mapa de camas se tomó antes de conectar esa pantalla a la API.
 
 | Pantalla | Imagen |
 | --- | --- |
@@ -679,8 +679,8 @@ Ubicación en el código de cada criterio de la rúbrica.
 - **Outbox parcial.** Solo los ocho eventos de `DURABLE_EVENT_TYPES` (cargos, descuento de stock y cambios de cama) tienen entrega durable con reintentos. Las notificaciones (turno en sala de espera, lista de espera promovida, signos vitales, stock bajo) y la generación del protocolo de ingreso se entregan en memoria: si el proceso cae antes de procesarlos, se pierde el efecto. Además, la fila del Outbox se inserta después del commit del cambio de negocio, no en la misma transacción.
 - **El protocolo de ingreso se genera en segundo plano.** `POST /camas/:id/asignar` responde antes de que exista el protocolo; un cliente que consulte en el mismo instante puede no verlo todavía.
 - **Protocolos solo para dos motivos de ingreso.** Las historias de usuario definen tareas para ingreso pre-quirúrgico y para infección respiratoria. Para cualquier otro motivo no se genera protocolo.
-- **Tiempo real de camas sin historial.** `GET /camas/eventos` solo entrega los cambios ocurridos con la conexión abierta, con hasta un segundo de demora. El frontend todavía no lo consume.
-- **Frontend de camas y de triaje con datos locales.** Los endpoints existen, pero esas dos pantallas no los consumen.
+- **Tiempo real de camas sin historial.** `GET /camas/eventos` solo entrega los cambios ocurridos con la conexión abierta, con hasta un segundo de demora. El frontend lo consume con `fetch`, reconecta con espera creciente y refresca el mapa al reconectar (`apps/web/src/stores/beds.store.ts`).
+- **Frontend de triaje con datos locales.** El endpoint existe, pero la pantalla no lo consume.
 - **Frontend de facturación parcial.** Las pantallas no usan las liquidaciones, los reportes ni el catálogo de coberturas; el filtrado y la exportación CSV se hacen en el navegador sobre todos los cargos descargados, y los cargos de farmacia no tienen etiqueta en la tabla. Tampoco hay pantallas para la agenda médica, las especialidades, la administración del inventario ni la reprogramación de turnos.
 - **Nomenclador provisorio.** Los valores de las prestaciones y el copago ($3.000) son fijos, vienen de las migraciones y no hay endpoint para administrarlos ni para cargar tarifas por financiador. Los umbrales clínicos también son valores fijos.
 - **Liquidación a terceros sin datos reales en el alta actual.** `POST /pacientes` y `PATCH /pacientes/:id/cobertura` no reciben financiador, plan ni número de afiliado, por lo que los cargos quedan sin financiador y no se liquidan. El verificador de cobertura (`COVERAGE_VERIFIER`) es simulado y ningún módulo lo invoca.

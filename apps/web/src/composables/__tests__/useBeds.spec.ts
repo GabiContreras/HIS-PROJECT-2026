@@ -1,31 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useBeds } from '../useBeds';
-import { listBeds } from '../../services/beds';
+import { listBeds, type Bed } from '../../services/beds';
 
 vi.mock('../../services/beds', () => ({
   listBeds: vi.fn(),
 }));
 
-const mockBeds = [
-  {
-    id: '1',
-    numero: '101',
-    sector: 'A',
-    estado: 'OCUPADA',
-  },
-  {
-    id: '2',
-    numero: '102',
-    sector: 'A',
-    estado: 'DISPONIBLE',
-  },
-  {
-    id: '3',
-    numero: '103',
-    sector: 'B',
-    estado: 'OCUPADA',
-  },
-];
+const bed = (id: string, numero: string, estado: Bed['estado']): Bed => ({
+  id,
+  numero,
+  sector: 'A',
+  habitacion: null,
+  estado,
+  paciente: null,
+  motivoBloqueo: null,
+  activa: true,
+});
+
+const mockBeds: Bed[] = [bed('1', '101', 'OCUPADA'), bed('2', '102', 'DISPONIBLE'), bed('3', '103', 'OCUPADA')];
 
 describe('useBeds', () => {
   beforeEach(() => {
@@ -42,7 +34,7 @@ describe('useBeds', () => {
   });
 
   it('debe calcular correctamente las camas ocupadas', async () => {
-    vi.mocked(listBeds).mockResolvedValue(mockBeds as never);
+    vi.mocked(listBeds).mockResolvedValue(mockBeds);
 
     const bedsState = useBeds();
     await bedsState.load();
@@ -51,7 +43,7 @@ describe('useBeds', () => {
   });
 
   it('debe cargar correctamente las camas', async () => {
-    vi.mocked(listBeds).mockResolvedValue(mockBeds as never);
+    vi.mocked(listBeds).mockResolvedValue(mockBeds);
 
     const bedsState = useBeds();
     await bedsState.load();
@@ -60,6 +52,17 @@ describe('useBeds', () => {
     expect(bedsState.beds.value).toEqual(mockBeds);
     expect(bedsState.error.value).toBeNull();
     expect(bedsState.loading.value).toBe(false);
+  });
+
+  it('debe quedar sin camas cuando la API devuelve una lista vacía', async () => {
+    vi.mocked(listBeds).mockResolvedValue([]);
+
+    const bedsState = useBeds();
+    await bedsState.load();
+
+    expect(bedsState.beds.value).toEqual([]);
+    expect(bedsState.occupied.value).toBe(0);
+    expect(bedsState.error.value).toBeNull();
   });
 
   it('debe mostrar un error si falla la carga', async () => {
