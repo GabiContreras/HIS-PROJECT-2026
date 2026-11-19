@@ -1,6 +1,6 @@
 # Facturación (módulo `billing`)
 
-Descripción del flujo de facturación tal como está en el código. Estado verificado el 16/11/2026 sobre el commit `f404552` de `main`. Los contratos HTTP completos (parámetros, respuestas y códigos de error) están en `docs/CONTRATOS-Y-GIT.md`.
+Descripción del flujo de facturación tal como está en el código. Estado verificado el 18/11/2026 sobre el commit `140aca4` de `main`. Los contratos HTTP completos (parámetros, respuestas y códigos de error) están en `docs/CONTRATOS-Y-GIT.md`.
 
 ## Alcance
 

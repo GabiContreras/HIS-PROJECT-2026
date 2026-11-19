@@ -1,6 +1,6 @@
 # Implementación frontend
 
-Describe el frontend Vue 3 del Sistema de Información Hospitalaria tal como está en el código al 16/11/2026 (commit `f404552` de `main`): qué pantallas consumen la API, cuáles siguen con datos locales y qué servicios existen sin pantalla que los use.
+Describe el frontend Vue 3 del Sistema de Información Hospitalaria tal como está en el código al 18/11/2026 (commit `140aca4` de `main`): qué pantallas consumen la API, cuáles siguen con datos locales y qué servicios existen sin pantalla que los use.
 
 ## Configuración y validación
 
@@ -19,7 +19,7 @@ npm --prefix apps/web run test           # vitest
 npm --prefix apps/web run build          # type-check y build de producción
 ```
 
-Estado de las comprobaciones el 16/11/2026: `type-check` sin errores; `test` con 48 pruebas aprobadas en 7 archivos y 1 archivo que falla (ver "Pruebas automatizadas").
+Estado de las comprobaciones: `type-check` sin errores; `test` con 48 pruebas aprobadas en 7 archivos (ver "Pruebas automatizadas").
 
 ## Sesión y autorización
 
@@ -63,7 +63,7 @@ El menú lateral (`AppShell.vue`) muestra solo las entradas permitidas para el r
 | Camas | Datos locales en memoria | `services/beds.ts` (con `TODO` hacia `/camas`) |
 | Triaje | Datos locales en memoria | `services/triage.ts` (con `TODO` hacia `/triaje`) |
 
-Servicios que existen pero ninguna pantalla usa todavía: `services/liquidations.ts` (liquidaciones), `services/reports.ts` (reportes administrativos), `services/coverageCatalog.ts` (solo tipos del catálogo de financiadores y planes), `downloadCharges` y `exportCharges` de `services/charges.ts` (exportación CSV generada por el servidor) y `listVitalSignSeries` de `services/vitalSigns.ts`. `components/PacientesForm.vue` y `services/pacientes.ts` son un alta de pacientes anterior, con `fetch` directo a `http://localhost:3000` y sin token, que ninguna ruta usa.
+Servicios que existen pero ninguna pantalla usa todavía: `services/liquidations.ts` (liquidaciones), `services/reports.ts` (reportes administrativos), `services/coverageCatalog.ts` (solo tipos del catálogo de financiadores y planes, que se conservan para una mejora futura), `downloadCharges` y `exportCharges` de `services/charges.ts` (exportación CSV generada por el servidor) y `listVitalSignSeries` de `services/vitalSigns.ts`.
 
 El frontend no tiene pantallas para la agenda médica semanal, las excepciones de agenda, las especialidades, la reprogramación ni la cancelación de turnos con motivo, las liquidaciones, los reportes, la administración del inventario (alta, edición, reposición, historial) ni los sectores y habitaciones. El stream `GET /camas/eventos` no se consume.
 
@@ -146,8 +146,7 @@ Pruebas unitarias con Vitest sobre stores, composables y servicios.
 | `src/services/__tests__/charges.spec.ts` | Servicio de cargos: paginación, filtros y exportación |
 | `src/services/__tests__/liquidations.spec.ts` | Servicio de liquidaciones |
 | `src/shared/__tests__/http.download.spec.ts` | Descarga de archivos del cliente HTTP |
-| `src/stores/__tests__/dashboard.store.spec.ts` | Falla: importa `../dashboard.store`, que no existe |
 
 Desde la raíz: `npm --prefix apps/web run test`.
 
-Resultado el 16/11/2026: 8 archivos de prueba (7 aprobados y 1 fallido), 48 pruebas aprobadas.
+Resultado el 18/11/2026: 7 archivos de prueba y 48 pruebas aprobadas.

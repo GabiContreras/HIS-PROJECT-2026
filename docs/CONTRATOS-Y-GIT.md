@@ -10,7 +10,7 @@ Cada endpoint debe documentar método/ruta, DTO de entrada, respuesta, permisos,
 - Resources: disponibilidad/asignación de camas y movimientos de inventario.
 - Billing: consulta y registro de cargos, evitando duplicados por reintentos.
 
-Todas las rutas de este documento están implementadas. Estado verificado el 16/11/2026 contra los controladores del commit `f404552` de `main`. La referencia ejecutable es Swagger (`/docs`).
+Todas las rutas de este documento están implementadas. Estado verificado el 18/11/2026 contra los controladores del commit `140aca4` de `main`. La referencia ejecutable es Swagger (`/docs`).
 
 ## Contratos entregados para IAM y Admisión
 
