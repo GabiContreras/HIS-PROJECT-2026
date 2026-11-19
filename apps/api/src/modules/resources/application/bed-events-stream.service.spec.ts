@@ -6,6 +6,7 @@ import { EventBus } from '../../../shared/events/event-bus.service.js';
 import { PatientAdmitted } from '../../../shared/events/patient-admitted.event.js';
 import { BED_BLOCKED, BED_UNBLOCKED } from '../domain/bed-events.js';
 import { EstadoCama } from '../domain/estado-cama.enum.js';
+import type { DataSource } from 'typeorm';
 import { BED_STREAM_HEARTBEAT_MS, BedEventsStreamService } from './bed-events-stream.service.js';
 
 const AT = '2030-01-01T10:00:00.000Z';
@@ -96,5 +97,41 @@ describe('BedEventsStreamService', () => {
     sub.unsubscribe();
     vi.advanceTimersByTime(BED_STREAM_HEARTBEAT_MS * 3);
     expect(recibidos).toHaveLength(2);
+  });
+
+  it('no repite un evento persistido cuando created_at tiene microsegundos', async () => {
+    vi.useFakeTimers();
+    const microsegundos = (valor: unknown): bigint => {
+      if (valor instanceof Date) return BigInt(valor.getTime()) * 1000n;
+      const [, base, fraccion] = /^(.*?)(?:\.(\d+))?\+00$/.exec(String(valor)) ?? [];
+      return BigInt(Date.parse(base.replace(' ', 'T') + 'Z')) * 1000n + BigInt((fraccion ?? '').padEnd(6, '0'));
+    };
+    const fila = {
+      id: '11111111-1111-4111-8111-111111111111',
+      event_type: 'bed.assigned',
+      payload: { ...CAMA, assignedAt: AT },
+      created_at: new Date('2030-01-01T10:00:00.123Z'),
+      created_at_cursor: '2030-01-01 10:00:00.123456+00',
+    };
+    const consultas: unknown[][] = [];
+    const dataSource = {
+      query: vi.fn(async (_sql: string, params: unknown[]) => {
+        consultas.push(params);
+        return microsegundos(params[1]) < microsegundos(fila.created_at_cursor) ? [fila] : [];
+      }),
+    } as unknown as DataSource;
+    const service = new BedEventsStreamService(new EventBus(), dataSource);
+    const recibidos: MessageEvent[] = [];
+    const sub = service.stream().subscribe((m) => recibidos.push(m));
+
+    vi.setSystemTime(new Date('2030-01-01T09:00:00.000Z'));
+    await vi.advanceTimersByTimeAsync(5_000);
+    sub.unsubscribe();
+
+    expect(consultas.length).toBeGreaterThanOrEqual(4);
+    expect(recibidos.map((m) => m.data)).toEqual([
+      { tipo: 'bed.assigned', camaId: 'cama-1', numero: '101', estado: EstadoCama.OCUPADA, at: AT },
+    ]);
+    expect(consultas[1][1]).toBe(fila.created_at_cursor);
   });
 });
